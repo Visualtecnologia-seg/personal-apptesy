@@ -1,0 +1,70 @@
+name: Build Docker and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  # AWS #
+  AWS_CONTAINER: PersonalFightersBackendContainer
+  AWS_SERVICE: PersonalFightersBackendService
+  AWS_CLUSTER: PersonalFighters
+  AWS_REGION: us-east-2
+  ## Insert into Repository/Settings/Secrets ##
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # DOCKER #
+  DOCKER_IMAGE: personalfighters/backend
+  ## Insert into Repository/Settings/Secrets ##
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Docker login
+        run: |
+          docker login -u ${{ env.DOCKER_USERNAME }} -p ${{ env.DOCKER_PASSWORD }}
+      - name: Docker Build Image
+        run: |
+          docker build -t ${{ env.DOCKER_IMAGE }} .
+      - name: Docker Push Image
+        run: |
+          docker push ${{ env.DOCKER_IMAGE }}
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.AWS_CONTAINER }}
+          image: docker.io/${{ env.DOCKER_IMAGE }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          service: ${{ env.AWS_SERVICE }}
+          cluster: ${{ env.AWS_CLUSTER }}
+          wait-for-service-stability: true

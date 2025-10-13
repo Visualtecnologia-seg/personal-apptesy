@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1042698798303",
+    "project_id": "personal-fighters-professional",
+    "storage_bucket": "personal-fighters-professional.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1042698798303:android:7625f71da9f7c12a20556a",
+        "android_client_info": {
+          "package_name": "br.com.professionals.personalfighters"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1042698798303-aiie5aacbq6nfjvam311ubktus638u5f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.professionals.personalfighters",
+            "certificate_hash": "da09fecdfe34a05d1dd71682d70ae418a44f65bd"
+          }
+        },
+        {
+          "client_id": "1042698798303-8o302v2tpqe19lnmg8m3i6rjh02j7bog.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA67h7afB0RkzajaVzu-8oBhIl2MX0Ugkc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1042698798303-8o302v2tpqe19lnmg8m3i6rjh02j7bog.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

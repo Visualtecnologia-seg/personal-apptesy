@@ -1,0 +1,45 @@
+/* Blueshark*/
+
+/* Tables */
+
+.bs-vertical-align-center {
+  vertical-align: middle !important;
+}
+
+/* Forms */
+.card-btn-save {
+  box-shadow: none !important;
+}
+
+/* General */
+.bs-title {
+  font-family: "Open Sans", sans-serif;
+  font-weight: bold;
+  margin-left: 20px !important;
+  font-size: x-large;
+}
+
+/* Auth */
+.bs-login-title {
+  font-family: "Open Sans", sans-serif;
+  font-weight: bold;
+  font-size: xx-large;
+}
+
+.bs-login-bg {
+  background: linear-gradient(-45deg, #d4b053, #A8E0FF, #00509D);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

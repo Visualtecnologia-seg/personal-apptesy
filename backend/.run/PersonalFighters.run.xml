@@ -1,0 +1,35 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="@local" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="personal-fighters-backend" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="br.com.personalfighters.PersonalFightersApplication" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <option name="SHORTEN_COMMAND_LINE" value="NONE" />
+    <option name="UPDATE_ACTION_UPDATE_POLICY" value="UpdateClassesAndTriggerFile" />
+    <additionalParameters>
+      <param>
+        <option name="name" value="spring.jpa.hibernate.ddl-auto" />
+        <option name="value" value="create" />
+      </param>
+      <param>
+        <option name="name" value="create.fake.data" />
+        <option name="value" value="true" />
+      </param>
+      <param>
+        <option name="name" value="create.fake.data.limit" />
+        <option name="value" value="20" />
+      </param>
+      <param>
+        <option name="name" value="spring.flyway.enabled" />
+        <option name="value" value="false" />
+      </param>
+      <param>
+        <option name="enabled" value="true" />
+        <option name="name" value="spring.profiles.active" />
+        <option name="value" value="dev" />
+      </param>
+    </additionalParameters>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

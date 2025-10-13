@@ -1,0 +1,28 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans&display=swap");
+//@import url("https://fonts.googleapis.com/css2?family=Montsserat&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,700;1,800&display=swap');
+
+
+//CSS DE ALTERAÇÃO DE STYLES JA EXISTENTES
+
+//Padronisação de font e tamanho
+* {
+	font-family: "Open Sans", sans-serif;
+}
+
+//Sidebar do Core
+
+.c-sidebar{
+	background-color: #00509d!important;
+}
+
+.table {
+	.td {
+		vertical-align: middle!important;
+	}
+}
+
+.table.td {
+	vertical-align: middle!important;
+}
+

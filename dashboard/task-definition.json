@@ -1,0 +1,45 @@
+{
+  "requiresCompatibilities": [
+    "EC2"
+  ],
+  "inferenceAccelerators": [],
+  "containerDefinitions": [
+    {
+      "name": "PersonalFightersDashboardContainer",
+      "image": "docker.io/personalfighters/dashboard",
+      "memory": "128",
+      "resourceRequirements": null,
+      "essential": true,
+      "portMappings": [
+        {
+          "hostPort": 80,
+          "protocol": "tcp",
+          "containerPort": 80
+        }
+      ],
+      "environment": null,
+      "environmentFiles": [],
+      "secrets": null,
+      "mountPoints": null,
+      "volumesFrom": null,
+      "hostname": null,
+      "user": null,
+      "workingDirectory": null,
+      "extraHosts": null,
+      "logConfiguration": null,
+      "ulimits": null,
+      "dockerLabels": null,
+      "dependsOn": null,
+      "repositoryCredentials": {
+        "credentialsParameter": ""
+      }
+    }
+  ],
+  "volumes": [],
+  "networkMode": null,
+  "memory": "256",
+  "cpu": "1024",
+  "placementConstraints": [],
+  "family": "PersonalFightersDashboardTask",
+  "tags": []
+}
