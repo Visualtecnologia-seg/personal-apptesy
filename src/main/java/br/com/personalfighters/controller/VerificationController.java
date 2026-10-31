@@ -35,6 +35,7 @@ public class VerificationController {
   private final IdentityVerificationRepository repo;
   private final UserRepository userRepository;
   private final UserService userService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   // ───────────────────────────── App (o próprio usuário) ─────────────────────────────
 
@@ -54,6 +55,13 @@ public class VerificationController {
       out.put("rejectedSteps", splitSteps(v.getRejectedSteps()));
     });
     return out;
+  }
+
+  /** Checagem automática da foto antes de enviar (nitidez, luz, reflexo, tamanho). */
+  @PostMapping("/check-image")
+  public Map<String, Object> checkImage(@RequestBody Map<String, String> body) {
+    userService.findAuthUser();
+    return br.com.personalfighters.util.ImageQuality.check(body.get("image"), body.getOrDefault("kind", "DOC"));
   }
 
   @PostMapping("/me")
@@ -119,6 +127,17 @@ public class VerificationController {
         .submittedAt(LocalDateTime.now())
         .build();
     repo.save(v);
+    try {
+      Map<String, Object> report = new LinkedHashMap<>();
+      report.put("docFront", br.com.personalfighters.util.ImageQuality.check(front, "DOC"));
+      report.put("docBack", br.com.personalfighters.util.ImageQuality.check(back, "DOC"));
+      report.put("selfie", br.com.personalfighters.util.ImageQuality.check(selfie, "SELFIE"));
+      report.put("selfieWithDoc", br.com.personalfighters.util.ImageQuality.check(selfieDoc, "SELFIE"));
+      jdbc.update("UPDATE identity_verification_ SET quality_report = ? WHERE id = ?",
+          new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(report), v.getId());
+    } catch (Exception e) {
+      log.warn("Checagem de qualidade não salva: {}", e.getMessage());
+    }
 
     // Dados pessoais conferidos pelo usuário na etapa "Seus dados"
     String fullName = body.getOrDefault("fullName", "").trim();
@@ -166,6 +185,10 @@ public class VerificationController {
       m.put("selfieTurnA", v.getSelfieTurnA());
       m.put("selfieTurnB", v.getSelfieTurnB());
       m.put("selfieWithDoc", v.getSelfieWithDoc());
+      try {
+        String q = jdbc.queryForObject("SELECT quality_report FROM identity_verification_ WHERE id = ?", String.class, id);
+        if (q != null) m.put("quality", new com.fasterxml.jackson.databind.ObjectMapper().readValue(q, Map.class));
+      } catch (Exception ignored) { }
       return ResponseEntity.ok(m);
     }).orElse(ResponseEntity.notFound().build());
   }

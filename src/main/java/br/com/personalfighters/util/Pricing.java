@@ -9,7 +9,7 @@ import java.math.RoundingMode;
  */
 public final class Pricing {
 
-  public static final BigDecimal FEE_RATE = new BigDecimal("0.05");
+  public static volatile BigDecimal FEE_RATE = new BigDecimal("0.05");
 
   private Pricing() {}
 

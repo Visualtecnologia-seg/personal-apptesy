@@ -251,6 +251,11 @@ public class SocialController {
     return u != null && u.getRole() != null && u.getRole().contains(r);
   }
 
+  static String firstName(String name) {
+    if (name == null || name.isBlank()) return "Alguém";
+    return name.trim().split("\\s+")[0];
+  }
+
   static String firstName(User u) {
     if (u == null || u.getName() == null || u.getName().isBlank()) return "Alguém";
     return u.getName().trim().split("\\s+")[0];

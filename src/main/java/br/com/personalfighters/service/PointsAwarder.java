@@ -19,8 +19,8 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class PointsAwarder {
 
-  public static final int POINTS_PER_SERVICE = 10;
-  public static final BigDecimal MIN_SERVICE_FOR_POINTS = new BigDecimal("20");
+  public static volatile int POINTS_PER_SERVICE = 10;
+  public static volatile BigDecimal MIN_SERVICE_FOR_POINTS = new BigDecimal("20");
 
   private final PointsRepository pointsRepository;
   private final OrderRepository orderRepository;

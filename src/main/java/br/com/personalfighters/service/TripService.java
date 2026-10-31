@@ -23,8 +23,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TripService {
 
-  public static final BigDecimal PRICE_PER_KM = new BigDecimal("1.50");
-  public static final BigDecimal MIN_FEE = new BigDecimal("10.00");
+  public static volatile BigDecimal PRICE_PER_KM = new BigDecimal("1.50");
+  public static volatile BigDecimal MIN_FEE = new BigDecimal("10.00");
   /** Linha reta × 1,3 ≈ distância pelas ruas. */
   public static final double ROAD_FACTOR = 1.3;
   public static final double AVG_SPEED_KMH = 30.0;
@@ -91,6 +91,10 @@ public class TripService {
     Timestamp now = new Timestamp(System.currentTimeMillis());
     jdbc.update("UPDATE order_ SET departed_at = COALESCE(departed_at, ?), depart_lat = COALESCE(depart_lat, ?), depart_lng = COALESCE(depart_lng, ?), " +
         "pro_lat = ?, pro_lng = ?, pro_loc_at = ? WHERE id = ?", now, lat, lng, lat, lng, now, orderId);
+  }
+
+  public void markArrived(UUID orderId) {
+    jdbc.update("UPDATE order_ SET arrived_at = COALESCE(arrived_at, ?) WHERE id = ?", new Timestamp(System.currentTimeMillis()), orderId);
   }
 
   public void location(UUID orderId, double lat, double lng) {

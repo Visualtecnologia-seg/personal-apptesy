@@ -234,7 +234,7 @@ public class TripController {
     }
     out.put("consents", consents);
     out.put("blockedAttempts", jdbc.queryForList(
-        "SELECT * FROM blocked_attempt_ WHERE order_id = ? ORDER BY 1 DESC LIMIT 50", id));
+        "SELECT sender_id AS \"senderId\", matched_pattern AS pattern, original_text AS text, blocked_at AS \"at\" FROM blocked_attempt_ WHERE order_id = ? ORDER BY blocked_at DESC LIMIT 50", id));
     return ResponseEntity.ok(out);
   }
 

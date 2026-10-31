@@ -38,7 +38,7 @@ public class EngagementController {
   private final OrderRepository orderRepository;
   private final PointsRepository pointsRepository;
   private final UrgentRequestRepository urgentRepository;
-  private static final BigDecimal MIN_ORDER_FOR_REDEEM = new BigDecimal("100");
+  public static volatile BigDecimal MIN_ORDER_FOR_REDEEM = new BigDecimal("100");
   private final WarrantyClaimRepository warrantyRepository;
 
   // ═════════════════════════════ PONTOS ═════════════════════════════

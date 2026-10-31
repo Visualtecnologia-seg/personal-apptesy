@@ -30,6 +30,7 @@ public class ArrivalController {
   private final NotificationService notificationService;
   private final AsaasService asaasService;
   private final QRTokenService qrTokenService;
+  private final br.com.personalfighters.service.TripService tripService;
 
   // ── GPS Proximity ─────────────────────────────────────────────────────────
 
@@ -107,6 +108,7 @@ public class ArrivalController {
     order.setClientConfirmedArrival(true);
     order.setStatus(Status.IN_PROGRESS);
     orderRepository.save(order);
+    tripService.markArrived(order.getId());
 
     result.put("status", "IN_PROGRESS");
     result.put("message", "Chegada confirmada! Serviço iniciado.");
@@ -139,6 +141,7 @@ public class ArrivalController {
       result.put("message", "Aguardando confirmação da outra parte.");
     }
     orderRepository.save(order);
+    tripService.markArrived(order.getId());
     result.put("proConfirmed", proConfirmed || "PROFESSIONAL".equalsIgnoreCase(role));
     result.put("clientConfirmed", clientConfirmed || "CLIENT".equalsIgnoreCase(role));
     return ResponseEntity.ok(result);
@@ -226,6 +229,7 @@ public class ArrivalController {
       order.setStatus(Status.IN_PROGRESS);
       order.setRequestedCompletionAt(null);
       orderRepository.save(order);
+      tripService.markArrived(order.getId());
       result.put("status", "IN_PROGRESS");
       result.put("message", "Pedido voltou para Em andamento. O profissional será notificado.");
     } else if ("DISPUTE".equalsIgnoreCase(action)) {
