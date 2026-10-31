@@ -68,6 +68,11 @@
   </section>
 
   <section id="listBox" class="hidden">
+    <div class="card" id="reserveCard" style="margin-bottom:14px;display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+      <div><div class="muted">Reserva de pontos (R$ 1 a cada 10 pontos)</div><div id="resValue" style="font-size:26px;font-weight:800">—</div></div>
+      <div><div class="muted">Pontos ainda não usados</div><div id="resPts" style="font-size:18px;font-weight:700">—</div></div>
+      <div><div class="muted">Pontos dados / usados</div><div id="resGU" style="font-size:18px;font-weight:700">—</div></div>
+    </div>
     <div class="tabs">
       <button class="tab on" data-s="PENDING">Em análise</button>
       <button class="tab" data-s="APPROVED">Aprovadas</button>
@@ -145,7 +150,16 @@ $('back').onclick = () => loadList();
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => { document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); filter=b.dataset.s; loadList(); });
 $('zoom').onclick = () => $('zoom').style.display='none';
 
+async function loadReserve(){
+  try {
+    const r = await api('/admin/points-reserve');
+    $('resValue').textContent = Number(r.reserveValue||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    $('resPts').textContent = (r.pointsOutstanding||0).toLocaleString('pt-BR');
+    $('resGU').textContent = (r.pointsGiven||0).toLocaleString('pt-BR') + ' / ' + (r.pointsUsed||0).toLocaleString('pt-BR');
+  } catch(e) {}
+}
 async function loadList(){
+  loadReserve();
   show('listBox');
   const rows = $('rows'); rows.innerHTML='';
   let items = [];
