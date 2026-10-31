@@ -236,7 +236,8 @@ public class NotificationServiceImpl implements NotificationService {
       UserRecords records = userRecordsService.findByUser(order.getProfessional());
       if (records == null || ObjectUtils.isEmpty(records.getProfessionalExpoPushNotificationToken())) return;
       JSONArray notifications = new JSONArray();
-      String valor = String.format("R$ %.2f", order.getTotalCost() != null ? order.getTotalCost().multiply(new java.math.BigDecimal("0.95")) : java.math.BigDecimal.ZERO);
+      java.math.BigDecimal pv = order.getServiceValue() != null ? order.getServiceValue() : br.com.personalfighters.util.Pricing.serviceFromTotal(order.getTotalCost());
+      String valor = String.format("R$ %.2f", pv != null ? pv : java.math.BigDecimal.ZERO);
       notification(notifications,
           "✅ Pagamento de " + valor + " enviado por PIX para sua conta!",
           records.getProfessionalExpoPushNotificationToken());
@@ -246,4 +247,21 @@ public class NotificationServiceImpl implements NotificationService {
     }
   }
 
+
+  /** Aviso simples para uma pessoa (cliente ou profissional). */
+  @Override
+  public void sendToUser(User user, boolean toProfessionalApp, String text) {
+    try {
+      if (user == null) return;
+      UserRecords records = userRecordsService.findByUser(user);
+      if (records == null) return;
+      String token = toProfessionalApp ? records.getProfessionalExpoPushNotificationToken() : records.getCustomerExpoPushNotificationToken();
+      if (ObjectUtils.isEmpty(token)) return;
+      JSONArray notifications = new JSONArray();
+      notification(notifications, text, token);
+      sendToExpo(notifications);
+    } catch (Exception e) {
+      log.error("Erro ao enviar aviso: {}", e.getMessage());
+    }
+  }
 }

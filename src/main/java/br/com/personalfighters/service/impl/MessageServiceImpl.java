@@ -131,7 +131,8 @@ public class MessageServiceImpl implements MessageService {
           : (msg.getQuoteAmount() != null ? msg.getQuoteAmount() : BigDecimal.ZERO);
 
       orderRepository.findById(msg.getOrderId()).ifPresent(order -> {
-        order.setTotalCost(total);
+        order.setServiceValue(total);
+        order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
         orderRepository.save(order);
         try {
           notificationService.sendPaymentConfirmedToProfessional(order);
@@ -176,7 +177,8 @@ public class MessageServiceImpl implements MessageService {
       msg.setQuoteTotalCost(total);
 
       orderRepository.findById(msg.getOrderId()).ifPresent(order -> {
-        order.setTotalCost(total);
+        order.setServiceValue(total);
+        order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
         orderRepository.save(order);
         try {
           notificationService.sendPaymentLockedToCustomer(order);

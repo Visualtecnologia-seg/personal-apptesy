@@ -25,4 +25,5 @@ public interface NotificationService {
   void sendArrivalNotifications(Order order);
 
   void sendPaymentReleasedToProfessional(Order order);
+  void sendToUser(br.com.personalfighters.entity.User user, boolean toProfessionalApp, String text);
 }

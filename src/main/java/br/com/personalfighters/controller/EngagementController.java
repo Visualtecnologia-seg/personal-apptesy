@@ -38,6 +38,7 @@ public class EngagementController {
   private final OrderRepository orderRepository;
   private final PointsRepository pointsRepository;
   private final UrgentRequestRepository urgentRepository;
+  private static final BigDecimal MIN_ORDER_FOR_REDEEM = new BigDecimal("100");
   private final WarrantyClaimRepository warrantyRepository;
 
   // ═════════════════════════════ PONTOS ═════════════════════════════
@@ -61,6 +62,7 @@ public class EngagementController {
     out.put("pointsPerRedeem", POINTS_PER_REDEEM);
     out.put("redeemValue", REDEEM_VALUE);
     out.put("canRedeem", balance >= POINTS_PER_REDEEM);
+    out.put("minOrderForRedeem", MIN_ORDER_FOR_REDEEM);
     out.put("history", history.stream().limit(30).map(p -> {
       Map<String, Object> m = new LinkedHashMap<>();
       m.put("amount", p.getAmount());
@@ -84,8 +86,8 @@ public class EngagementController {
       return bad("Não é possível usar pontos neste pedido.");
     }
     if (order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0) return bad("Este pedido já tem desconto.");
-    if (order.getTotalCost() == null || order.getTotalCost().compareTo(REDEEM_VALUE.add(BigDecimal.ONE)) < 0) {
-      return bad("O valor do pedido é baixo demais para usar pontos.");
+    if (order.getTotalCost() == null || order.getTotalCost().compareTo(MIN_ORDER_FOR_REDEEM) < 0) {
+      return bad("Os pontos podem ser usados em serviços a partir de R$ 100.");
     }
     Integer balance = pointsRepository.sumAmountByUser(me);
     if (balance == null || balance < POINTS_PER_REDEEM) {

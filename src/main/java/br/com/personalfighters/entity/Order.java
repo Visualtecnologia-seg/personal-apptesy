@@ -44,6 +44,26 @@ public class Order {
 
   private BigDecimal totalCost;
 
+  /** Valor do serviço que vai para o profissional (sem a taxa OPUS). */
+  @Column(name = "service_value")
+  private BigDecimal serviceValue;
+
+  /** Código de 6 números da conclusão — nunca vai no JSON. */
+  @com.fasterxml.jackson.annotation.JsonIgnore
+  @Column(name = "finish_code")
+  private String finishCode;
+
+  @com.fasterxml.jackson.annotation.JsonIgnore
+  @Column(name = "finish_code_expires_at")
+  private java.time.LocalDateTime finishCodeExpiresAt;
+
+  @Column(name = "payment_released_at")
+  private java.time.LocalDateTime paymentReleasedAt;
+
+  @com.fasterxml.jackson.annotation.JsonIgnore
+  @Column(name = "points_awarded")
+  private Boolean pointsAwarded;
+
   @Enumerated(EnumType.STRING)
   private Gender gender;
 

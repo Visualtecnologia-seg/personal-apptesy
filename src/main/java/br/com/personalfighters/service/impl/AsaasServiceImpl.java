@@ -141,10 +141,10 @@ public class AsaasServiceImpl implements AsaasService {
     String pixQrCode = qrResponse != null ? (String) qrResponse.get("encodedImage") : null;
 
     BigDecimal appTax = new BigDecimal(APP_TAX_PERCENTAGE);
-    // O profissional recebe sobre o valor cheio; o desconto com pontos sai da parte da plataforma
-    BigDecimal fullTax = order.getTotalCost()
-        .multiply(appTax.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-    BigDecimal professionalValue = order.getTotalCost().subtract(fullTax);
+    // Taxa embutida: o profissional recebe o valor cheio do serviço; a taxa (menos o desconto de pontos) fica com o OPUS
+    BigDecimal professionalValue = order.getServiceValue() != null
+        ? order.getServiceValue()
+        : br.com.personalfighters.util.Pricing.serviceFromTotal(order.getTotalCost());
     BigDecimal appTaxValue = charged.subtract(professionalValue);
 
     Transaction transaction = Transaction.builder()

@@ -57,6 +57,7 @@ public class OrderServiceImpl implements OrderService {
   private final TransactionService transactionService;
   private final EmailService emailService;
   private final PointsRepository pointsRepository;
+  private final br.com.personalfighters.service.PointsAwarder pointsAwarder;
 
   private final ZoneId zoneId = ZoneId.of("America/Sao_Paulo");
 
@@ -98,6 +99,7 @@ public class OrderServiceImpl implements OrderService {
         throw new RuntimeException("Horário indisponível. Já existe um pedido nesse horário");
       }
     }
+    applyPricing(order);
     order.setCreatedAt(LocalDateTime.now(zoneId));
     order.setIsReviewed(false);
     order.setPixPaid(false);
@@ -377,6 +379,31 @@ public class OrderServiceImpl implements OrderService {
     orderRepository.save(order);
   }
 
+  /** Taxa de 5% embutida: total do cliente = horas × valor/hora × 1,05; o profissional recebe o valor cheio. */
+  private void applyPricing(Order order) {
+    try {
+      if (order.getServiceValue() == null && order.getHours() != null && order.getProfessional() != null
+          && order.getProfessional().getId() != null) {
+        User pro = userService.findById(order.getProfessional().getId());
+        Double rate = pro != null && pro.getProfessional() != null ? pro.getProfessional().getHourlyRate() : null;
+        if (rate != null && rate > 0) {
+          java.math.BigDecimal service = java.math.BigDecimal.valueOf(rate)
+              .multiply(java.math.BigDecimal.valueOf(order.getHours().doubleValue()))
+              .setScale(2, java.math.RoundingMode.HALF_UP);
+          order.setServiceValue(service);
+        }
+      }
+      if (order.getServiceValue() == null && order.getTotalCost() != null) {
+        order.setServiceValue(order.getTotalCost());
+      }
+      if (order.getServiceValue() != null) {
+        order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(order.getServiceValue()));
+      }
+    } catch (Exception e) {
+      log.warn("Não foi possível calcular o preço do pedido: {}", e.getMessage());
+    }
+  }
+
   @Override
   @Transactional
   public void completeOrder(UUID id, Long professionalId) {
@@ -386,20 +413,7 @@ public class OrderServiceImpl implements OrderService {
     if (order.getDoneAt() == null) order.setDoneAt(LocalDateTime.now(zoneId));
     orderRepository.save(order);
 
-    // Award 10 points to the customer for completing a service
-    try {
-      if (order.getCustomer() != null) {
-        Points pts = Points.builder()
-            .user(order.getCustomer())
-            .amount(10)
-            .reason("Serviço concluído")
-            .orderId(id)
-            .build();
-        pointsRepository.save(pts);
-      }
-    } catch (Exception e) {
-      log.warn("Não foi possível atribuir pontos ao cliente: {}", e.getMessage());
-    }
+    pointsAwarder.award(order);
   }
 
   @Override
