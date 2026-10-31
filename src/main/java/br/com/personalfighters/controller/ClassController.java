@@ -251,7 +251,7 @@ public class ClassController {
     User me = userService.findAuthUser();
     if (count("SELECT COUNT(*) FROM room_member_ WHERE class_id = ? AND user_id = ?", id, me.getId()) == 0) return bad("Você não está na sala.");
     String kind = Objects.toString(b.get("kind"), "");
-    if (!List.of("offer", "answer", "ice", "bye").contains(kind)) return bad("Sinal inválido.");
+    if (!List.of("offer", "answer", "ice", "bye", "mute").contains(kind)) return bad("Sinal inválido.");
     long to;
     try { to = Long.parseLong(Objects.toString(b.get("to"), "")); } catch (Exception e) { return bad("Destino inválido."); }
     String payload = Objects.toString(b.get("payload"), "");

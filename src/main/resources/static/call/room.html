@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>OPUS · Aula ao vivo</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#0B1530;color:#fff;font-family:Inter,system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+  header{position:fixed;left:14px;right:14px;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:5;display:flex;align-items:center;gap:10px}
+  #title{font-weight:800;font-size:17px}#sub{font-size:12px;color:#BFDBFE}
+  .live{margin-left:auto;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:#DC2626;font-size:11px;font-weight:800}
+  .live i{width:7px;height:7px;border-radius:50%;background:#fff;animation:b 1.2s infinite}@keyframes b{50%{opacity:.3}}
+  #grid{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 64px);bottom:120px;display:grid;gap:8px;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;overflow:auto}
+  .tile{position:relative;border-radius:16px;overflow:hidden;background:#1E293B;min-height:120px}
+  .tile video{width:100%;height:100%;object-fit:cover}
+  .tile .nm{position:absolute;left:6px;bottom:6px;padding:2px 8px;border-radius:8px;background:rgba(11,21,48,.65);font-size:12px;font-weight:700}
+  .tile .hr{position:absolute;right:6px;top:6px;padding:2px 8px;border-radius:8px;background:rgba(11,21,48,.65);font-size:12px;font-weight:800;display:none}
+  .tile.warn{outline:3px solid #F59E0B;outline-offset:-3px}.tile.warn .hr{background:#F59E0B;color:#0B1530}
+  .tile.me{outline:2px solid #22D3EE;outline-offset:-2px}.tile.me .nm{background:#22D3EE;color:#0B1530}
+  .tile .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#93C5FD}
+  /* Aluno: professor grande, colegas pequenos */
+  body.student #grid{grid-template-columns:1fr;grid-auto-rows:auto}
+  body.student .tile.host{height:calc(100vh - 340px);min-height:260px}
+  body.student #mini{display:flex}
+  #mini{position:fixed;left:10px;right:10px;bottom:120px;display:none;gap:6px;overflow-x:auto}
+  #mini .tile{width:88px;height:120px;flex-shrink:0;min-height:0}
+  #alert{position:fixed;left:12px;right:12px;bottom:118px;z-index:6;display:none;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.6);color:#FDE68A;font-size:13px}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;align-items:center;gap:12px;padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 26px);background:linear-gradient(180deg,rgba(11,21,48,0),#0B1530 45%)}
+  nav button{width:54px;height:54px;border-radius:50%;border:none;background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center}
+  nav button.off{background:#fff;color:#0B1530}nav button.end{background:#DC2626}nav button.pill{width:auto;padding:0 16px;border-radius:27px;font-weight:700;font-size:13px}
+  nav svg{width:22px;height:22px}
+  #toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(11,21,48,.9);padding:12px 16px;border-radius:12px;font-size:14px;z-index:9;opacity:0;transition:opacity .25s;max-width:86%;text-align:center}#toast.on{opacity:1}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><div><div id="title">Aula ao vivo</div><div id="sub">Conectando…</div></div><div class="live"><i></i>AO VIVO</div></header>
+<div id="grid"></div>
+<div id="mini"></div>
+<div id="alert" role="alert"></div>
+<nav>
+  <button id="bMic" aria-label="Microfone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
+  <button id="bCam" aria-label="Câmera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg></button>
+  <button id="bFlip" aria-label="Virar câmera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><path d="M9 13a3 3 0 0 0 5.2 2M15 11a3 3 0 0 0-5.2-2"/></svg></button>
+  <button id="bMuteAll" class="pill hidden">Silenciar todos</button>
+  <button id="bEnd" class="end" aria-label="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</nav>
+<div id="toast"></div>
+<script>
+(function(){
+  const q = new URLSearchParams(location.hash.slice(1));
+  const token = q.get('token'), classId = q.get('classId');
+  const API = location.origin;
+  const $ = id => document.getElementById(id);
+  const post = m => { try { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch(e){} };
+  let me = null, isHost = false, local = null, ice = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+  let lastId = 0, closed = false, facing = 'user', mutedAll = false;
+  const peers = {};   // userId -> { pc, stream, remoteSet, pending: [] }
+  let members = [];
+
+  function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2400); }
+  async function api(path, opts){
+    opts = opts || {};
+    const r = await fetch(API + path, { method: opts.method || 'GET', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    const d = await r.json().catch(() => null);
+    if (!r.ok) throw new Error((d && d.message) || ('Erro ' + r.status));
+    return d;
+  }
+  const signal = (to, kind, payload) => api('/classes/' + classId + '/room/signal', { method: 'POST', body: { to, kind, payload: JSON.stringify(payload) } }).catch(() => {});
+
+  function peer(uid){
+    if (peers[uid]) return peers[uid];
+    const pc = new RTCPeerConnection(ice);
+    const p = peers[uid] = { pc, stream: null, remoteSet: false, pending: [] };
+    if (local) local.getTracks().forEach(t => pc.addTrack(t, local));
+    pc.onicecandidate = e => { if (e.candidate) signal(uid, 'ice', e.candidate.toJSON ? e.candidate.toJSON() : e.candidate); };
+    pc.ontrack = e => { p.stream = e.streams[0]; render(); };
+    pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') { close(uid); } };
+    return p;
+  }
+  function close(uid){ const p = peers[uid]; if (!p) return; try { p.pc.close(); } catch(e){} delete peers[uid]; render(); }
+
+  async function call(uid){
+    const p = peer(uid);
+    const offer = await p.pc.createOffer();
+    await p.pc.setLocalDescription(offer);
+    signal(uid, 'offer', p.pc.localDescription);
+  }
+
+  function tile(m, small){
+    const isMe = m.userId === me;
+    const p = peers[m.userId];
+    const stream = isMe ? local : p && p.stream;
+    const warn = isHost && m.bpm && m.hrMax && m.bpm >= m.hrMax * 0.85;
+    const div = document.createElement('div');
+    div.className = 'tile' + (isMe ? ' me' : '') + (m.isHost ? ' host' : '') + (warn ? ' warn' : '');
+    if (stream) {
+      const v = document.createElement('video'); v.autoplay = true; v.playsInline = true; v.muted = isMe; v.srcObject = stream;
+      if (isMe) v.style.transform = facing === 'user' ? 'scaleX(-1)' : 'none';
+      div.appendChild(v);
+    } else {
+      const ph = document.createElement('div'); ph.className = 'ph'; ph.textContent = (m.name || '?')[0].toUpperCase(); div.appendChild(ph);
+    }
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = isMe ? 'Você' : (m.isHost ? 'Professor · ' : '') + (m.name || ''); div.appendChild(nm);
+    if (m.bpm) { const hr = document.createElement('span'); hr.className = 'hr'; hr.style.display = 'block'; hr.textContent = '♥ ' + m.bpm; div.appendChild(hr); }
+    return div;
+  }
+
+  let renderKey = '';
+  function render(){
+    const key = JSON.stringify(members.map(m => [m.userId, m.bpm, !!(peers[m.userId] && peers[m.userId].stream)])) + facing;
+    if (key === renderKey) return; renderKey = key;
+    const grid = $('grid'), mini = $('mini'); grid.innerHTML = ''; mini.innerHTML = '';
+    if (isHost) {
+      members.filter(m => !m.isHost).forEach(m => grid.appendChild(tile(m)));
+      const meM = members.find(m => m.userId === me); if (meM) grid.appendChild(tile(meM));
+    } else {
+      const host = members.find(m => m.isHost);
+      if (host) grid.appendChild(tile(host)); else { const d=document.createElement('div'); d.className='tile host'; d.innerHTML='<div class="ph" style="font-size:15px">Esperando o professor…</div>'; grid.appendChild(d); }
+      members.filter(m => !m.isHost).sort((a,b)=> (a.userId===me?-1:b.userId===me?1:0)).forEach(m => mini.appendChild(tile(m, true)));
+    }
+    const students = members.filter(m => !m.isHost).length;
+    $('sub').textContent = students + (students === 1 ? ' aluno' : ' alunos') + ' na sala';
+    if (isHost) {
+      const w = members.filter(m => !m.isHost && m.bpm && m.hrMax && m.bpm >= m.hrMax * 0.85);
+      const al = members.filter(m => !m.isHost && (m.alerts || []).length);
+      const a = $('alert');
+      if (w.length) { a.style.display = 'flex'; a.textContent = '⚠ ' + w.map(m => m.name + ' está com ' + m.bpm + ' bpm').join(', ') + '. Sugira uma pausa.' + (al.length ? ' ' + al[0].name + ': ' + al[0].alerts[0] : ''); }
+      else if (al.length) { a.style.display = 'flex'; a.textContent = 'ℹ ' + al.map(m => m.name + ': ' + m.alerts[0]).join(' · '); }
+      else a.style.display = 'none';
+    }
+  }
+
+  async function poll(){
+    while (!closed) {
+      try {
+        const d = await api('/classes/' + classId + '/room?after=' + lastId);
+        if (d.status !== 'LIVE') { finish(d.status === 'DONE' ? 'Aula encerrada pelo professor' : 'A aula terminou'); return; }
+        const ids = new Set(d.members.map(m => m.userId));
+        // Quem entrou depois de mim: eu ligo para os que já estavam (quem chegou por último faz a oferta)
+        const mine = d.members.find(m => m.userId === me);
+        for (const m of d.members) {
+          if (m.userId === me || peers[m.userId]) continue;
+          const shouldCall = !isHost && !m.isHost ? false : true; // aluno ↔ professor sempre; aluno ↔ aluno só se o aluno quiser ver colegas
+          const meNewer = mine && new Date(mine.joinedAt) > new Date(m.joinedAt);
+          if (meNewer) call(m.userId);
+        }
+        for (const uid of Object.keys(peers)) if (!ids.has(Number(uid))) close(Number(uid));
+        for (const s of d.signals) {
+          lastId = Math.max(lastId, s.id);
+          const payload = JSON.parse(s.payload || '{}');
+          const p = peer(s.from);
+          if (s.kind === 'offer') {
+            await p.pc.setRemoteDescription(payload); p.remoteSet = true;
+            for (const c of p.pending.splice(0)) await p.pc.addIceCandidate(c).catch(() => {});
+            const ans = await p.pc.createAnswer(); await p.pc.setLocalDescription(ans);
+            signal(s.from, 'answer', p.pc.localDescription);
+          } else if (s.kind === 'answer') {
+            await p.pc.setRemoteDescription(payload); p.remoteSet = true;
+            for (const c of p.pending.splice(0)) await p.pc.addIceCandidate(c).catch(() => {});
+          } else if (s.kind === 'ice') {
+            if (p.remoteSet) await p.pc.addIceCandidate(payload).catch(() => {}); else p.pending.push(payload);
+          } else if (s.kind === 'bye') { close(s.from); }
+          else if (s.kind === 'mute' ) { const t = local && local.getAudioTracks()[0]; if (t) { t.enabled = false; $('bMic').classList.add('off'); toast('O professor silenciou os microfones'); } }
+        }
+        members = d.members; render();
+      } catch (e) { }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  function finish(text){
+    if (closed) return; closed = true;
+    Object.keys(peers).forEach(uid => { signal(Number(uid), 'bye', {}); close(Number(uid)); });
+    try { local && local.getTracks().forEach(t => t.stop()); } catch(e){}
+    api('/classes/' + classId + '/room/leave', { method: 'POST' }).catch(() => {});
+    toast(text || 'Você saiu da aula');
+    setTimeout(() => post({ type: 'ended' }), 900);
+  }
+
+  async function start(){
+    try { local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 640 } } }); }
+    catch (e) { toast('Permita a câmera e o microfone para entrar na aula.'); post({ type: 'permission' }); }
+    try { ice = await api('/calls/ice'); } catch(e){}
+    let j;
+    try { j = await api('/classes/' + classId + '/room/join', { method: 'POST' }); }
+    catch (e) { toast(e.message); setTimeout(() => post({ type: 'ended' }), 2500); return; }
+    me = j.me; isHost = j.isHost; members = j.members;
+    document.body.classList.add(isHost ? 'host' : 'student');
+    $('title').textContent = j.title || 'Aula ao vivo';
+    if (isHost) $('bMuteAll').classList.remove('hidden');
+    render(); poll();
+  }
+
+  $('bEnd').onclick = () => { if (isHost) { post({ type: 'hostEnd' }); } else finish('Você saiu da aula'); };
+  $('bMic').onclick = () => { const t = local && local.getAudioTracks()[0]; if (!t) return; t.enabled = !t.enabled; $('bMic').classList.toggle('off', !t.enabled); };
+  $('bCam').onclick = () => { const t = local && local.getVideoTracks()[0]; if (!t) return; t.enabled = !t.enabled; $('bCam').classList.toggle('off', !t.enabled); };
+  $('bFlip').onclick = async () => {
+    try {
+      facing = facing === 'user' ? 'environment' : 'user';
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+      const nt = s.getVideoTracks()[0];
+      for (const p of Object.values(peers)) { const sender = p.pc.getSenders().find(x => x.track && x.track.kind === 'video'); if (sender) await sender.replaceTrack(nt); }
+      local.getVideoTracks().forEach(t => { t.stop(); local.removeTrack(t); }); local.addTrack(nt); renderKey = ''; render();
+    } catch (e) { toast('Não foi possível virar a câmera.'); }
+  };
+  $('bMuteAll').onclick = () => { members.filter(m => m.userId !== me).forEach(m => signal(m.userId, 'mute', {})); toast('Microfones dos alunos silenciados'); };
+  function onMsg(ev){ if (ev.data === 'leave') finish('Você saiu da aula'); else if (ev.data === 'ended') finish('Aula encerrada'); }
+  window.addEventListener('message', onMsg); document.addEventListener('message', onMsg);
+  start();
+})();
+</script>
+</body>
+</html>
