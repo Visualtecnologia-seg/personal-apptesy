@@ -72,6 +72,10 @@ public class UserServiceImpl implements UserService {
   @Override
   public User findByUsername(String username) {
     User user = userRepository.findByUsername(username);
+    // Permite entrar também com o e-mail
+    if (user == null && username != null && username.contains("@")) {
+      user = userRepository.findByEmail(username.trim());
+    }
     if (user == null) {
       throw new ObjectNotFoundException("Utilizador não encontrado");
     }
