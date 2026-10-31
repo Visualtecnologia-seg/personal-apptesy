@@ -44,10 +44,10 @@ public class IdentityVerification {
   private String selfieNeutral;
 
   /** Prova de vida: foto com o rosto virado para um lado e para o outro (detectado no celular). */
-  @Column(columnDefinition = "TEXT")
+  @Column(name = "selfie_turn_a", columnDefinition = "TEXT")
   private String selfieTurnA;
 
-  @Column(columnDefinition = "TEXT")
+  @Column(name = "selfie_turn_b", columnDefinition = "TEXT")
   private String selfieTurnB;
 
   /** true quando o app confirmou, ao vivo, que a pessoa virou a cabeça para os dois lados e piscou. */
