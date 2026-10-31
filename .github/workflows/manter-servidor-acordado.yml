@@ -1,21 +1,29 @@
 name: Manter servidor OPUS acordado
 
+# O Render (plano gratis) desliga o servidor depois de 15 min sem acesso.
+# O agendamento do GitHub atrasa muito, entao cada execucao fica ligada
+# por quase 6 horas acessando o servidor a cada 4 minutos. Uma nova
+# execucao substitui a anterior, assim sempre tem uma rodando.
+
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "7 */2 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: manter-acordado
+  cancel-in-progress: true
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 355
     steps:
-      - name: Acessar o servidor
+      - name: Acessar o servidor a cada 4 minutos
         run: |
-          for i in 1 2 3; do
+          end=$(( $(date +%s) + 350*60 ))
+          while [ $(date +%s) -lt $end ]; do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 https://opus-backend-o8kw.onrender.com/platform/config || true)
-            echo "Tentativa $i: HTTP $code"
-            [ "$code" = "200" ] && exit 0
-            sleep 20
+            echo "$(date -u +%H:%M) HTTP $code"
+            sleep 240
           done
-          echo "Servidor ainda acordando"
