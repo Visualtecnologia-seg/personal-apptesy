@@ -26,7 +26,7 @@ public class SpaController {
     /** Painel de verificação de identidade (página estática simples) */
     @RequestMapping(value = {"/painel", "/painel/"})
     public String forwardPainel() {
-        return "forward:/painel/index.html";
+        return "forward:/painel/admin.html";
     }
 
     /** App Cliente — raiz e rotas sem extensão */

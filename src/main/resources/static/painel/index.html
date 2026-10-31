@@ -56,7 +56,7 @@
 <body>
 <header>
   <h1>OPUS · Verificação de identidade</h1>
-  <div class="row"><a href="/painel/central.html" style="color:#fff;font-weight:700;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)">Suporte e disputas →</a><span id="who" class="muted" style="color:#BFDBFE"></span><button id="logout" class="ghost hidden">Sair</button></div>
+  <div class="row"><a href="/painel/admin.html" style="color:#fff;font-weight:700;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)">Painel completo →</a><span id="who" class="muted" style="color:#BFDBFE"></span><button id="logout" class="ghost hidden">Sair</button></div>
 </header>
 <main>
   <section id="loginBox" class="card login">
@@ -203,6 +203,11 @@ async function openDetail(id){
   addImg(v.selfieTurnA, 'Prova de vida · lado 1', 'Rosto virado para um lado', 'gesture');
   addImg(v.selfieTurnB, 'Prova de vida · lado 2', 'Rosto virado para o outro lado', 'gesture');
   addImg(v.selfieWithDoc, 'Selfie segurando o documento');
+  if (v.quality) {
+    const names = {docFront:'Frente', docBack:'Verso', selfie:'Selfie', selfieWithDoc:'Selfie com documento'};
+    const parts = Object.keys(names).filter(k => v.quality[k]).map(k => names[k] + ': ' + (v.quality[k].ok ? 'boa' : (v.quality[k].issues||[]).join(' ')));
+    addInfo('Checagem automática das fotos', parts.join(' · '));
+  }
   $('actions').classList.toggle('hidden', v.status!=='PENDING');
 }
 

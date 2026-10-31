@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPUS · Painel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{--navy:#0B1F4D;--blue:#1D4ED8;--cyan:#0891B2;--bg:#F3F5F9;--text:#0B1530;--muted:#5B6474;--line:#E5E7EB;--ok:#047857;--okbg:#D1FAE5;--bad:#B91C1C;--badbg:#FEE2E2;--warn:#92400E;--warnbg:#FEF3C7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:'Open Sans',sans-serif;color:var(--text)}
+  h1,h2,h3{font-family:Montserrat,sans-serif;margin:0}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer;border:none;border-radius:12px;padding:10px 16px;font-weight:700}
+  .primary{background:var(--navy);color:#fff}.ok{background:var(--ok);color:#fff}.danger{background:#FEF2F2;color:var(--bad);border:1px solid #FECACA}.ghost{background:#fff;color:var(--text);border:1px solid #DBE4F5}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid #CBD5E1;border-radius:10px;background:#fff;color:var(--text)}
+  label{font-size:13px;font-weight:600;color:#334155;display:block;margin-bottom:6px}
+  .layout{display:flex;min-height:100vh}
+  aside{width:248px;flex-shrink:0;background:linear-gradient(180deg,#0B1F4D 0%,#10306F 100%);padding:22px 14px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow:auto}
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px}
+  .brand b{font-family:Montserrat;font-weight:800;letter-spacing:4px;color:#fff;font-size:18px;display:block}.brand small{color:#93C5FD;font-size:11px}
+  nav a{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:600;color:#BFDBFE}
+  nav a.on{background:rgba(255,255,255,.14);color:#fff}
+  nav a .bd{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#F59E0B;color:#0B1530;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center}
+  nav a .bd.red{background:#EF4444;color:#fff}
+  main{flex:1;min-width:0;padding:26px 30px 50px;display:flex;flex-direction:column;gap:18px}
+  .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 6px 16px rgba(11,31,77,.06)}
+  .grid{display:grid;gap:16px}.k4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.c2{grid-template-columns:2fr 1fr}.c11{grid-template-columns:1.5fr 1fr}.c3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  @media(max-width:1000px){.c2,.c11{grid-template-columns:1fr}aside{display:none}main{padding:16px}}
+  .kpi .l{font-size:13px;color:var(--muted);font-weight:600}.kpi .v{font-family:Montserrat;font-size:26px;font-weight:700;margin-top:4px}.kpi .d{font-size:12px;font-weight:700;margin-top:4px}
+  .up{color:var(--ok)}.down{color:#B45309}
+  table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px 12px;border-bottom:1px solid #F1F5F9;font-size:14px;white-space:nowrap}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}tr.click{cursor:pointer}tr.click:hover{background:#F8FAFC}tr.sel{background:#EEF2FF}
+  .wrap{overflow-x:auto}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#F1F5F9;color:#334155}
+  .p-ok{background:var(--okbg);color:var(--ok)}.p-bad{background:var(--badbg);color:var(--bad)}.p-warn{background:var(--warnbg);color:var(--warn)}.p-blue{background:#DBEAFE;color:#1E40AF}.p-purple{background:#EDE9FE;color:#5B21B6}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{background:#fff;border:1px solid #DBE4F5;color:#334155;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px}.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:var(--muted);font-size:13px}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:190px}.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%}.bars i{display:block;width:100%;max-width:34px;border-radius:8px 8px 3px 3px;background:var(--blue)}.bars span{font-size:10px;color:var(--muted)}
+  .info{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.info div{background:#F8FAFC;border-radius:10px;padding:9px 11px;font-size:13px}.info b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:2px}
+  .alert{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:#F8FAFC;text-decoration:none;color:var(--text);font-weight:600;font-size:14px}.alert i{width:10px;height:10px;border-radius:50%;display:block;flex-shrink:0}
+  .sosbar{display:none;background:#DC2626;color:#fff;border-radius:14px;padding:14px 18px;font-weight:700;align-items:center;gap:12px;animation:blink 1s infinite}
+  @keyframes blink{50%{background:#991B1B}}
+  .hidden{display:none!important}
+  .login{max-width:380px;margin:80px auto;display:flex;flex-direction:column;gap:14px}
+  .msg{padding:10px 12px;border-radius:10px;font-size:14px}
+  .posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}.posts img{width:100%;height:180px;object-fit:cover;border-radius:12px;background:#E2E8F0}
+  .map{height:520px;border-radius:16px;overflow:hidden}
+  iframe{width:100%;height:calc(100vh - 120px);border:none;border-radius:16px;background:#fff}
+  .tl{border-left:2px solid #E5E7EB;margin-left:6px;padding-left:14px;display:flex;flex-direction:column;gap:10px}.tl div{font-size:13px}.tl b{display:block}
+  .chat{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto;background:#F8FAFC;border-radius:12px;padding:10px}.chat div{font-size:13px;padding:8px 10px;border-radius:10px;background:#fff;max-width:90%}.chat .sys{align-self:center;background:#FEF3C7;color:#92400E}.chat img{max-width:200px;border-radius:8px;display:block;margin-top:4px}
+</style>
+</head>
+<body>
+<section id="loginBox" class="card login hidden">
+  <h2>Entrar no painel OPUS</h2>
+  <div><label for="u">Usuário ou e-mail</label><input id="u" autocomplete="username"></div>
+  <div><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password"></div>
+  <button id="doLogin" class="primary">Entrar</button>
+  <div id="loginMsg" class="msg hidden"></div>
+</section>
+<div class="layout hidden" id="app">
+  <aside>
+    <div class="brand"><img src="/painel/logo.png" onerror="this.style.display='none'" alt="" style="width:36px;height:36px;border-radius:10px;background:#fff"><div><b>OPUS</b><small>Painel administrativo</small></div></div>
+    <nav id="nav" aria-label="Menu do painel"></nav>
+    <div style="flex:1"></div>
+    <button class="ghost" id="logout" style="background:rgba(255,255,255,.1);color:#fff;border:none">Sair</button>
+  </aside>
+  <main>
+    <div class="sosbar" id="sosbar" role="alert"><span style="font-size:22px">🆘</span><span id="sostext">SOS ativo</span><button class="ghost" style="margin-left:auto" onclick="go('sos')">Ver agora</button></div>
+    <div id="view"></div>
+  </main>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmt = d => { if(!d) return '—'; try { return new Date(d).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); } catch(e){ return d; } };
+const day = d => { if(!d) return '—'; try { return new Date(String(d).length<=10? d+'T12:00:00' : d).toLocaleDateString('pt-BR'); } catch(e){ return d; } };
+let token = null; try { token = sessionStorage.getItem('opus_admin_token'); } catch(e) {}
+async function api(path, opts={}) {
+  const r = await fetch(path, {...opts, headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{})}});
+  if ((r.status === 401 || r.status === 403) && path !== '/auth') { logout(); throw new Error('Sessão expirada ou sem permissão de administrador.'); }
+  const txt = await r.text(); let data; try { data = JSON.parse(txt); } catch(e) { data = txt; }
+  if (!r.ok) throw new Error((data && data.message) || 'Erro '+r.status);
+  return data;
+}
+async function blob(path){ const r = await fetch(path,{headers:{Authorization:'Bearer '+token}}); if(!r.ok) throw new Error('Erro '+r.status); return URL.createObjectURL(await r.blob()); }
+function logout(){ token=null; try{sessionStorage.removeItem('opus_admin_token');}catch(e){} $('app').classList.add('hidden'); $('loginBox').classList.remove('hidden'); }
+$('logout').onclick = logout;
+$('doLogin').onclick = async () => {
+  $('loginMsg').classList.add('hidden');
+  try {
+    const t = await api('/auth', {method:'POST', body: JSON.stringify({username:$('u').value.trim(), password:$('p').value})});
+    token = typeof t === 'string' ? t : (t.token || ''); try { sessionStorage.setItem('opus_admin_token', token); } catch(e) {}
+    start();
+  } catch(e) { const m=$('loginMsg'); m.textContent=e.message||'Não foi possível entrar.'; m.className='msg p-bad'; }
+};
+$('p').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
+
+const NAV = [['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],['fin','Financeiro'],['social','Rede social'],['avisos','Avisos'],['cupons','Cupons'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],['config','Configurações'],['equipe','Equipe']];
+let cur = 'inicio', counts = {}, timer = null, lastSos = 0;
+function navHtml(){ $('nav').innerHTML = NAV.map(([k,l,c]) => `<a href="#${k}" class="${k===cur?'on':''}" onclick="go('${k}');return false">${l}<span class="bd ${k==='sos'?'red':''}" id="bd-${k}"></span></a>`).join(''); paintBadges(); }
+function paintBadges(){ const map={verif:counts.verifications,suporte:(counts.support||0)+(counts.disputes||0),sos:counts.sos}; for(const k in map){ const el=$('bd-'+k); if(!el) continue; el.textContent=map[k]||''; el.style.display=map[k]?'flex':'none'; } }
+function go(k){ cur=k; location.hash=k; navHtml(); clearInterval(timer); timer=null; VIEWS[k](); }
+const V = html => { $('view').innerHTML = html; };
+const head = (t,s,right='') => `<div class="row" style="justify-content:space-between"><div><h1 style="font-size:24px">${t}</h1><div class="muted" style="margin-top:4px">${s}</div></div><div class="row">${right}</div></div>`;
+const kpi = (l,v,d='',cls='') => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d ${cls}">${d}</div></div>`;
+const delta = (a,b) => { if(!b) return ['',''] ; const p=Math.round(100*(a-b)/b); return [(p>=0?'+':'')+p+'% vs. período anterior', p>=0?'up':'down']; };
+const bars = (vals, labels, color) => { const mx=Math.max(1,...vals); return '<div class="bars" role="img" aria-label="Gráfico">'+vals.map((v,i)=>`<div title="${brl(v)}"><i style="height:${Math.round(170*v/mx)}px;background:${color||'#1D4ED8'}"></i><span>${esc(labels[i])}</span></div>`).join('')+'</div>'; };
+const STATUS = {OPEN:['Aguardando','p-warn'],CONFIRMED:['Confirmado','p-blue'],AWAITING_PAYMENT:['Pago · no cofre','p-purple'],IN_PROGRESS:['Em andamento','p-blue'],PENDING_CLIENT_CONFIRMATION:['Para aprovar','p-warn'],DONE:['Concluído','p-ok'],REVIEWED:['Avaliado','p-ok'],CANCELLED:['Cancelado',''],BLOCKED:['Recusado','']};
+const st = s => { const x=STATUS[s]||[s,'']; return `<span class="pill ${x[1]}">${esc(x[0])}</span>`; };
+
+async function refreshCounts(){
+  try { const d = await api('/admin/dashboard?range=day'); counts = d.alerts || {}; paintBadges();
+    const sos = counts.sos||0; $('sosbar').style.display = sos ? 'flex' : 'none'; $('sostext').textContent = sos + ' pedido(s) de SOS aguardando a equipe';
+    if (sos > lastSos) beep(); lastSos = sos;
+  } catch(e){}
+}
+function beep(){ try { const c=new (window.AudioContext||window.webkitAudioContext)(); [0,0.35,0.7].forEach(t=>{ const o=c.createOscillator(), g=c.createGain(); o.frequency.value=880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.25,c.currentTime+t); o.start(c.currentTime+t); o.stop(c.currentTime+t+0.2); }); } catch(e){} }
+
+const VIEWS = {
+  async inicio(range='week'){
+    V(head('Visão geral','Carregando…')); let d; try { d = await api('/admin/dashboard?range='+range); } catch(e){ V(head('Visão geral',esc(e.message))); return; }
+    const seg = ['day','week','month'].map(r=>`<button class="chip ${r===range?'on':''}" onclick="VIEWS.inicio('${r}')">${{day:'Hoje',week:'7 dias',month:'30 dias'}[r]}</button>`).join('');
+    const [d1,c1]=delta(d.orders,d.ordersPrev),[d2,c2]=delta(+d.gmv,+d.gmvPrev),[d3,c3]=delta(+d.fee,+d.feePrev);
+    const a=d.alerts||{};
+    const al=[[a.sos,'pedido(s) de SOS ativos','sos','#DC2626'],[a.verifications,'documento(s) para aprovar','verif','#1D4ED8'],[a.disputes,'disputa(s) abertas','suporte','#B91C1C'],[a.support,'conversa(s) de suporte sem resposta','suporte','#B45309']].filter(x=>x[0]);
+    V(head('Visão geral','Como está a OPUS', `<div class="chips">${seg}</div>`)+`
+      <div class="grid k4">${kpi('Pedidos',d.orders,d1,c1)}${kpi('Valor movimentado',brl(d.gmv),d2,c2)}${kpi('Sua taxa',brl(d.fee),d3,c3)}${kpi('Guardado no cofre agora',brl(d.escrow),d.escrowOrders+' pedidos esperando conclusão')}</div>
+      <div class="grid c2"><div class="card"><h2 style="font-size:17px;margin-bottom:14px">Sua taxa por dia</h2>${bars(d.series.map(x=>+x.fee),d.series.map(x=>day(x.date).slice(0,5)))}</div>
+      <div class="card"><h2 style="font-size:17px;margin-bottom:12px">Precisa de você</h2><div style="display:flex;flex-direction:column;gap:8px">${al.length?al.map(x=>`<a class="alert" href="#" onclick="go('${x[2]}');return false"><i style="background:${x[3]}"></i>${x[0]} ${x[1]}<span class="muted" style="margin-left:auto">abrir →</span></a>`).join(''):'<div class="muted">Tudo em dia. 🎉</div>'}</div></div></div>
+      <div class="grid c3"><div class="card"><h2 style="font-size:17px">Novos cadastros</h2><div class="row" style="gap:28px;margin-top:12px"><div><div class="kpi"><div class="v">${d.newCustomers}</div></div><div class="muted">clientes</div></div><div><div class="kpi"><div class="v">${d.newProfessionals}</div></div><div class="muted">profissionais</div></div></div><div class="muted" style="margin-top:12px">Pedidos concluídos sem disputa: <b class="up">${d.cleanRate}%</b></div></div>
+      <div class="card"><h2 style="font-size:17px;margin-bottom:8px">Melhores profissionais</h2>${(d.topProfessionals||[]).map(p=>`<div class="row" style="padding:8px 0;border-bottom:1px solid #F1F5F9;justify-content:space-between"><a href="#" onclick="openUser(${p.id});return false"><b>${esc(p.name)}</b></a><span class="muted">${p.rating?'★ '+p.rating+' · ':''}${p.done} serviços</span></div>`).join('')||'<div class="muted">Ainda sem serviços concluídos.</div>'}</div>
+      <div class="card"><h2 style="font-size:17px;margin-bottom:10px">Serviços mais pedidos (30 dias)</h2>${(()=>{const t=(d.topServices||[]).reduce((s,x)=>s+ +x.n,0)||1;return (d.topServices||[]).map(x=>`<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${esc(x.name)}</span><span>${Math.round(100*x.n/t)}%</span></div><div style="height:8px;border-radius:4px;background:#EEF2F7;margin-top:5px"><div style="width:${Math.round(100*x.n/t)}%;height:8px;border-radius:4px;background:#0891B2"></div></div></div>`).join('')||'<div class="muted">Sem pedidos ainda.</div>';})()}</div></div>`);
+  },
+
+  async pedidos(status='ALL', q='', sel=null){
+    V(head('Pedidos','Carregando…')); let d; try { d = await api('/admin/orders?status='+status+'&q='+encodeURIComponent(q)); } catch(e){ V(head('Pedidos',esc(e.message))); return; }
+    const c=d.counts||{}; const F=[['ALL','Todos'],['OPEN','Aguardando'],['ESCROW','Pago no cofre'],['IN_PROGRESS','Em andamento'],['PENDING_CLIENT_CONFIRMATION','Para aprovar'],['DONE','Concluídos'],['DISPUTE','Disputa'],['CANCELLED','Cancelados']];
+    const doneC=(+c.DONE||0)+(+c.REVIEWED||0);
+    V(head('Pedidos','Tudo o que acontece no app, com as provas de cada pedido',`<input id="oq" placeholder="Buscar cliente, profissional ou nº" value="${esc(q)}" style="width:280px">`)+
+      `<div class="chips">${F.map(([k,l])=>`<button class="chip ${k===status?'on':''}" onclick="VIEWS.pedidos('${k}',$('oq').value)">${l} · ${k==='DONE'?doneC:(c[k]||0)}</button>`).join('')}</div>
+      <div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Profissional</th><th>Serviço</th><th>Valor</th><th>Situação</th></tr></thead><tbody>
+      ${d.rows.map(r=>`<tr class="click" data-id="${r.id}" onclick="openOrder('${r.id}',this)"><td><b>#${esc(String(r.id).slice(0,6).toUpperCase())}</b></td><td>${day(r.date)}</td><td>${esc(r.customerName)}</td><td>${esc(r.professionalName||'—')}</td><td>${esc(r.product||'—')}</td><td>${r.totalCost?brl(r.totalCost):'A definir'}</td><td>${r.disputeStatus==='OPEN'?'<span class="pill p-bad">Disputa</span>':st(r.status)}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">Nenhum pedido.</td></tr>'}
+      </tbody></table></div></div><div class="card" id="odet"><div class="muted">Escolha um pedido para ver os detalhes e as provas.</div></div></div>`);
+    $('oq').addEventListener('keydown', e => { if (e.key==='Enter') VIEWS.pedidos(status, $('oq').value); });
+    if (sel) openOrder(sel);
+  },
+
+  async usuarios(type='ALL', q=''){
+    V(head('Usuários','Carregando…')); let rows; try { rows = await api('/admin/users?type='+type+'&q='+encodeURIComponent(q)); } catch(e){ V(head('Usuários',esc(e.message))); return; }
+    V(head('Usuários','Clientes e profissionais cadastrados',`<input id="uq" placeholder="Buscar nome, usuário ou e-mail" value="${esc(q)}" style="width:280px">`)+
+      `<div class="chips">${[['ALL','Todos'],['CUSTOMER','Clientes'],['PROFESSIONAL','Profissionais'],['BLOCKED','Bloqueados'],['ADMIN','Equipe']].map(([k,l])=>`<button class="chip ${k===type?'on':''}" onclick="VIEWS.usuarios('${k}',$('uq').value)">${l}</button>`).join('')}</div>
+      <div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>E-mail</th><th>Serviços</th><th>Nota</th><th>Situação</th></tr></thead><tbody>
+      ${rows.map(u=>`<tr class="click" onclick="openUser(${u.id})"><td><b>${esc(u.name||u.username)}</b></td><td>${esc((u.roles||'').includes('PROFESSIONAL')?'Profissional':'Cliente')}${(u.roles||'').includes('ADMIN')?' · equipe':''}</td><td>${esc(u.email)}</td><td>${u.done}</td><td>${u.rating?'★ '+u.rating:'—'}</td><td>${u.blocked?'<span class="pill p-bad">Bloqueado</span>':u.verified?'<span class="pill p-blue">Verificado</span>':'<span class="pill p-ok">Ativo</span>'}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">Ninguém encontrado.</td></tr>'}
+      </tbody></table></div></div><div class="card" id="udet"><div class="muted">Escolha alguém para ver a ficha.</div></div></div>`);
+    $('uq').addEventListener('keydown', e => { if (e.key==='Enter') VIEWS.usuarios(type, $('uq').value); });
+  },
+
+  verif(){ V(`<iframe src="/painel/index.html" title="Verificações"></iframe>`); },
+  suporte(){ V(`<iframe src="/painel/central.html" title="Suporte e disputas"></iframe>`); },
+
+  async sos(all=false){
+    const load = async () => {
+      let rows; try { rows = await api('/admin/sos'+(all?'?all=true':'')); } catch(e){ V(head('SOS',esc(e.message))); return; }
+      V(head('SOS','Pedidos de ajuda feitos pelo botão SOS do app',`<button class="chip ${!all?'on':''}" onclick="VIEWS.sos(false)">Ativos</button><button class="chip ${all?'on':''}" onclick="VIEWS.sos(true)">Histórico</button>`)+
+        (rows.length?rows.map(s=>`<div class="card" style="border:2px solid ${s.active&&!s.ackAt?'#DC2626':'#E5E7EB'}"><div class="grid c11"><div>
+          <div class="row" style="justify-content:space-between"><h2 style="font-size:19px">${s.active?'🆘 ':''}${esc(s.name)}</h2>${s.active?(s.ackAt?'<span class="pill p-warn">Em atendimento</span>':'<span class="pill p-bad">Aguardando a equipe</span>'):'<span class="pill">Encerrado</span>'}</div>
+          <div class="info" style="margin-top:10px"><div><b>Telefone</b>${esc(s.phone||'—')}</div><div><b>Acionado</b>${fmt(s.startedAt)}</div><div><b>Última localização</b>${fmt(s.locAt)}</div><div><b>Contato de confiança</b>${esc(s.contactName||'—')} ${esc(s.contactPhone||'')}</div><div><b>Endereço do pedido</b>${esc(s.serviceAddress||'—')}</div><div><b>Outra parte do pedido</b>${esc(s.otherName||'—')} ${esc(s.otherPhone||'')}</div>${s.ackBy?`<div><b>Atendido por</b>${esc(s.ackBy)} · ${fmt(s.ackAt)}</div>`:''}${s.note?`<div><b>Anotação</b>${esc(s.note)}</div>`:''}</div>
+          <div style="margin-top:12px"><b style="font-size:13px">Áudios gravados (${(s.audios||[]).length})</b><div id="aud-${s.id}" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div></div>
+          ${s.active?`<div class="row" style="margin-top:12px"><input id="note-${s.id}" placeholder="Anotação (ex.: liguei, ela está bem)" style="flex:1;min-width:200px"><button class="primary" onclick="sosAck('${s.id}',false)">Estou acompanhando</button><button class="ok" onclick="sosAck('${s.id}',true)">Encerrar SOS</button></div>`:''}
+          <div class="muted" style="margin-top:8px">Em perigo real, ligue 190 e informe a localização.</div>
+        </div><div class="map" id="map-${s.id}" style="height:300px"></div></div></div>`).join(''):'<div class="card muted">Nenhum SOS '+(all?'registrado':'ativo agora')+'.</div>'));
+      rows.forEach(s=>{ if(s.lat!=null){ const m=L.map('map-'+s.id).setView([s.lat,s.lng],16); L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(m); L.marker([s.lat,s.lng]).addTo(m).bindPopup(esc(s.name)).openPopup(); } else { $('map-'+s.id).innerHTML='<div class="muted" style="padding:20px">Sem localização (GPS desligado).</div>'; }
+        (s.audios||[]).forEach(async a=>{ try{ const u=await blob('/admin/sos/audio/'+a.id); $('aud-'+s.id).insertAdjacentHTML('beforeend',`<div class="row"><span class="muted">${fmt(a.createdAt)}</span><audio controls src="${u}" style="height:34px"></audio></div>`);}catch(e){} }); });
+    };
+    await load(); if (!all) timer = setInterval(load, 15000);
+  },
+
+  async fin(){
+    V(head('Financeiro','Carregando…')); let d; try { d = await api('/admin/finance'); } catch(e){ V(head('Financeiro',esc(e.message))); return; }
+    V(head('Financeiro','Para onde vai cada real que passa pela OPUS (mês atual)',`<button class="ghost" onclick="exportCsv()">Exportar Excel (CSV)</button>`)+`
+      <div class="grid k4">${kpi('Guardado no cofre',brl(+d.escrow + +d.escrowExtras + +d.escrowClasses),'pedidos, extras e aulas')}${kpi('Liberado aos profissionais',brl(d.released),'este mês')}${kpi('Sua taxa',brl(+d.fee + +d.feeExtras),'este mês')}${kpi('Devolvido a clientes',brl(d.refunded),'cancelamentos e disputas','down')}${kpi('Reserva de pontos',brl(d.pointsReserve),d.pointsOutstanding+' pontos não usados')}</div>
+      <div class="grid c11"><div class="card"><h2 style="font-size:17px;margin-bottom:14px">Sua taxa por mês</h2>${bars(d.monthly.map(x=>+x.fee),d.monthly.map(x=>x.month.slice(5)+'/'+x.month.slice(2,4)),'#0891B2')}</div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">De onde vem a receita (mês)</h2>${[['Taxa dos serviços',d.fee],['Taxa dos orçamentos extras',d.feeExtras],['Taxas de deslocamento pagas a profissionais',d.cancelFees],['Descontos (pontos e cupons)',-d.pointsDiscount]].map(([l,v])=>`<div class="row" style="justify-content:space-between;padding:10px 12px;background:#F8FAFC;border-radius:12px"><span style="font-weight:600;font-size:14px">${l}</span><b>${brl(v)}</b></div>`).join('')}</div></div>
+      <div class="card" style="padding:6px"><h2 style="font-size:17px;padding:10px 12px">Movimentações</h2><div class="wrap"><table><thead><tr><th>Quando</th><th>Pedido</th><th>Movimento</th><th>Pessoa</th><th>Valor</th></tr></thead><tbody>${d.movements.map(m=>`<tr><td>${fmt(m.at)}</td><td>#${esc(String(m.orderId).slice(0,6).toUpperCase())}</td><td>${esc(m.kind)}</td><td>${esc(m.person||'—')}</td><td><b>${brl(m.value)}</b></td></tr>`).join('')||'<tr><td colspan="5" class="muted">Sem movimentações.</td></tr>'}</tbody></table></div></div>`);
+  },
+
+  async social(){
+    V(head('Rede social','Carregando…')); let rows; try { rows = await api('/admin/posts'); } catch(e){ V(head('Rede social',esc(e.message))); return; }
+    V(head('Rede social','Publicações dos profissionais. Apague o que for impróprio (o profissional é avisado).')+`<div class="posts">${rows.map(p=>`<div class="card" style="padding:10px"><img src="${p.photoId?'/posts/photos/'+p.photoId:''}" alt="Publicação de ${esc(p.professionalName)}"><div style="margin-top:8px;font-weight:700;font-size:14px">${esc(p.professionalName)}</div><div class="muted">${fmt(p.createdAt)} · ♥ ${p.likes} · 💬 ${p.comments}</div><div style="font-size:13px;margin:6px 0;max-height:54px;overflow:hidden">${esc(p.caption||'')}</div><button class="danger" style="width:100%" onclick="delPost('${p.id}')">Apagar</button></div>`).join('')||'<div class="card muted">Nenhuma publicação ainda.</div>'}</div>`);
+  },
+
+  async avisos(){
+    let rows=[]; try { rows = await api('/admin/broadcasts'); } catch(e){}
+    V(head('Avisos','Notificação no celular de todos, só clientes ou só profissionais')+`<div class="grid c11"><div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div><label for="aud">Para quem</label><select id="aud"><option value="ALL">Todos</option><option value="CUSTOMERS">Só clientes</option><option value="PROFESSIONALS">Só profissionais</option></select></div>
+      <div><label for="btxt">Mensagem (até 180 letras)</label><textarea id="btxt" rows="3" maxlength="180" placeholder="Ex.: Fim de semana com 10% de desconto usando o cupom FDS10!"></textarea></div>
+      <button class="primary" onclick="sendBroadcast()">Enviar aviso</button><div id="bmsg"></div></div>
+      <div class="card"><h2 style="font-size:17px;margin-bottom:10px">Enviados</h2>${rows.map(b=>`<div style="padding:10px 0;border-bottom:1px solid #F1F5F9"><div style="font-size:14px">${esc(b.text)}</div><div class="muted">${fmt(b.createdAt)} · ${{ALL:'Todos',CUSTOMERS:'Clientes',PROFESSIONALS:'Profissionais'}[b.audience]} · ${b.sentCount} pessoas · ${esc(b.adminName||'')}</div></div>`).join('')||'<div class="muted">Nenhum aviso enviado.</div>'}</div></div>`);
+  },
+
+  async cupons(){
+    let rows=[]; try { rows = await api('/admin/coupons'); } catch(e){}
+    V(head('Cupons e promoções','O desconto sai da taxa OPUS — o profissional recebe o valor cheio')+`<div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Código</th><th>Desconto</th><th>Mínimo</th><th>Validade</th><th>Usos</th><th></th></tr></thead><tbody>
+      ${rows.map(c=>`<tr><td><b>${esc(c.code)}</b><div class="muted">${esc(c.description||'')}</div></td><td>${c.percent?Number(c.percent)+'%':brl(c.amount)}</td><td>${brl(c.minOrder)}</td><td>${c.validUntil?day(c.validUntil):'—'}</td><td>${c.used}${c.maxUses?' / '+c.maxUses:''}</td><td><button class="${c.active?'danger':'ok'}" onclick="toggleCoupon('${esc(c.code)}')">${c.active?'Pausar':'Ativar'}</button></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Nenhum cupom.</td></tr>'}
+      </tbody></table></div></div><div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Novo cupom</h2>
+      <div><label for="cc">Código</label><input id="cc" placeholder="PRIMEIRA10"></div><div><label for="cd">Descrição</label><input id="cd" placeholder="10% na primeira contratação"></div>
+      <div class="row"><div style="flex:1"><label for="cp">Desconto em %</label><input id="cp" inputmode="decimal" placeholder="10"></div><div style="flex:1"><label for="ca">ou em R$</label><input id="ca" inputmode="decimal" placeholder="15"></div></div>
+      <div class="row"><div style="flex:1"><label for="cm">Pedido mínimo R$</label><input id="cm" inputmode="decimal" placeholder="0"></div><div style="flex:1"><label for="cu">Limite de usos</label><input id="cu" inputmode="numeric" placeholder="sem limite"></div></div>
+      <div><label for="cv">Válido até</label><input id="cv" type="date"></div><button class="primary" onclick="createCoupon()">Criar cupom</button><div id="cmsg"></div></div></div>`);
+  },
+
+  async golpes(){
+    V(head('Alertas de golpe','Carregando…')); let d; try { d = await api('/admin/fraud'); } catch(e){ V(head('Alertas de golpe',esc(e.message))); return; }
+    const box=(t,s,rows,unit)=>`<div class="card"><h2 style="font-size:16px">${t}</h2><div class="muted" style="margin:4px 0 10px">${s}</div>${rows.map(r=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9"><a href="#" onclick="openUser(${r.userId});return false"><b>${esc(r.name)}</b></a><span class="pill p-warn">${r.n} ${unit}</span></div>`).join('')||'<div class="muted">Ninguém por aqui. ✓</div>'}</div>`;
+    V(head('Alertas de golpe','Comportamentos suspeitos para você olhar de perto')+`<div class="grid c3">${box('Tentaram passar contato','2 ou mais tentativas de enviar telefone/@ no chat',d.contactAttempts,'tentativas')}${box('Cancelam muito','3 ou mais cancelamentos nos últimos 30 dias',d.manyCancels,'cancelamentos')}${box('Muitas disputas','Envolvidos em 2 ou mais disputas',d.manyDisputes,'disputas')}${box('Conta nova e muito ativa','Criada há menos de 7 dias com 4+ pedidos',d.newAndBusy,'pedidos')}</div>`);
+  },
+
+  async demanda(){
+    V(head('Mapa de demanda','Onde há pedidos sem profissional (vermelho), pedidos (azul), profissionais (verde) e quem está a caminho agora (🚗)')+'<div class="card" style="padding:8px"><div class="map" id="dmap"></div></div><div class="muted">Últimos 30 dias. Recrute profissionais onde aparecem muitos pontos vermelhos.</div>');
+    let d; try { d = await api('/admin/demand'); } catch(e){ return; }
+    const m=L.map('dmap').setView([-22.9,-43.2],10); L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(m); const pts=[];
+    const dot=(p,c,r)=>{ if(p.lat==null) return; pts.push([p.lat,p.lng]); L.circleMarker([p.lat,p.lng],{radius:r,color:c,fillColor:c,fillOpacity:.55,weight:1}).addTo(m); };
+    d.orders.forEach(p=>dot(p,'#1D4ED8',5)); d.professionals.forEach(p=>dot(p,'#16A34A',6)); d.unserved.forEach(p=>dot(p,'#DC2626',8));
+    d.live.forEach(p=>{ if(p.lat==null) return; L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div style="font-size:22px">🚗</div>'})}).addTo(m).bindPopup(esc(p.professionalName)); });
+    if (pts.length) m.fitBounds(pts,{padding:[30,30]});
+  },
+
+  async config(){
+    let s; try { s = await api('/admin/settings'); } catch(e){ V(head('Configurações',esc(e.message))); return; }
+    const F=[['fee_percent','Taxa OPUS (%)','Embutida no preço que o cliente vê'],['cancel_km_price','Preço do km no cancelamento (R$)','(km rodados + volta) × este valor'],['cancel_min_fee','Taxa mínima de cancelamento (R$)',''],['points_per_service','Pontos por serviço concluído',''],['points_min_service','Valor mínimo do serviço para ganhar pontos (R$)',''],['redeem_min_order','Pedido mínimo para usar pontos (R$)','100 pontos = R$ 10'],['referral_points','Pontos do indique e ganhe (para cada um)',''],['package_max_discount','Desconto máximo dos pacotes (%)','']];
+    V(head('Configurações','Mude as regras do app sem precisar de programador. Vale para os próximos pedidos.')+`<div class="card" style="max-width:720px;display:grid;grid-template-columns:1fr 1fr;gap:14px">${F.map(([k,l,h])=>`<div><label for="s-${k}">${l}</label><input id="s-${k}" inputmode="decimal" value="${esc(s[k])}"><div class="muted" style="margin-top:4px">${h}</div></div>`).join('')}<div style="grid-column:1/-1" class="row"><button class="primary" onclick="saveSettings()">Salvar</button><span id="smsg"></span></div></div>`);
+    window._settingKeys = F.map(f=>f[0]);
+  },
+
+  async equipe(){
+    let team=[], acts=[]; try { [team, acts] = await Promise.all([api('/admin/team'), api('/admin/actions')]); } catch(e){}
+    V(head('Equipe','Quem pode entrar no painel e tudo o que cada um fez')+`<div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><h2 style="font-size:17px;padding:10px 12px">Histórico de ações</h2><div class="wrap"><table><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Detalhe</th></tr></thead><tbody>${acts.map(a=>`<tr><td>${fmt(a.createdAt)}</td><td>${esc(a.adminName)}</td><td>${esc(a.action)} ${esc(a.target||'')}</td><td style="white-space:normal;max-width:320px">${esc(a.detail||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Nada registrado ainda.</td></tr>'}</tbody></table></div></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Administradores</h2>${team.map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9"><div><b>${esc(t.name)}</b><div class="muted">${esc(t.email||t.username)}</div></div><button class="danger" onclick="removeAdmin(${t.id})">Tirar acesso</button></div>`).join('')}
+      <label for="na" style="margin-top:8px">Dar acesso a alguém (usuário ou e-mail do app)</label><div class="row"><input id="na" style="flex:1" placeholder="email@exemplo.com"><button class="primary" onclick="addAdmin()">Dar acesso</button></div><div id="tmsg"></div><div class="muted">A pessoa precisa já ter conta no app. Ela entra aqui com o mesmo login.</div></div></div>`);
+  },
+};
+
+// ───── ações ─────
+async function openOrder(id, tr){
+  document.querySelectorAll('tr.sel').forEach(x=>x.classList.remove('sel')); if (tr) tr.classList.add('sel');
+  const box=$('odet'); box.innerHTML='<div class="muted">Carregando…</div>';
+  let e; try { e = await api('/admin/orders/'+id+'/evidence'); } catch(err){ box.innerHTML=esc(err.message); return; }
+  const o=e.order, t=e.trip||{};
+  const steps=[['Pedido criado',o.createdAt],['Pago',o.pixPaid?'sim':null],['Saiu para o atendimento',t.departedAt],['Terminou',o.finishedAt],['Liberado ao profissional',o.releasedAt]].filter(x=>x[1]);
+  box.innerHTML=`<div class="row" style="justify-content:space-between"><h2 style="font-size:18px">Pedido #${esc(String(o.id).slice(0,6).toUpperCase())}</h2>${o.disputeStatus==='OPEN'?'<span class="pill p-bad">Disputa</span>':st(o.status)}</div>
+    <div class="info" style="margin-top:10px"><div><b>Cliente</b>${esc(o.customer&&o.customer.name)}</div><div><b>Profissional</b>${esc(o.professional&&o.professional.name||'—')}</div><div><b>Serviço</b>${esc(o.product||'—')}</div><div><b>Data</b>${day(o.date)}</div><div><b>Cliente pagou</b>${brl(o.totalCost)}${o.pixPaid?' ✓':''}</div><div><b>Profissional recebe</b>${brl(o.serviceValue)}</div>${o.cancelFee?`<div><b>Taxa de km</b>${brl(o.cancelFee)}</div>`:''}${o.clientRefund?`<div><b>Devolvido</b>${brl(o.clientRefund)}</div>`:''}</div>
+    ${o.disputeReason?`<div class="msg p-bad" style="margin-top:10px"><b>Problema relatado:</b> ${esc(o.disputeReason)}</div>`:''}
+    <h3 style="font-size:14px;margin:14px 0 8px">Linha do tempo</h3><div class="tl">${steps.map(s=>`<div><b>${s[0]}</b><span class="muted">${s[1]==='sim'?'':fmt(s[1])}</span></div>`).join('')}</div>
+    ${e.photos.length?`<h3 style="font-size:14px;margin:14px 0 8px">Fotos</h3><div class="row">${e.photos.map(p=>`<a href="/orders/photos/${p.id}" target="_blank"><img src="/orders/photos/${p.id}" alt="Foto ${esc(p.kind)}" style="width:84px;height:84px;object-fit:cover;border-radius:10px"></a>`).join('')}</div>`:''}
+    <h3 style="font-size:14px;margin:14px 0 8px">Chamadas (${e.calls.length})</h3><div class="muted">${e.calls.map(c=>fmt(c.createdAt)+' · '+(c.kind==='audio'?'áudio':'vídeo')+' · '+esc(c.status)+(c.seconds?' · '+Math.floor(c.seconds/60)+'min':'')).join('<br>')||'Nenhuma.'}</div>
+    <h3 style="font-size:14px;margin:14px 0 8px">Chat</h3><div class="chat">${e.messages.map(m=>`<div class="${m.type==='SYSTEM'?'sys':''}"><b>${esc(m.from)}</b> <span class="muted">${fmt(m.at)}</span><br>${esc(m.text||'')}${m.imageUrl&&String(m.imageUrl).startsWith('data:image')?`<img src="${m.imageUrl}" alt="Foto do chat">`:''}</div>`).join('')||'<span class="muted">Sem mensagens.</span>'}</div>
+    <div class="row" style="margin-top:14px">${o.disputeStatus==='OPEN'?`<button class="primary" onclick="go('suporte')">Decidir a disputa</button>`:''}${['OPEN','CONFIRMED','AWAITING_PAYMENT','IN_PROGRESS'].includes(o.status)?`<button class="danger" onclick="adminCancel('${o.id}')">Cancelar pedido</button>`:''}</div>`;
+}
+async function adminCancel(id){ const note=prompt('Motivo do cancelamento (cliente e profissional não veem este texto):'); if(!note) return; try{ await api('/admin/orders/'+id+'/cancel',{method:'POST',body:JSON.stringify({note})}); alert('Pedido cancelado.'); VIEWS.pedidos(); }catch(e){ alert(e.message); } }
+
+async function openUser(id){
+  if (cur!=='usuarios'){ cur='usuarios'; navHtml(); await VIEWS.usuarios(); }
+  const box=$('udet'); box.innerHTML='<div class="muted">Carregando…</div>';
+  let u; try { u = await api('/admin/users/'+id); } catch(e){ box.innerHTML=esc(e.message); return; }
+  const s=u.stats||{}; const pro=(u.roles||[]).includes('PROFESSIONAL');
+  box.innerHTML=`<div class="row"><div style="width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#1D4ED8,#0891B2);color:#fff;display:flex;align-items:center;justify-content:center;font:700 24px Montserrat">${esc((u.name||'?')[0])}</div><div style="flex:1"><h2 style="font-size:19px">${esc(u.name)}</h2><div class="muted">${pro?'Profissional':'Cliente'} · @${esc(u.username)} · desde ${day(u.createdAt)}</div><div class="row" style="margin-top:6px">${u.verified?'<span class="pill p-blue">Verificado</span>':''}${u.blocked?'<span class="pill p-bad">Bloqueado</span>':'<span class="pill p-ok">Ativo</span>'}</div></div></div>
+    <div class="info" style="margin-top:12px"><div><b>E-mail</b>${esc(u.email)}</div><div><b>Telefone</b>${esc(u.phone||'—')}</div>${pro?`<div><b>Serviços feitos</b>${s.servicesDone}</div><div><b>Nota</b>${s.rating?'★ '+s.rating:'—'}</div><div><b>No horário</b>${s.punctuality!=null?s.punctuality+'%':'—'}</div>`:''}<div><b>Pedidos como cliente</b>${s.ordersAsClient}</div><div><b>Cancelamentos</b>${s.cancelsAsClient}</div><div><b>Disputas</b>${s.disputes}</div><div><b>Pontos</b>${u.points}</div></div>
+    ${u.blocked?`<div class="msg p-bad" style="margin-top:10px"><b>Motivo do bloqueio:</b> ${esc(u.blockedReason)}</div>`:''}
+    ${u.blockedAttempts.length?`<div class="msg p-warn" style="margin-top:10px"><b>${u.blockedAttempts.length} tentativa(s) de passar contato no chat.</b> Última: "${esc(u.blockedAttempts[0].text||'').slice(0,80)}"</div>`:''}
+    <h3 style="font-size:14px;margin:14px 0 8px">Ações</h3><div class="row"><button class="primary" onclick="userMsg(${u.id})">Mandar mensagem</button><button class="ghost" onclick="userPoints(${u.id})">Dar pontos</button>${u.blocked?`<button class="ok" onclick="userUnblock(${u.id})">Desbloquear</button>`:`<button class="danger" onclick="userBlock(${u.id})">Bloquear</button>`}</div>
+    <h3 style="font-size:14px;margin:14px 0 8px">Últimos pedidos</h3>${u.orders.map(o=>`<div class="row" style="justify-content:space-between;padding:7px 0;border-bottom:1px solid #F1F5F9;font-size:13px"><a href="#" onclick="cur='pedidos';navHtml();VIEWS.pedidos('ALL','','${o.id}');return false">#${esc(String(o.id).slice(0,6).toUpperCase())} · ${esc(o.papel)}</a><span>${day(o.date)} · ${brl(o.totalCost)} · ${st(o.status)}</span></div>`).join('')||'<div class="muted">Nenhum pedido.</div>'}`;
+}
+async function userMsg(id){ const text=prompt('Mensagem (chega no chat de suporte e no celular):'); if(!text) return; try{ await api('/admin/users/'+id+'/message',{method:'POST',body:JSON.stringify({text})}); alert('Mensagem enviada.'); }catch(e){ alert(e.message); } }
+async function userPoints(id){ const amount=prompt('Quantos pontos? (100 pontos = R$ 10; use número negativo para tirar)'); if(!amount) return; const reason=prompt('Motivo (a pessoa vê):','Presente da equipe OPUS')||''; try{ await api('/admin/users/'+id+'/points',{method:'POST',body:JSON.stringify({amount,reason})}); openUser(id); }catch(e){ alert(e.message); } }
+async function userBlock(id){ const reason=prompt('Motivo do bloqueio (fica no histórico):'); if(!reason) return; try{ await api('/admin/users/'+id+'/block',{method:'POST',body:JSON.stringify({reason})}); openUser(id); }catch(e){ alert(e.message); } }
+async function userUnblock(id){ if(!confirm('Desbloquear esta conta?')) return; try{ await api('/admin/users/'+id+'/unblock',{method:'POST'}); openUser(id); }catch(e){ alert(e.message); } }
+async function sosAck(id, close){ const note=($('note-'+id)||{}).value||''; if(close && !confirm('Encerrar este SOS?')) return; try{ await api('/admin/sos/'+id+'/ack',{method:'POST',body:JSON.stringify({note,close})}); refreshCounts(); VIEWS.sos(); }catch(e){ alert(e.message); } }
+async function exportCsv(){ try{ const u=await blob('/admin/finance/export.csv'); const a=document.createElement('a'); a.href=u; a.download='opus-financeiro.csv'; a.click(); }catch(e){ alert(e.message); } }
+async function delPost(id){ const reason=prompt('Motivo (o profissional é avisado):','Conteúdo impróprio'); if(reason===null) return; try{ await api('/admin/posts/'+id+'?reason='+encodeURIComponent(reason),{method:'DELETE'}); VIEWS.social(); }catch(e){ alert(e.message); } }
+async function sendBroadcast(){ const text=$('btxt').value.trim(), audience=$('aud').value; if(!text) return; if(!confirm('Enviar para '+$('aud').selectedOptions[0].text.toLowerCase()+'?')) return; try{ const r=await api('/admin/broadcast',{method:'POST',body:JSON.stringify({text,audience})}); alert('Aviso enviado para '+r.sent+' pessoas.'); VIEWS.avisos(); }catch(e){ $('bmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function createCoupon(){ try{ await api('/admin/coupons',{method:'POST',body:JSON.stringify({code:$('cc').value,description:$('cd').value,percent:$('cp').value,amount:$('ca').value,minOrder:$('cm').value,maxUses:$('cu').value,validUntil:$('cv').value})}); VIEWS.cupons(); }catch(e){ $('cmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function toggleCoupon(code){ try{ await api('/admin/coupons/'+encodeURIComponent(code)+'/toggle',{method:'PUT'}); VIEWS.cupons(); }catch(e){ alert(e.message); } }
+async function saveSettings(){ const body={}; window._settingKeys.forEach(k=>body[k]=$('s-'+k).value); try{ await api('/admin/settings',{method:'PUT',body:JSON.stringify(body)}); $('smsg').innerHTML='<span class="pill p-ok">Salvo</span>'; }catch(e){ $('smsg').innerHTML='<span class="pill p-bad">'+esc(e.message)+'</span>'; } }
+async function addAdmin(){ try{ await api('/admin/team',{method:'POST',body:JSON.stringify({username:$('na').value})}); VIEWS.equipe(); }catch(e){ $('tmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function removeAdmin(id){ if(!confirm('Tirar o acesso desta pessoa ao painel?')) return; try{ await api('/admin/team/'+id,{method:'DELETE'}); VIEWS.equipe(); }catch(e){ alert(e.message); } }
+
+function start(){ $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
+if (token) start(); else $('loginBox').classList.remove('hidden');
+</script>
+</body>
+</html>
