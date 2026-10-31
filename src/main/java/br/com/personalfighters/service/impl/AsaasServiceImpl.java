@@ -97,7 +97,9 @@ public class AsaasServiceImpl implements AsaasService {
 
     Map<String, Object> body = new HashMap<>();
     body.put("billingType", "PIX");
-    body.put("value", order.getTotalCost().doubleValue());
+    BigDecimal discount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+    BigDecimal charged = order.getTotalCost().subtract(discount).max(BigDecimal.ONE);
+    body.put("value", charged.doubleValue());
     body.put("dueDate", dueDate);
     body.put("description", "Serviço Profissional Opus #" + order.getId().toString().substring(0, 8));
     if (asaasCustomerId != null) {
@@ -139,9 +141,11 @@ public class AsaasServiceImpl implements AsaasService {
     String pixQrCode = qrResponse != null ? (String) qrResponse.get("encodedImage") : null;
 
     BigDecimal appTax = new BigDecimal(APP_TAX_PERCENTAGE);
-    BigDecimal appTaxValue = order.getTotalCost()
+    // O profissional recebe sobre o valor cheio; o desconto com pontos sai da parte da plataforma
+    BigDecimal fullTax = order.getTotalCost()
         .multiply(appTax.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-    BigDecimal professionalValue = order.getTotalCost().subtract(appTaxValue);
+    BigDecimal professionalValue = order.getTotalCost().subtract(fullTax);
+    BigDecimal appTaxValue = charged.subtract(professionalValue);
 
     Transaction transaction = Transaction.builder()
         .paymentStatus(PaymentStatus.AUTHORIZED)
@@ -151,7 +155,7 @@ public class AsaasServiceImpl implements AsaasService {
         .pixQrCode(pixQrCode)
         .pixCopyPaste(pixCopyPaste)
         .pixExpiresAt(LocalDateTime.now().plusDays(1))
-        .totalPaid(order.getTotalCost())
+        .totalPaid(charged)
         .creditCardValue(BigDecimal.ZERO)
         .customerBalanceValue(BigDecimal.ZERO)
         .appTaxPercentage(appTax)

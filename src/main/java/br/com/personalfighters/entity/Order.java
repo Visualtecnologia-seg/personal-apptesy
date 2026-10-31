@@ -88,4 +88,13 @@ public class Order {
 
   private String cancelledBy;
   private String cancelReason;
+
+  /** Desconto aplicado com pontos (sai da parte da plataforma). */
+  private BigDecimal discountAmount;
+
+  /** Quando o serviço foi concluído — conta o prazo da garantia de 30 dias. */
+  private LocalDateTime doneAt;
+
+  /** Pedido criado a partir de um chamado urgente. */
+  private Boolean urgent;
 }

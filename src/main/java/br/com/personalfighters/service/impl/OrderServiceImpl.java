@@ -297,6 +297,7 @@ public class OrderServiceImpl implements OrderService {
     orders.forEach(
         order -> {
           order.setStatus(Status.DONE);
+          if (order.getDoneAt() == null) order.setDoneAt(java.time.LocalDateTime.now());
           var transactionOpt = transactionService.findByOrderId(order.getId());
           if (transactionOpt.isPresent()) {
             var transaction = transactionOpt.get();
@@ -382,6 +383,7 @@ public class OrderServiceImpl implements OrderService {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new ObjectNotFoundException("Pedido não encontrado"));
     order.setStatus(Status.DONE);
+    if (order.getDoneAt() == null) order.setDoneAt(LocalDateTime.now(zoneId));
     orderRepository.save(order);
 
     // Award 10 points to the customer for completing a service

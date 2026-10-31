@@ -88,6 +88,7 @@ public class QRTokenServiceImpl implements QRTokenService {
     for (Order o : pending) {
       if (o.getRequestedCompletionAt() != null && o.getRequestedCompletionAt().isBefore(cutoff)) {
         o.setStatus(Status.DONE);
+        if (o.getDoneAt() == null) o.setDoneAt(java.time.LocalDateTime.now());
         orderRepository.save(o);
         log.info("Auto-confirmação de conclusão do pedido {} após 24h sem resposta", o.getId());
       }

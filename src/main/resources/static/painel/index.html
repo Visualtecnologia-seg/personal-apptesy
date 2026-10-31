@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPUS · Verificações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root{--navy:#0B1F4D;--blue:#1D4ED8;--cyan:#0891B2;--bg:#F3F5F9;--card:#fff;--text:#0B1530;--muted:#6B7280;--line:#E5E7EB;--ok:#047857;--okbg:#D1FAE5;--bad:#B91C1C;--badbg:#FEE2E2;--warn:#92400E;--warnbg:#FEF3C7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:Inter,sans-serif;color:var(--text)}
+  h1,h2,h3{font-family:'Plus Jakarta Sans',sans-serif;margin:0}
+  header{background:linear-gradient(135deg,#0B1F4D 0%,#1D4ED8 55%,#0891B2 100%);color:#fff;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  header h1{font-size:20px}
+  main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
+  .card{background:var(--card);border-radius:16px;box-shadow:0 6px 16px rgba(11,31,77,.06);padding:18px}
+  button{font:inherit;cursor:pointer;border:none;border-radius:12px;padding:10px 16px;font-weight:600}
+  .primary{background:var(--navy);color:#fff}
+  .ok{background:var(--ok);color:#fff}
+  .danger{background:var(--bad);color:#fff}
+  .ghost{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+  .link{background:none;color:var(--blue);padding:0}
+  input,textarea,select{font:inherit;width:100%;padding:11px 12px;border:1px solid #CBD5E1;border-radius:10px;background:#fff;color:var(--text)}
+  label{font-size:13px;font-weight:600;color:#334155;display:block;margin-bottom:6px}
+  .login{max-width:380px;margin:60px auto;display:flex;flex-direction:column;gap:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{background:#fff;color:var(--text);border:1px solid var(--line)}
+  .tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:14px}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .wrap{overflow-x:auto}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .PENDING{background:var(--warnbg);color:var(--warn)} .APPROVED{background:var(--okbg);color:var(--ok)} .REJECTED{background:var(--badbg);color:var(--bad)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:14px}
+  figure{margin:0;background:#F8FAFC;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  figure img{width:100%;height:260px;object-fit:contain;background:#0F172A;display:block;cursor:zoom-in}
+  figcaption{padding:10px 12px;font-size:13px;font-weight:600}
+  figcaption small{display:block;font-weight:500;color:var(--muted);margin-top:2px}
+  .gesture{border:2px solid var(--blue)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+  .info{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+  .info div{background:#F8FAFC;border-radius:10px;padding:10px 12px;font-size:13px}
+  .info b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px}
+  .checks{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px}
+  .checks label{display:flex;gap:6px;align-items:center;font-weight:500;margin:0}
+  .checks input{width:auto}
+  .msg{padding:10px 12px;border-radius:10px;font-size:14px;margin-top:10px}
+  .zoom{position:fixed;inset:0;background:rgba(2,6,23,.92);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+  .zoom img{max-width:100%;max-height:100%;object-fit:contain}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<header>
+  <h1>OPUS · Verificação de identidade</h1>
+  <div class="row"><span id="who" class="muted" style="color:#BFDBFE"></span><button id="logout" class="ghost hidden">Sair</button></div>
+</header>
+<main>
+  <section id="loginBox" class="card login">
+    <h2>Entrar como administrador</h2>
+    <div><label for="u">Usuário ou e-mail</label><input id="u" autocomplete="username"></div>
+    <div><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password"></div>
+    <button id="doLogin" class="primary">Entrar</button>
+    <div id="loginMsg" class="msg hidden"></div>
+  </section>
+
+  <section id="listBox" class="hidden">
+    <div class="tabs">
+      <button class="tab on" data-s="PENDING">Em análise</button>
+      <button class="tab" data-s="APPROVED">Aprovadas</button>
+      <button class="tab" data-s="REJECTED">Recusadas</button>
+      <button class="tab" data-s="ALL">Todas</button>
+    </div>
+    <div class="card wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Enviado em</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="muted hidden">Nenhuma verificação aqui.</p>
+    </div>
+  </section>
+
+  <section id="detailBox" class="hidden">
+    <button id="back" class="link">← Voltar para a lista</button>
+    <div class="card" style="margin-top:12px">
+      <div class="row" style="justify-content:space-between">
+        <h2 id="dName"></h2><span id="dStatus" class="pill"></span>
+      </div>
+      <div class="info" id="dInfo"></div>
+      <div class="grid" id="imgs"></div>
+    </div>
+    <div class="card" style="margin-top:14px" id="actions">
+      <h3>Decisão</h3>
+      <p class="muted">Confira: o rosto é o mesmo em todas as selfies e na foto do documento? Nas fotos da prova de vida a cabeça está virada para lados diferentes? Os dados do documento batem com o cadastro?</p>
+      <div class="row"><button id="approve" class="ok">Aprovar verificação</button></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+      <label for="reason">Motivo da recusa (o usuário vai ver esta mensagem)</label>
+      <textarea id="reason" rows="3" placeholder="Ex.: A foto do documento está desfocada. Tire novamente em um lugar bem iluminado."></textarea>
+      <div class="checks" id="steps">
+        <label><input type="checkbox" value="DOC_FRONT"> Frente do documento</label>
+        <label><input type="checkbox" value="DOC_BACK"> Verso do documento</label>
+        <label><input type="checkbox" value="FACE" checked> Reconhecimento facial (selfie e prova de vida)</label>
+        <label><input type="checkbox" value="SELFIE_DOC"> Selfie com documento</label>
+      </div>
+      <button id="reject" class="danger">Recusar e pedir novo envio</button>
+      <div id="actMsg" class="msg hidden"></div>
+    </div>
+  </section>
+</main>
+<div class="zoom" id="zoom"><img id="zoomImg" alt="Imagem ampliada"></div>
+
+<script>
+const STATUS = {PENDING:'Em análise',APPROVED:'Aprovada',REJECTED:'Recusada'};
+const $ = id => document.getElementById(id);
+let token = null, current = null, filter = 'PENDING';
+try { token = sessionStorage.getItem('opus_admin_token'); } catch(e) {}
+
+async function api(path, opts={}) {
+  const r = await fetch(path, {...opts, headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}), ...(opts.headers||{})}});
+  if (r.status === 401 || r.status === 403) { if (path !== '/auth') { logout(); throw new Error('Sessão expirada ou sem permissão de administrador.'); } }
+  const txt = await r.text(); let data; try { data = JSON.parse(txt); } catch(e) { data = txt; }
+  if (!r.ok) throw new Error((data && data.message) || 'Erro '+r.status);
+  return data;
+}
+function show(id){ ['loginBox','listBox','detailBox'].forEach(x=>$(x).classList.toggle('hidden', x!==id)); $('logout').classList.toggle('hidden', id==='loginBox'); }
+function msg(el, text, ok){ el.textContent=text; el.className='msg '+(ok?'APPROVED':'REJECTED'); }
+function fmt(d){ if(!d) return '—'; try { return new Date(d).toLocaleString('pt-BR'); } catch(e){ return d; } }
+function logout(){ token=null; try{sessionStorage.removeItem('opus_admin_token');}catch(e){} show('loginBox'); }
+
+$('doLogin').onclick = async () => {
+  $('loginMsg').classList.add('hidden');
+  try {
+    const t = await api('/auth', {method:'POST', body: JSON.stringify({username:$('u').value.trim(), password:$('p').value})});
+    token = typeof t === 'string' ? t : (t.token || '');
+    try { sessionStorage.setItem('opus_admin_token', token); } catch(e) {}
+    await loadList();
+  } catch(e) { msg($('loginMsg'), e.message || 'Não foi possível entrar.'); }
+};
+$('p').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
+$('logout').onclick = logout;
+$('back').onclick = () => loadList();
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => { document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); filter=b.dataset.s; loadList(); });
+$('zoom').onclick = () => $('zoom').style.display='none';
+
+async function loadList(){
+  show('listBox');
+  const rows = $('rows'); rows.innerHTML='';
+  let items = [];
+  try { items = await api('/verifications?status='+filter); } catch(e) { $('empty').textContent = e.message; $('empty').classList.remove('hidden'); return; }
+  $('empty').textContent = 'Nenhuma verificação aqui.';
+  $('empty').classList.toggle('hidden', items.length>0);
+  for (const v of items) {
+    const tr = document.createElement('tr');
+    const cells = [v.name||'—', v.isProfessional?'Profissional':'Cliente', v.docType||'—', fmt(v.submittedAt)];
+    cells.forEach(c => { const td=document.createElement('td'); td.textContent=c; tr.appendChild(td); });
+    const st=document.createElement('td'); const sp=document.createElement('span'); sp.className='pill '+v.status; sp.textContent=STATUS[v.status]||v.status; st.appendChild(sp); tr.appendChild(st);
+    const act=document.createElement('td'); const b=document.createElement('button'); b.className='primary'; b.textContent='Abrir'; b.onclick=()=>openDetail(v.id); act.appendChild(b); tr.appendChild(act);
+    rows.appendChild(tr);
+  }
+}
+
+function addInfo(label, value){ const d=document.createElement('div'); const b=document.createElement('b'); b.textContent=label; d.appendChild(b); d.appendChild(document.createTextNode(value||'—')); $('dInfo').appendChild(d); }
+function addImg(src, title, sub, extra){
+  const f=document.createElement('figure'); if (extra) f.classList.add(extra);
+  if (src) { const i=document.createElement('img'); i.src=src; i.alt=title; i.onclick=()=>{ $('zoomImg').src=src; $('zoom').style.display='flex'; }; f.appendChild(i); }
+  else { const p=document.createElement('div'); p.style.cssText='height:260px;display:flex;align-items:center;justify-content:center;color:#94A3B8'; p.textContent='Sem imagem (recusada para reenvio)'; f.appendChild(p); }
+  const c=document.createElement('figcaption'); c.textContent=title; if (sub){ const s=document.createElement('small'); s.textContent=sub; c.appendChild(s);} f.appendChild(c); $('imgs').appendChild(f);
+}
+
+async function openDetail(id){
+  show('detailBox'); $('actMsg').classList.add('hidden'); $('reason').value='';
+  $('imgs').innerHTML=''; $('dInfo').innerHTML=''; $('dName').textContent='Carregando…';
+  let v; try { v = await api('/verifications/'+id); } catch(e) { $('dName').textContent=e.message; return; }
+  current = v;
+  $('dName').textContent = v.name || 'Usuário #'+v.userId;
+  $('dStatus').className='pill '+v.status; $('dStatus').textContent=STATUS[v.status]||v.status;
+  addInfo('Tipo de conta', v.isProfessional?'Profissional':'Cliente');
+  addInfo('CPF (cadastro)', v.cpf); addInfo('Nascimento (cadastro)', v.birthday); addInfo('E-mail', v.email);
+  addInfo('Documento', v.docType); addInfo('Enviado em', fmt(v.submittedAt)); addInfo('Termo aceito em', fmt(v.consentAt));
+  addInfo('Prova de vida no celular', v.livenessPassed ? 'Concluída (virou a cabeça e piscou)' : 'Não concluída');
+  if (v.livenessInfo) addInfo('Medições da prova de vida', v.livenessInfo);
+  if (v.status!=='PENDING') { addInfo('Analisado por', v.reviewedBy); addInfo('Analisado em', fmt(v.reviewedAt)); if (v.reason) addInfo('Motivo', v.reason); }
+  addImg(v.docFront, 'Documento · frente', 'Confira nome, CPF e data de nascimento');
+  addImg(v.docBack, 'Documento · verso');
+  addImg(v.selfieNeutral, 'Selfie', 'Compare com a foto do documento');
+  addImg(v.selfieTurnA, 'Prova de vida · lado 1', 'Rosto virado para um lado', 'gesture');
+  addImg(v.selfieTurnB, 'Prova de vida · lado 2', 'Rosto virado para o outro lado', 'gesture');
+  addImg(v.selfieWithDoc, 'Selfie segurando o documento');
+  $('actions').classList.toggle('hidden', v.status!=='PENDING');
+}
+
+$('approve').onclick = async () => {
+  if (!current) return;
+  try { await api('/verifications/'+current.id+'/approve', {method:'PUT'}); msg($('actMsg'),'Verificação aprovada.',true); setTimeout(loadList, 900); }
+  catch(e){ msg($('actMsg'), e.message); }
+};
+$('reject').onclick = async () => {
+  if (!current) return;
+  const steps=[...document.querySelectorAll('#steps input:checked')].map(i=>i.value);
+  try { await api('/verifications/'+current.id+'/reject', {method:'PUT', body: JSON.stringify({reason:$('reason').value, steps})}); msg($('actMsg'),'Verificação recusada. O usuário verá o motivo no app.',true); setTimeout(loadList, 900); }
+  catch(e){ msg($('actMsg'), e.message); }
+};
+
+if (token) loadList(); else show('loginBox');
+</script>
+</body>
+</html>

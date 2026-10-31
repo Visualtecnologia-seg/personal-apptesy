@@ -52,6 +52,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
       "/app/**",
       "/app/_expo/**",
       "/app/assets_expo/**",
+
+      // -- Painel de verificação (página estática; as APIs continuam protegidas)
+      "/painel",
+      "/painel/**",
   };
   private final UserDetailsService authUserDetailsService;
   private final JwtRequestFilter jwtAuthenticationFilter;

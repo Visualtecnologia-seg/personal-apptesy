@@ -200,6 +200,7 @@ public class ArrivalController {
     }
 
     order.setStatus(Status.DONE);
+    if (order.getDoneAt() == null) order.setDoneAt(java.time.LocalDateTime.now());
     orderRepository.save(order);
     result.put("status", "DONE");
     result.put("message", "Serviço concluído! Aguardando avaliação.");

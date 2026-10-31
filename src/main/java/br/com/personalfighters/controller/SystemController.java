@@ -138,6 +138,7 @@ public class SystemController {
       if (order.getDate().isAfter(LocalDate.now().minusDays(30)) && order.getDate().isBefore(LocalDate.now().minusDays(15))) {
         orderService.confirmByCustomer(order.getId(), response.get(0).getId());
         order.setStatus(Status.DONE);
+        if (order.getDoneAt() == null) order.setDoneAt(java.time.LocalDateTime.now());
         orderService.update(order);
       }
 

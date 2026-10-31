@@ -93,6 +93,10 @@ public class UserController {
   @ApiOperation(value = "Prestador envia dados e documentos para solicitar verificação.")
   public Object requestVerification(@PathVariable Long id,
                                     @RequestBody java.util.Map<String, String> payload) {
+    User me = userService.findAuthUser();
+    if (me == null || !me.getId().equals(id)) {
+      throw new org.springframework.security.access.AccessDeniedException("Você só pode enviar a sua própria verificação.");
+    }
     return userService.requestVerification(id, payload);
   }
 
@@ -124,7 +128,8 @@ public class UserController {
         "id", user.getId(),
         "name", user.getName() != null ? user.getName() : "",
         "verified", Boolean.TRUE.equals(user.getVerified()),
-        "documentUrl", user.getDocumentUrl() != null ? user.getDocumentUrl() : ""
+        "verificationStatus", user.getVerificationStatus() != null ? user.getVerificationStatus() : "NONE",
+        "reason", user.getVerificationReason() != null ? user.getVerificationReason() : ""
     );
   }
 

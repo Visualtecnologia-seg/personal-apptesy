@@ -75,16 +75,21 @@ public class User implements UserDetails, Serializable {
 
   private String documentUrl;
 
+  @JsonIgnore
   @Column(length = 2000)
   private String docFrontUrl;
 
+  @JsonIgnore
   @Column(length = 2000)
   private String docBackUrl;
 
+  @JsonIgnore
   @Column(length = 2000)
   private String docSelfieUrl;
 
   private String verificationStatus;
+
+  private String verificationReason;
 
   private String fullAddress;
 
