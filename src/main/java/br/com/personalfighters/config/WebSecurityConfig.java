@@ -31,7 +31,7 @@ import java.util.Collections;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
-  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/platform/config"};
+  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/platform/config"};
   private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users"};
   private static final String[] WHITELIST = {
       // -- swagger ui
