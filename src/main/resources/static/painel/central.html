@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPUS · Suporte e disputas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root{--navy:#0B1F4D;--blue:#1D4ED8;--cyan:#0891B2;--bg:#F3F5F9;--card:#fff;--text:#0B1530;--muted:#6B7280;--line:#E5E7EB;--ok:#047857;--okbg:#D1FAE5;--bad:#B91C1C;--badbg:#FEE2E2;--warn:#92400E;--warnbg:#FEF3C7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:Inter,sans-serif;color:var(--text)}
+  h1,h2,h3{font-family:'Plus Jakarta Sans',sans-serif;margin:0}
+  header{background:linear-gradient(135deg,#0B1F4D 0%,#1D4ED8 55%,#0891B2 100%);color:#fff;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  header h1{font-size:20px}
+  main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
+  .card{background:var(--card);border-radius:16px;box-shadow:0 6px 16px rgba(11,31,77,.06);padding:18px}
+  button{font:inherit;cursor:pointer;border:none;border-radius:12px;padding:10px 16px;font-weight:600}
+  .primary{background:var(--navy);color:#fff}
+  .ok{background:var(--ok);color:#fff}
+  .danger{background:var(--bad);color:#fff}
+  .ghost{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+  .link{background:none;color:var(--blue);padding:0}
+  input,textarea,select{font:inherit;width:100%;padding:11px 12px;border:1px solid #CBD5E1;border-radius:10px;background:#fff;color:var(--text)}
+  label{font-size:13px;font-weight:600;color:#334155;display:block;margin-bottom:6px}
+  .login{max-width:380px;margin:60px auto;display:flex;flex-direction:column;gap:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{background:#fff;color:var(--text);border:1px solid var(--line)}
+  .tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:14px}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .wrap{overflow-x:auto}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .PENDING{background:var(--warnbg);color:var(--warn)} .APPROVED{background:var(--okbg);color:var(--ok)} .REJECTED{background:var(--badbg);color:var(--bad)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:14px}
+  figure{margin:0;background:#F8FAFC;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  figure img{width:100%;height:260px;object-fit:contain;background:#0F172A;display:block;cursor:zoom-in}
+  figcaption{padding:10px 12px;font-size:13px;font-weight:600}
+  figcaption small{display:block;font-weight:500;color:var(--muted);margin-top:2px}
+  .gesture{border:2px solid var(--blue)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+  .info{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+  .info div{background:#F8FAFC;border-radius:10px;padding:10px 12px;font-size:13px}
+  .info b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px}
+  .checks{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px}
+  .checks label{display:flex;gap:6px;align-items:center;font-weight:500;margin:0}
+  .checks input{width:auto}
+  .msg{padding:10px 12px;border-radius:10px;font-size:14px;margin-top:10px}
+  .zoom{position:fixed;inset:0;background:rgba(2,6,23,.92);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+  .zoom img{max-width:100%;max-height:100%;object-fit:contain}
+  .hidden{display:none !important}
+</style>
+<style>
+  .cols{display:grid;grid-template-columns:320px 1fr;gap:14px}
+  @media(max-width:860px){.cols{grid-template-columns:1fr}}
+  .list{display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow:auto}
+  .item{padding:12px;border-radius:12px;background:#F8FAFC;border:1px solid var(--line);cursor:pointer}
+  .item.on{border-color:var(--navy);background:#EEF2FF}
+  .item b{display:block;font-size:14px}
+  .item small{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge{float:right;background:var(--bad);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700}
+  .chat{display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow:auto;padding:6px 2px;margin:10px 0}
+  .bub{max-width:78%;padding:10px 12px;border-radius:14px;font-size:14px;white-space:pre-wrap;word-break:break-word}
+  .bub small{display:block;font-size:11px;opacity:.7;margin-top:4px}
+  .me{align-self:flex-end;background:var(--navy);color:#fff}
+  .them{align-self:flex-start;background:#F1F5F9}
+  .sys{align-self:center;background:#FEF3C7;color:#92400E;font-size:12px}
+  .bub img{max-width:240px;border-radius:10px;display:block;margin-top:6px;cursor:zoom-in}
+  h3{font-size:15px;margin:18px 0 8px}
+  .ph{display:flex;gap:8px;flex-wrap:wrap}
+  .ph img{width:130px;height:130px;object-fit:cover;border-radius:10px;cursor:zoom-in}
+  .OPEN{background:var(--warnbg);color:var(--warn)} .RESOLVED_PRO,.RESOLVED_CLIENT{background:var(--okbg);color:var(--ok)}
+</style>
+</head>
+<body>
+<header>
+  <h1>OPUS · Suporte e disputas</h1>
+  <div class="row"><a href="/painel/" style="color:#fff;font-weight:700;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)">← Verificações</a></div>
+</header>
+<main>
+  <div id="needLogin" class="card hidden">Entre primeiro pela página <a href="/painel/">Verificações</a> com a conta de administrador.</div>
+  <div id="app" class="hidden">
+    <div class="tabs">
+      <button class="tab on" data-t="sup">Suporte</button>
+      <button class="tab" data-t="dis">Disputas abertas</button>
+      <button class="tab" data-t="all">Todas as disputas</button>
+    </div>
+    <div class="cols">
+      <div class="card"><div id="list" class="list"></div></div>
+      <div class="card" id="detail"><p class="muted">Escolha uma conversa ou disputa ao lado.</p></div>
+    </div>
+  </div>
+</main>
+<div class="zoom" id="zoom"><img id="zoomImg" alt="Foto ampliada"></div>
+<script>
+const $ = id => document.getElementById(id);
+let token = null, tab = 'sup', currentUser = null, refresh = null;
+try { token = sessionStorage.getItem('opus_admin_token'); } catch(e) {}
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = d => { if(!d) return '—'; try { return new Date(d).toLocaleString('pt-BR'); } catch(e){ return d; } };
+const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+async function api(path, opts={}) {
+  const r = await fetch(path, {...opts, headers:{'Content-Type':'application/json', Authorization:'Bearer '+token}});
+  if (r.status === 401 || r.status === 403) { $('app').classList.add('hidden'); $('needLogin').classList.remove('hidden'); throw new Error('Sem permissão'); }
+  const txt = await r.text(); let data; try { data = JSON.parse(txt); } catch(e) { data = txt; }
+  if (!r.ok) throw new Error((data && data.message) || 'Erro '+r.status);
+  return data;
+}
+function zoom(src){ $('zoomImg').src = src; $('zoom').style.display = 'flex'; }
+$('zoom').onclick = () => $('zoom').style.display = 'none';
+document.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.zoom) zoom(e.target.src); });
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on')); b.classList.add('on'); tab = b.dataset.t;
+  $('detail').innerHTML = '<p class="muted">Escolha um item ao lado.</p>'; currentUser = null; load();
+});
+
+async function load(){
+  const list = $('list');
+  try {
+    if (tab === 'sup') {
+      const rows = await api('/admin/support/threads');
+      list.innerHTML = rows.length ? rows.map(r => '<div class="item'+(r.userId===currentUser?' on':'')+'" data-u="'+r.userId+'">'+(r.unread>0?'<span class="badge">'+r.unread+'</span>':'')+'<b>'+esc(r.name||r.username)+'</b><small>'+esc(r.lastText)+'</small><small>'+fmt(r.lastAt)+'</small></div>').join('') : '<p class="muted">Nenhuma conversa ainda.</p>';
+      list.querySelectorAll('.item').forEach(el => el.onclick = () => openThread(Number(el.dataset.u)));
+    } else {
+      const rows = await api('/admin/disputes?status=' + (tab === 'all' ? 'ALL' : 'OPEN'));
+      list.innerHTML = rows.length ? rows.map(r => '<div class="item" data-o="'+r.id+'"><span class="pill '+esc(r.disputeStatus)+'" style="float:right">'+esc(r.disputeStatus==='OPEN'?'Aberta':'Resolvida')+'</span><b>'+esc(r.customerName)+' × '+esc(r.professionalName)+'</b><small>'+esc(r.disputeReason)+'</small><small>'+fmt(r.disputedAt)+' · '+brl(r.totalCost)+'</small></div>').join('') : '<p class="muted">Nenhuma disputa '+(tab==='all'?'registrada':'aberta')+'.</p>';
+      list.querySelectorAll('.item').forEach(el => el.onclick = () => openDispute(el.dataset.o));
+    }
+  } catch(e) { list.innerHTML = '<p class="muted">'+esc(e.message)+'</p>'; }
+}
+
+async function openThread(uid){
+  currentUser = uid;
+  const t = await api('/admin/support/' + uid);
+  const d = $('detail');
+  d.innerHTML = '<div class="row" style="justify-content:space-between"><div><h2>'+esc(t.name)+'</h2><div class="muted">@'+esc(t.username)+' · '+esc(t.email)+' · '+(t.professional?'Profissional':'Cliente')+'</div></div></div>'
+    + '<div class="chat" id="chat">' + t.messages.map(m => '<div class="bub '+(m.fromAdmin?'me':'them')+'">'+esc(m.text)+'<small>'+(m.fromAdmin?esc(m.adminName||'Equipe')+' · ':'')+fmt(m.createdAt)+'</small></div>').join('') + '</div>'
+    + '<div class="row"><textarea id="reply" rows="2" placeholder="Escreva a resposta…" style="flex:1"></textarea><button class="primary" id="send">Enviar</button></div>'
+    + (t.orders.length ? '<h3>Pedidos recentes</h3><div class="muted">' + t.orders.map(o => esc(o.status)+' · '+esc(o.date)+' · '+brl(o.totalCost)+(o.disputeStatus?' · disputa '+esc(o.disputeStatus):'')).join('<br>') + '</div>' : '');
+  const c = $('chat'); c.scrollTop = c.scrollHeight;
+  $('send').onclick = async () => {
+    const text = $('reply').value.trim(); if (!text) return;
+    $('send').disabled = true;
+    try { await api('/admin/support/' + uid, {method:'POST', body: JSON.stringify({text})}); await openThread(uid); load(); }
+    catch(e){ alert(e.message); } finally { $('send').disabled = false; }
+  };
+  load();
+}
+
+async function openDispute(id){
+  const e = await api('/admin/orders/' + id + '/evidence');
+  const o = e.order, d = $('detail');
+  const calls = e.calls.map(c => fmt(c.createdAt)+' · '+(c.kind==='audio'?'Áudio':'Vídeo')+' de '+esc(c.callerName)+' · '+esc(c.status)+(c.seconds?' · '+Math.floor(c.seconds/60)+' min '+(c.seconds%60)+' s':'')).join('<br>') || 'Nenhuma chamada.';
+  const msgs = e.messages.map(m => {
+    const cls = m.type === 'SYSTEM' ? 'sys' : (m.role === 'PROFESSIONAL' ? 'me' : 'them');
+    let body = esc(m.text || '');
+    if (m.type === 'QUOTE') body = 'Orçamento: ' + brl(m.quoteTotal) + ' (' + esc(m.quoteStatus) + ')';
+    if (m.imageUrl && String(m.imageUrl).startsWith('data:image')) body += '<img data-zoom="1" src="'+m.imageUrl+'" alt="Foto do chat">';
+    return '<div class="bub '+cls+'"><b>'+esc(m.from)+'</b><br>'+body+'<small>'+fmt(m.at)+'</small></div>';
+  }).join('');
+  const photos = e.photos.map(p => '<img data-zoom="1" src="/orders/photos/'+p.id+'" alt="Foto '+esc(p.kind)+'" title="'+esc(p.kind)+' · '+fmt(p.createdAt)+'">').join('') || '<span class="muted">Sem fotos.</span>';
+  const consents = e.consents.map(c => esc(c.name)+' aceitou o guia de proteção v'+c.version+' em '+fmt(c.acceptedAt)).join('<br>') || 'Nenhum aceite registrado.';
+  const extras = e.extras.map(x => esc(x.description)+' · '+brl(x.clientTotal)+' · '+esc(x.status)).join('<br>') || 'Nenhum.';
+  d.innerHTML = '<div class="row" style="justify-content:space-between"><h2>Pedido #'+esc(String(o.id).slice(0,8))+'</h2><span class="pill '+esc(o.disputeStatus)+'">'+esc(o.disputeStatus||'—')+'</span></div>'
+    + '<div class="info">'
+    + '<div><b>Cliente</b>'+esc(o.customer&&o.customer.name)+'</div><div><b>Profissional</b>'+esc(o.professional&&o.professional.name)+'</div>'
+    + '<div><b>Serviço</b>'+esc(o.product||'—')+'</div><div><b>Data</b>'+esc(o.date)+'</div>'
+    + '<div><b>Cliente pagou</b>'+brl(o.totalCost)+(o.pixPaid?' ✓':' (não pago)')+'</div><div><b>Valor do profissional</b>'+brl(o.serviceValue)+'</div>'
+    + '<div><b>Terminou em</b>'+fmt(o.finishedAt)+'</div><div><b>Liberado em</b>'+fmt(o.releasedAt)+'</div>'
+    + '<div style="grid-column:1/-1"><b>Motivo da disputa</b>'+esc(o.disputeReason)+' ('+fmt(o.disputedAt)+')</div>'
+    + (o.resolution ? '<div style="grid-column:1/-1"><b>Decisão</b>'+esc(o.resolution)+'</div>' : '')
+    + '</div>'
+    + (o.disputeStatus === 'OPEN' ? '<h3>Decidir</h3><textarea id="note" rows="2" placeholder="Motivo da decisão (os dois lados recebem)"></textarea><div class="row" style="margin-top:8px"><button class="ok" id="rel">Liberar para o profissional</button><button class="danger" id="ref">Devolver ao cliente</button></div>' : '')
+    + '<h3>Fotos do serviço</h3><div class="ph">'+photos+'</div>'
+    + '<h3>Chamadas</h3><div class="muted">'+calls+'</div>'
+    + '<h3>Orçamentos extras</h3><div class="muted">'+extras+'</div>'
+    + '<h3>Aceites do guia de proteção</h3><div class="muted">'+consents+'</div>'
+    + '<h3>Tentativas bloqueadas no chat</h3><div class="muted">'+(e.blockedAttempts.length ? e.blockedAttempts.length + ' tentativa(s) de passar contato.' : 'Nenhuma.')+'</div>'
+    + '<h3>Chat completo</h3><div class="chat">'+(msgs || '<span class="muted">Sem mensagens.</span>')+'</div>';
+  const decide = async decision => {
+    const note = $('note').value.trim();
+    if (note.length < 5) { alert('Escreva o motivo da decisão.'); return; }
+    if (!confirm(decision === 'RELEASE' ? 'Liberar o pagamento para o profissional?' : 'Devolver o valor ao cliente e cancelar o pedido?')) return;
+    try { await api('/admin/orders/'+id+'/dispute/resolve', {method:'POST', body: JSON.stringify({decision, note})}); await openDispute(id); load(); }
+    catch(err){ alert(err.message); }
+  };
+  if ($('rel')) { $('rel').onclick = () => decide('RELEASE'); $('ref').onclick = () => decide('REFUND'); }
+}
+
+if (!token) { $('needLogin').classList.remove('hidden'); }
+else { $('app').classList.remove('hidden'); load(); refresh = setInterval(() => { if (tab === 'sup') load(); }, 20000); }
+</script>
+</body>
+</html>

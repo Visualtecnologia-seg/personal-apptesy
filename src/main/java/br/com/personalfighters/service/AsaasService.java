@@ -11,4 +11,13 @@ public interface AsaasService {
 
   String createOrGetCustomer(br.com.personalfighters.entity.User user);
 
+  /** Sem chave do Asaas configurada: PIX simulado para testes. */
+  boolean isTestMode();
+
+  /** Cobrança PIX avulsa (orçamento extra). Retorna {id, payload, encodedImage}. */
+  java.util.Map<String, String> createExtraCharge(br.com.personalfighters.entity.User customer, java.math.BigDecimal value, String description);
+
+  /** Transferência PIX avulsa para o profissional (orçamento extra, taxa de cancelamento). */
+  boolean transferToProfessional(br.com.personalfighters.entity.User professional, java.math.BigDecimal value, String description);
+
 }

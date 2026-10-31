@@ -31,7 +31,7 @@ import java.util.Collections;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
-  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/orders/photos/*", "/platform/config"};
+  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*"};
   private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users"};
   private static final String[] WHITELIST = {
       // -- swagger ui
@@ -56,6 +56,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
       // -- Painel de verificação (página estática; as APIs continuam protegidas)
       "/painel",
       "/painel/**",
+
+      // -- Página da chamada (WebRTC dentro do app; as APIs continuam protegidas)
+      "/call",
+      "/call/**",
   };
   private final UserDetailsService authUserDetailsService;
   private final JwtRequestFilter jwtAuthenticationFilter;

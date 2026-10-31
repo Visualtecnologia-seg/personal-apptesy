@@ -32,6 +32,7 @@ public class MessageServiceImpl implements MessageService {
   private final NotificationService notificationService;
   private final ObjectMapper objectMapper;
   private final BlockedAttemptRepository blockedAttemptRepository;
+  private final br.com.personalfighters.service.ExtrasService extrasService;
 
   // ── Contact-sharing filter ──────────────────────────────────────────────────
 
@@ -131,6 +132,10 @@ public class MessageServiceImpl implements MessageService {
           : (msg.getQuoteAmount() != null ? msg.getQuoteAmount() : BigDecimal.ZERO);
 
       orderRepository.findById(msg.getOrderId()).ifPresent(order -> {
+        if (extrasService.isExtra(order)) {
+          extrasService.createFromQuote(order, msg, total);
+          return;
+        }
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
         orderRepository.save(order);
@@ -177,6 +182,10 @@ public class MessageServiceImpl implements MessageService {
       msg.setQuoteTotalCost(total);
 
       orderRepository.findById(msg.getOrderId()).ifPresent(order -> {
+        if (extrasService.isExtra(order)) {
+          extrasService.createFromQuote(order, msg, total);
+          return;
+        }
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
         orderRepository.save(order);

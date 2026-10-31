@@ -58,6 +58,8 @@ public class OrderServiceImpl implements OrderService {
   private final EmailService emailService;
   private final PointsRepository pointsRepository;
   private final br.com.personalfighters.service.PointsAwarder pointsAwarder;
+  private final br.com.personalfighters.service.TripService tripService;
+  private final br.com.personalfighters.service.AsaasService asaasService;
 
   private final ZoneId zoneId = ZoneId.of("America/Sao_Paulo");
 
@@ -210,6 +212,21 @@ public class OrderServiceImpl implements OrderService {
     order.setAvailable(new ArrayList<>());
     order.setResponse(new ArrayList<>());
 
+    if (role.equals(Role.CUSTOMER) && order.getProfessional() != null
+        && (order.getStatus().equals(Status.CONFIRMED) || order.getStatus().equals(Status.AWAITING_PAYMENT))) {
+      try {
+        BigDecimal fee = tripService.applyCancelFee(order);
+        if (fee.signum() > 0) {
+          if (Boolean.TRUE.equals(order.getPixPaid())) {
+            asaasService.transferToProfessional(order.getProfessional(), fee, "Taxa de deslocamento #" + order.getId().toString().substring(0, 8));
+          }
+          notificationService.sendToUser(order.getProfessional(), true,
+              "O cliente cancelou depois que você saiu. Você recebe R$ " + fee.setScale(2) + " pelo deslocamento.");
+        }
+      } catch (Exception e) {
+        log.warn("Taxa de cancelamento não aplicada: {}", e.getMessage());
+      }
+    }
     if (order.getStatus().equals(Status.CONFIRMED) || order.getStatus().equals(Status.AWAITING_PAYMENT)) {
       try {
         transactionService.refundPayment(order);

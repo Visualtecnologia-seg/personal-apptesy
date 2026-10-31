@@ -28,6 +28,7 @@ public class AsaasWebhookController {
 
   private final TransactionRepository transactionRepository;
   private final OrderRepository orderRepository;
+  private final br.com.personalfighters.service.ExtrasService extrasService;
   private final NotificationService notificationService;
   private final AsaasService asaasService;
 
@@ -62,6 +63,10 @@ public class AsaasWebhookController {
       }
 
       Optional<Transaction> txOpt = transactionRepository.findByAsaasPaymentId(asaasPaymentId);
+      if (txOpt.isEmpty() && ("PAYMENT_RECEIVED".equals(event) || "PAYMENT_CONFIRMED".equals(event))
+          && extrasService.markPaidByPixId(asaasPaymentId)) {
+        return ResponseEntity.ok().build();
+      }
       if (txOpt.isEmpty()) {
         log.warn("Transaction not found for asaasPaymentId={}", asaasPaymentId);
         return ResponseEntity.ok().build();

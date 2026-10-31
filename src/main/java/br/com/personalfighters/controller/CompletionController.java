@@ -106,13 +106,21 @@ public class CompletionController {
   }
 
   @PostMapping("/orders/{id}/problem")
-  public ResponseEntity<?> problem(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+  public ResponseEntity<?> problem(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
     User me = userService.findAuthUser();
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isCustomer(o, me)) return bad("Pedido não encontrado.");
     if (Boolean.TRUE.equals(o.getPixReleased())) return bad("O pagamento já foi liberado. Use a garantia de 30 dias.");
     String reason = Objects.toString(body.get("reason"), "").trim();
     if (reason.length() < 10) return bad("Conte com mais detalhes o que aconteceu.");
+    Object photos = body.get("photos");
+    if (photos instanceof List) {
+      int n = 0;
+      for (Object item : (List<?>) photos) {
+        if (n >= MAX_PHOTOS) break;
+        if (savePhoto(o.getId(), "PROBLEM", item)) n++;
+      }
+    }
     o.setDisputeStatus("OPEN");
     o.setDisputeReason(reason);
     o.setDisputedAt(completionService.now());

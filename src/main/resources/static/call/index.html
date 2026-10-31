@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>OPUS · Chamada</title>
+<style>
+  :root{--navy:#0B1530;--blue:#1D4ED8;--cyan:#22D3EE;--red:#DC2626}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--navy);color:#fff;font-family:Inter,system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+  #remote{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#0B1530}
+  #local{position:fixed;right:14px;top:calc(env(safe-area-inset-top,0px) + 96px);width:104px;height:150px;border-radius:16px;object-fit:cover;border:2px solid #fff;background:#1E293B;transform:scaleX(-1);z-index:3}
+  .shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 62%,rgba(0,0,0,.75) 100%);pointer-events:none;z-index:1}
+  header{position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 18px);z-index:4;display:flex;flex-direction:column;gap:4px}
+  #name{font-size:20px;font-weight:800;letter-spacing:-.2px}
+  #state{font-size:13px;color:#E2E8F0}
+  .rec{align-self:flex-start;margin-top:6px;display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(11,21,48,.6);font-size:11px;font-weight:700}
+  .dot{width:7px;height:7px;border-radius:50%;background:#22C55E}
+  #avatar{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);width:132px;height:132px;border-radius:50%;background:linear-gradient(135deg,#1D4ED8,#22D3EE);display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800;z-index:2;box-shadow:0 0 0 0 rgba(34,211,238,.6);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,211,238,.55)}70%{box-shadow:0 0 0 28px rgba(34,211,238,0)}100%{box-shadow:0 0 0 0 rgba(34,211,238,0)}}
+  #avatar.still{animation:none}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:4;display:flex;justify-content:center;gap:16px;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 28px)}
+  nav button{width:58px;height:58px;border-radius:50%;border:none;background:rgba(255,255,255,.2);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  nav button.off{background:#fff;color:var(--navy)}
+  nav button.end{background:var(--red)}
+  nav button svg{width:24px;height:24px}
+  #toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);background:rgba(11,21,48,.85);padding:10px 14px;border-radius:12px;font-size:13px;z-index:5;opacity:0;transition:opacity .25s;max-width:86%;text-align:center}
+  #toast.on{opacity:1}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<video id="remote" autoplay playsinline></video>
+<div class="shade"></div>
+<div id="avatar">?</div>
+<video id="local" autoplay playsinline muted class="hidden"></video>
+<header>
+  <div id="name">Chamada</div>
+  <div id="state">Preparando…</div>
+  <div class="rec"><span class="dot"></span>Chamada registrada no pedido · protege os dois lados</div>
+</header>
+<nav>
+  <button id="bMic" aria-label="Microfone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
+  <button id="bCam" aria-label="Câmera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg></button>
+  <button id="bFlip" aria-label="Virar câmera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><path d="M9 13a3 3 0 0 0 5.2 2M15 11a3 3 0 0 0-5.2-2"/></svg></button>
+  <button id="bShot" aria-label="Foto para o chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="4"/><path d="M5 7h3l2-3h4l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></svg></button>
+  <button id="bEnd" class="end" aria-label="Encerrar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-1.6 0-3.2.25-4.7.73v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.996.996 0 0 1 0-1.41C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.2 9.25 13.6 9 12 9z"/></svg></button>
+</nav>
+<div id="toast"></div>
+<script>
+(function(){
+  const q = new URLSearchParams(location.hash.slice(1));
+  const token = q.get('token'), callId = q.get('callId'), role = q.get('role');
+  const kind = q.get('kind') === 'audio' ? 'audio' : 'video';
+  const orderId = q.get('orderId'), userId = Number(q.get('userId')), userName = q.get('userName') || '';
+  const userRole = q.get('userRole') || 'CUSTOMER';
+  const other = q.get('name') || 'Contato';
+  const API = location.origin;
+  const $ = id => document.getElementById(id);
+  const post = m => { try { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch(e){} };
+
+  $('name').textContent = other;
+  $('avatar').textContent = (other.trim()[0] || '?').toUpperCase();
+  if (kind === 'audio') { ['bCam','bFlip','bShot'].forEach(id => $(id).classList.add('hidden')); }
+
+  let pc, local, lastId = 0, closed = false, timer = null, startedAt = null, facing = 'user', remoteSet = false, pending = [], answered = role === 'callee';
+
+  function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
+  function state(t){ $('state').textContent = t; }
+  async function api(path, opts){
+    opts = opts || {};
+    const r = await fetch(API + path, { method: opts.method || 'GET', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    if (r.status === 204) return null;
+    const d = await r.json().catch(() => null);
+    if (!r.ok) throw new Error((d && d.message) || ('Erro ' + r.status));
+    return d;
+  }
+  const send = (k, payload) => api('/calls/' + callId + '/signal', { method: 'POST', body: { kind: k, payload: JSON.stringify(payload) } }).catch(() => {});
+
+  function tick(){
+    if (!startedAt) return;
+    const s = Math.floor((Date.now() - startedAt) / 1000);
+    state((kind === 'audio' ? 'Áudio · ' : 'Vídeo · ') + Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'));
+  }
+
+  async function finish(reason, notify){
+    if (closed) return; closed = true;
+    clearInterval(timer);
+    if (notify) { send('bye', {}); await api('/calls/' + callId + '/end', { method: 'POST' }).catch(() => {}); }
+    try { pc && pc.close(); } catch(e){}
+    try { local && local.getTracks().forEach(t => t.stop()); } catch(e){}
+    state(reason || 'Chamada encerrada');
+    $('avatar').classList.add('still');
+    setTimeout(() => post({ type: 'ended', reason: reason || '' }), 900);
+  }
+
+  async function start(){
+    try {
+      local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: kind === 'video' ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 960 } } : false });
+    } catch (e) {
+      state('Sem acesso ao microfone/câmera');
+      toast('Permita o microfone e a câmera para o OPUS nas configurações do celular.');
+      post({ type: 'permission' });
+      return finish('Sem permissão', true);
+    }
+    if (kind === 'video') { $('local').srcObject = local; $('local').classList.remove('hidden'); }
+    let ice = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    try { ice = await api('/calls/ice'); } catch(e){}
+    pc = new RTCPeerConnection(ice);
+    local.getTracks().forEach(t => pc.addTrack(t, local));
+    pc.onicecandidate = e => { if (e.candidate) send('ice', e.candidate.toJSON ? e.candidate.toJSON() : e.candidate); };
+    pc.ontrack = e => {
+      const v = $('remote');
+      if (v.srcObject !== e.streams[0]) v.srcObject = e.streams[0];
+      if (kind === 'video') $('avatar').classList.add('hidden');
+    };
+    pc.onconnectionstatechange = () => {
+      const s = pc.connectionState;
+      if (s === 'connected') {
+        if (!startedAt) { startedAt = Date.now(); timer = setInterval(tick, 1000); tick(); post({ type: 'connected' }); }
+        $('avatar').classList.add('still');
+      } else if (s === 'failed') {
+        toast('A conexão falhou. Tente de novo pelo Wi-Fi.');
+        finish('Não foi possível conectar', true);
+      } else if (s === 'disconnected') {
+        state('Conexão instável…');
+      }
+    };
+    if (role === 'caller') {
+      state('Chamando…');
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      send('offer', pc.localDescription);
+    } else {
+      state('Conectando…');
+    }
+    poll();
+  }
+
+  async function poll(){
+    while (!closed) {
+      try {
+        const d = await api('/calls/' + callId + '/signal?after=' + lastId);
+        if (d) {
+          if (d.status === 'ACTIVE' && !answered) { answered = true; state('Conectando…'); }
+          for (const s of d.signals) {
+            lastId = Math.max(lastId, s.id);
+            const payload = JSON.parse(s.payload || '{}');
+            if (s.kind === 'offer' && role === 'callee') {
+              await pc.setRemoteDescription(payload); remoteSet = true;
+              for (const c of pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
+              const ans = await pc.createAnswer();
+              await pc.setLocalDescription(ans);
+              send('answer', pc.localDescription);
+            } else if (s.kind === 'answer' && role === 'caller') {
+              await pc.setRemoteDescription(payload); remoteSet = true;
+              for (const c of pending.splice(0)) await pc.addIceCandidate(c).catch(() => {});
+            } else if (s.kind === 'ice') {
+              if (remoteSet) await pc.addIceCandidate(payload).catch(() => {}); else pending.push(payload);
+            } else if (s.kind === 'bye') {
+              return finish('Chamada encerrada', false);
+            }
+          }
+          if (d.status === 'DECLINED') return finish('Chamada recusada', false);
+          if (d.status === 'MISSED') return finish('Não atendeu', false);
+          if (d.status === 'ENDED') return finish('Chamada encerrada', false);
+        }
+      } catch (e) { /* rede instável: tenta de novo */ }
+      await new Promise(r => setTimeout(r, startedAt ? 2500 : 900));
+    }
+  }
+
+  $('bEnd').onclick = () => finish('Chamada encerrada', true);
+  $('bMic').onclick = () => {
+    const t = local && local.getAudioTracks()[0]; if (!t) return;
+    t.enabled = !t.enabled; $('bMic').classList.toggle('off', !t.enabled); toast(t.enabled ? 'Microfone ligado' : 'Microfone desligado');
+  };
+  $('bCam').onclick = () => {
+    const t = local && local.getVideoTracks()[0]; if (!t) return;
+    t.enabled = !t.enabled; $('bCam').classList.toggle('off', !t.enabled); $('local').classList.toggle('hidden', !t.enabled);
+  };
+  $('bFlip').onclick = async () => {
+    try {
+      facing = facing === 'user' ? 'environment' : 'user';
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+      const nt = s.getVideoTracks()[0];
+      const sender = pc.getSenders().find(x => x.track && x.track.kind === 'video');
+      if (sender) await sender.replaceTrack(nt);
+      local.getVideoTracks().forEach(t => { t.stop(); local.removeTrack(t); });
+      local.addTrack(nt);
+      $('local').srcObject = local;
+      $('local').style.transform = facing === 'user' ? 'scaleX(-1)' : 'none';
+    } catch (e) { toast('Não foi possível virar a câmera.'); }
+  };
+  $('bShot').onclick = async () => {
+    const v = $('remote');
+    if (!v.videoWidth) { toast('Aguarde a imagem aparecer.'); return; }
+    const w = Math.min(720, v.videoWidth), h = Math.round(v.videoHeight * w / v.videoWidth);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(v, 0, 0, w, h);
+    const url = c.toDataURL('image/jpeg', 0.7);
+    try {
+      await api('/messages', { method: 'POST', body: { orderId: orderId, senderId: userId, senderName: userName, senderRole: userRole, messageType: 'IMAGE', imageUrl: url, text: '📸 Foto tirada durante a chamada' } });
+      toast('Foto salva no chat do pedido');
+    } catch (e) { toast('Não foi possível salvar a foto.'); }
+  };
+
+  window.addEventListener('message', ev => { if (ev.data === 'hangup') finish('Chamada encerrada', true); });
+  document.addEventListener('message', ev => { if (ev.data === 'hangup') finish('Chamada encerrada', true); });
+  start();
+})();
+</script>
+</body>
+</html>

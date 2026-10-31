@@ -33,6 +33,7 @@ public class CompletionService {
   private final AsaasService asaasService;
   private final NotificationService notificationService;
   private final PointsAwarder pointsAwarder;
+  private final ExtrasService extrasService;
 
   public LocalDateTime now() {
     return LocalDateTime.now(ZONE);
@@ -70,6 +71,7 @@ public class CompletionService {
       order.setPixReleased(true);
       order.setPaymentReleasedAt(now());
       orderRepository.save(order);
+      try { extrasService.release(order); } catch (Exception ex) { log.warn("Extras do pedido {} não liberados: {}", order.getId(), ex.getMessage()); }
       notificationService.sendPaymentReleasedToProfessional(order);
       log.info("Pagamento do pedido {} liberado ({})", order.getId(), why);
     } catch (Exception e) {

@@ -88,7 +88,68 @@ public class AsaasServiceImpl implements AsaasService {
   }
 
   @Override
+  public boolean isTestMode() {
+    return asaasApiKey == null || asaasApiKey.isBlank()
+        || asaasApiKey.contains("CHAVE_NAO") || asaasApiKey.contains("PLACEHOLDER");
+  }
+
+  @Override
+  public Map<String, String> createExtraCharge(User customer, BigDecimal value, String description) {
+    Map<String, String> out = new HashMap<>();
+    if (isTestMode()) {
+      out.put("id", "TESTE-" + java.util.UUID.randomUUID());
+      out.put("payload", "MODO TESTE");
+      return out;
+    }
+    WebClient client = buildClient();
+    Map<String, Object> body = new HashMap<>();
+    body.put("billingType", "PIX");
+    body.put("value", value.doubleValue());
+    body.put("dueDate", LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+    body.put("description", description);
+    String cid = createOrGetCustomer(customer);
+    if (cid != null) body.put("customer", cid);
+    Map resp = client.post().uri("/payments").bodyValue(body).retrieve().bodyToMono(Map.class).block();
+    if (resp == null || resp.get("id") == null) throw new RuntimeException("Erro ao gerar PIX. Tente novamente.");
+    String id = (String) resp.get("id");
+    out.put("id", id);
+    try {
+      Map qr = client.get().uri("/payments/" + id + "/pixQrCode").retrieve().bodyToMono(Map.class).block();
+      if (qr != null) {
+        out.put("payload", (String) qr.get("payload"));
+        out.put("encodedImage", (String) qr.get("encodedImage"));
+      }
+    } catch (Exception e) {
+      log.error("Erro ao obter QR Code PIX extra: {}", e.getMessage());
+    }
+    return out;
+  }
+
+  @Override
+  public boolean transferToProfessional(User professional, BigDecimal value, String description) {
+    if (professional == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
+    if (isTestMode()) {
+      log.info("Modo de teste: transferência de R$ {} para {} apenas registrada", value, professional.getId());
+      return true;
+    }
+    if (professional.getPixKey() == null || professional.getPixKey().isBlank()) return false;
+    Map<String, Object> body = new HashMap<>();
+    body.put("value", value.doubleValue());
+    body.put("pixAddressKey", professional.getPixKey());
+    body.put("pixAddressKeyType", professional.getPixKeyType() != null ? professional.getPixKeyType() : "CPF");
+    body.put("description", description);
+    try {
+      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block();
+      return true;
+    } catch (Exception e) {
+      log.error("Erro ao transferir PIX avulso: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  @Override
   public Transaction createPixCharge(Order order) {
+    if (isTestMode()) return createTestCharge(order);
     WebClient client = buildClient();
     User customer = order.getCustomer();
     String asaasCustomerId = createOrGetCustomer(customer);
@@ -176,8 +237,54 @@ public class AsaasServiceImpl implements AsaasService {
     return transactionRepository.save(transaction);
   }
 
+  /** PIX simulado: a cobrança existe só no OPUS e é paga pelo botão "Simular pagamento". */
+  private Transaction createTestCharge(Order order) {
+    Optional<Transaction> existing = transactionRepository.findTransactionByOrderId(order.getId());
+    if (existing.isPresent()) return existing.get();
+    BigDecimal discount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+    BigDecimal charged = order.getTotalCost().subtract(discount).max(BigDecimal.ONE);
+    BigDecimal professionalValue = order.getServiceValue() != null
+        ? order.getServiceValue()
+        : br.com.personalfighters.util.Pricing.serviceFromTotal(order.getTotalCost());
+    Transaction t = Transaction.builder()
+        .paymentStatus(PaymentStatus.AUTHORIZED)
+        .paymentType(PaymentType.PIX)
+        .asaasPaymentId("TESTE-" + order.getId())
+        .pixCopyPaste("MODO TESTE — use o botão Simular pagamento")
+        .pixExpiresAt(LocalDateTime.now().plusDays(1))
+        .totalPaid(charged)
+        .creditCardValue(BigDecimal.ZERO)
+        .customerBalanceValue(BigDecimal.ZERO)
+        .appTaxPercentage(new BigDecimal(APP_TAX_PERCENTAGE))
+        .appTaxValue(charged.subtract(professionalValue))
+        .professionalValue(professionalValue)
+        .processingCost(BigDecimal.ZERO)
+        .paymentMdrTax(BigDecimal.ZERO)
+        .paymentMdrValue(BigDecimal.ZERO)
+        .paymentTotalCost(BigDecimal.ZERO)
+        .appProfit(BigDecimal.ZERO)
+        .order(order)
+        .customer(order.getCustomer())
+        .billingOrderDate(LocalDate.now())
+        .orderIsDone(false)
+        .professionalIsPaid(false)
+        .build();
+    return transactionRepository.save(t);
+  }
+
   @Override
   public void releasePaymentToProfessional(Order order) {
+    if (isTestMode()) {
+      transactionRepository.findTransactionByOrderId(order.getId()).ifPresent(t -> {
+        t.setProfessionalIsPaid(true);
+        t.setProfessionalPaymentDate(LocalDate.now());
+        t.setPaymentStatus(PaymentStatus.PAID);
+        t.setProfessional(order.getProfessional());
+        transactionRepository.save(t);
+      });
+      log.info("Modo de teste: liberação do pedido {} apenas registrada", order.getId());
+      return;
+    }
     User professional = order.getProfessional();
     if (professional == null) {
       log.warn("Pedido {} não tem profissional vinculado para receber pagamento", order.getId());
