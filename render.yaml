@@ -1,0 +1,39 @@
+databases:
+  - name: opus-db
+    plan: free
+    databaseName: opus
+    user: opus
+
+services:
+  - type: web
+    name: opus-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: PORT
+        value: "8080"
+      - key: DB_HOST
+        fromDatabase: { name: opus-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: opus-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: opus-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: opus-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: opus-db, property: password }
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: ASAAS_API_KEY
+        sync: false
