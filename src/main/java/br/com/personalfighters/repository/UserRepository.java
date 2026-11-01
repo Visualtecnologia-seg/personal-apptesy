@@ -20,7 +20,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   User findByProfessionalReference(String ref);
 
-  @Query(value = "select u from User u left join u.role roles where "
+  @Query(value = "select u from User u left join u.role roles where u.username not like 'painel:%' and "
                       + "(:#{#user.name} is null or lower(u.name) like %:#{#user.name}%) "
                       + "and (:#{#user.username} is null or u.username = :#{#user.username}) "
                       + "and (:#{#user.email} is null or u.email like :#{#user.email}) "
