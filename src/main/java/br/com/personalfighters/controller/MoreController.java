@@ -253,6 +253,18 @@ public class MoreController {
     return out;
   }
 
+  // ───────────── Online / offline do profissional ─────────────
+
+  /** O app manda o id, mas o servidor sempre usa o profissional logado (ninguém muda o status de outro). */
+  @PutMapping("/professionals/{id}/online-status")
+  public ResponseEntity<?> onlineStatus(@PathVariable Long id, @RequestBody Map<String, Object> b) {
+    User me = userService.findAuthUser();
+    boolean on = Boolean.parseBoolean(Objects.toString(b.get("isOnline"), "false"));
+    int n = jdbc.update("UPDATE professional_ SET is_online = ? WHERE id = (SELECT professional_id FROM user_ WHERE id = ?)", on, me.getId());
+    if (n == 0) return bad("Só profissionais podem ficar online.");
+    return ResponseEntity.ok(Map.of("online", on));
+  }
+
   // ───────────── Mapa de calor da demanda ─────────────
 
   @GetMapping("/pro/demand-map")
