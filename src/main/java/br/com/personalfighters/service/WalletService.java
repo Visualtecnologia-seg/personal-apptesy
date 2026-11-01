@@ -40,6 +40,10 @@ public class WalletService {
       amount = tx.get().getProfessionalValue();
     }
     if (amount == null || amount.signum() <= 0) return;
+    // Etapas já liberadas saem do valor final
+    BigDecimal staged = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind = 'STAGE'", BigDecimal.class, order.getId());
+    if (staged != null) amount = amount.subtract(staged);
+    if (amount.signum() <= 0) return;
     Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM wallet_entry_ WHERE order_id = ? AND kind = 'CREDIT'", Integer.class, order.getId());
     if (exists != null && exists > 0) return;
     jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at) VALUES (?, ?, 'CREDIT', ?, ?, 'DONE', ?, ?)",
@@ -55,8 +59,16 @@ public class WalletService {
     });
   }
 
+  /** Libera uma etapa do serviço para a carteira (pagamento por etapas). */
+  public void creditStage(Order order, int idx, BigDecimal amount) {
+    User pro = order.getProfessional();
+    if (pro == null || amount == null || amount.signum() <= 0) return;
+    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at) VALUES (?, ?, 'STAGE', ?, ?, 'DONE', ?, ?)",
+        UUID.randomUUID(), pro.getId(), amount, order.getId(), "Etapa " + idx + " aprovada", Timestamp.valueOf(now()));
+  }
+
   public BigDecimal available(Long proId) {
-    BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'CREDIT' AND status = 'DONE'", BigDecimal.class, proId);
+    BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND status = 'DONE'", BigDecimal.class, proId);
     BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status <> 'FAILED'", BigDecimal.class, proId);
     return (in == null ? BigDecimal.ZERO : in).subtract(out == null ? BigDecimal.ZERO : out);
   }

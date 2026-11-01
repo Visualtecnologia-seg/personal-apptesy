@@ -153,7 +153,7 @@ public class ProDayController {
   }
 
   private BigDecimal sum(Long pro, LocalDateTime a, LocalDateTime b) {
-    BigDecimal v = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'CREDIT' AND created_at >= ? AND created_at < ?",
+    BigDecimal v = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND created_at >= ? AND created_at < ?",
         BigDecimal.class, pro, Timestamp.valueOf(a), Timestamp.valueOf(b));
     return v == null ? BigDecimal.ZERO : v;
   }
