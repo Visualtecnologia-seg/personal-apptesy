@@ -146,9 +146,11 @@ public class SosController {
             "u.name, u.phone_number AS phone, u.gender, ec.name AS \"contactName\", ec.phone AS \"contactPhone\", " +
             "o.service_address AS \"serviceAddress\", o.status AS \"orderStatus\", " +
             "CASE WHEN o.customer_id = s.user_id THEN p.name ELSE c.name END AS \"otherName\", " +
-            "CASE WHEN o.customer_id = s.user_id THEN p.phone_number ELSE c.phone_number END AS \"otherPhone\" " +
+            "CASE WHEN o.customer_id = s.user_id THEN p.phone_number ELSE c.phone_number END AS \"otherPhone\", " +
+            "CASE WHEN o.customer_id = s.user_id THEN p.id ELSE c.id END AS \"otherId\", " +
+            "CASE WHEN o.customer_id = s.user_id THEN 'cliente' ELSE 'profissional' END AS \"role\", pr.name AS \"service\" " +
             "FROM protection_session_ s JOIN user_ u ON u.id = s.user_id LEFT JOIN emergency_contact_ ec ON ec.user_id = s.user_id " +
-            "LEFT JOIN order_ o ON o.id = s.order_id LEFT JOIN user_ p ON p.id = o.professional_id LEFT JOIN user_ c ON c.id = o.customer_id " +
+            "LEFT JOIN order_ o ON o.id = s.order_id LEFT JOIN user_ p ON p.id = o.professional_id LEFT JOIN user_ c ON c.id = o.customer_id LEFT JOIN product_ pr ON pr.id = o.product_id " +
             "WHERE s.level >= 3 " + (all ? "" : "AND s.active = TRUE ") + "ORDER BY s.started_at DESC LIMIT 100");
     for (Map<String, Object> r : rows) {
       r.put("audios", jdbc.queryForList("SELECT id, created_at AS \"createdAt\" FROM protection_audio_ WHERE session_id = ? ORDER BY created_at", r.get("id")));

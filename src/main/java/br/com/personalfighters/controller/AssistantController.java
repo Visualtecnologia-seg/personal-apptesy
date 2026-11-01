@@ -131,7 +131,8 @@ public class AssistantController {
     for (Map<String, Object> i : castItems(notifications().get("items"))) {
       if (need.size() >= 4) break;
       need.add(String.valueOf(i.get("title")).toLowerCase(Locale.ROOT).startsWith("sos") ? "**" + i.get("title") + "**" : String.valueOf(i.get("title")).toLowerCase(Locale.ROOT));
-      if (acts.size() < 3) acts.add(act(String.valueOf(i.get("title")).length() > 28 ? "Abrir " + String.valueOf(i.get("kind")).toLowerCase() : String.valueOf(i.get("title")), String.valueOf(i.get("go")), i.get("arg")));
+      String lbl = Map.of("SOS", "Abrir SOS", "DISPUTE", "Abrir disputa", "VERIFY", "Ver documentos", "SUPPORT", "Abrir suporte", "WITHDRAW", "Ver saque", "CERT", "Ver certificados").getOrDefault(String.valueOf(i.get("kind")), "Abrir");
+      if (acts.size() < 3 && acts.stream().noneMatch(a -> lbl.equals(a.get("label")))) acts.add(act(lbl, String.valueOf(i.get("go")), i.get("arg")));
     }
     t.append(need.isEmpty() ? " Nada urgente agora." : " Precisa de você: " + String.join(", ", need) + ".");
     return reply(t.toString(), acts);
@@ -425,5 +426,20 @@ public class AssistantController {
     if (has(t, " ponto", " pontos")) return reply("Os clientes ganham **pontos** a cada serviço pago e trocam por desconto (cada 10 pontos = R$ 1). A reserva para cobrir os pontos aparece em Financeiro.", List.of(act("Abrir Financeiro", "fin", null)));
     if (has(t, " taxa")) return reply("A OPUS cobra **5% em cima do valor do serviço**, pagos pelo cliente. O profissional recebe 100% do que cobrou.", List.of());
     return null;
+  }
+
+  // ───────────── apoio às telas novas ─────────────
+
+  @GetMapping("/orders/{id}/stages")
+  public List<Map<String, Object>> orderStages(@PathVariable UUID id) {
+    return q("SELECT s.idx, s.percent, s.label, s.status, ROUND(COALESCE(o.service_value, o.total_cost/1.05) * s.percent / 100.0, 2) AS value " +
+        "FROM order_stage_ s JOIN order_ o ON o.id = s.order_id WHERE s.order_id = ? ORDER BY s.idx", id);
+  }
+
+  @GetMapping("/chat/audio/{id}")
+  public org.springframework.http.ResponseEntity<byte[]> chatAudio(@PathVariable UUID id) {
+    List<Map<String, Object>> r = q("SELECT content_type, data FROM chat_audio_ WHERE id = ?", id);
+    if (r.isEmpty()) return org.springframework.http.ResponseEntity.notFound().build();
+    return org.springframework.http.ResponseEntity.ok().contentType(org.springframework.http.MediaType.parseMediaType(Objects.toString(r.get(0).get("content_type"), "audio/m4a"))).body((byte[]) r.get(0).get("data"));
   }
 }
