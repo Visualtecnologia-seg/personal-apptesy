@@ -100,7 +100,7 @@ $('doLogin').onclick = async () => {
 };
 $('p').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
 
-const NAV = [['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],['fin','Financeiro'],['social','Rede social'],['avisos','Avisos'],['cupons','Cupons'],['parceiros','Lojas e seguros'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],['config','Configurações'],['equipe','Equipe']];
+const NAV = [['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],['fin','Financeiro'],['social','Rede social'],['avisos','Avisos'],['cupons','Cupons'],['parceiros','Lojas e seguros'],['certs','Certificados'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],['config','Configurações'],['equipe','Equipe']];
 let cur = 'inicio', counts = {}, timer = null, lastSos = 0;
 function navHtml(){ $('nav').innerHTML = NAV.map(([k,l,c]) => `<a href="#${k}" class="${k===cur?'on':''}" onclick="go('${k}');return false">${l}<span class="bd ${k==='sos'?'red':''}" id="bd-${k}"></span></a>`).join(''); paintBadges(); }
 function paintBadges(){ const map={verif:counts.verifications,suporte:(counts.support||0)+(counts.disputes||0),sos:counts.sos}; for(const k in map){ const el=$('bd-'+k); if(!el) continue; el.textContent=map[k]||''; el.style.display=map[k]?'flex':'none'; } }
@@ -203,6 +203,12 @@ const VIEWS = {
       <div class="card"><h2 style="font-size:17px;margin-bottom:10px">Enviados</h2>${rows.map(b=>`<div style="padding:10px 0;border-bottom:1px solid #F1F5F9"><div style="font-size:14px">${esc(b.text)}</div><div class="muted">${fmt(b.createdAt)} · ${{ALL:'Todos',CUSTOMERS:'Clientes',PROFESSIONALS:'Profissionais'}[b.audience]} · ${b.sentCount} pessoas · ${esc(b.adminName||'')}</div></div>`).join('')||'<div class="muted">Nenhum aviso enviado.</div>'}</div></div>`);
   },
 
+  async certs(){
+    let rows=[]; try { rows = await api('/admin/certificates?status=PENDING'); } catch(e){}
+    V(head('Certificados dos profissionais','CREF, cursos e registros: aprovados aparecem como selo no perfil')+`<div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Profissional</th><th>Certificado</th><th>Número</th><th>Foto</th><th></th></tr></thead><tbody>
+      ${rows.map(c=>`<tr><td><b>${esc(c.proName)}</b></td><td>${esc(c.title)}</td><td>${esc(c.number||'—')}</td><td>${c.hasPhoto?`<a href="#" onclick="certPhoto('${c.id}');return false">Ver foto</a>`:'—'}</td><td><button class="ok" onclick="reviewCert('${c.id}',true)">Aprovar</button> <button class="danger" onclick="reviewCert('${c.id}',false)">Recusar</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nenhum certificado esperando.</td></tr>'}
+    </tbody></table></div></div>`);
+  },
   async parceiros(){
     let d={stores:[],plans:[],interest:[],leads:[]}; try { d = await api('/admin/partners'); } catch(e){}
     const im={}; (d.interest||[]).forEach(x=>im[x.plan]=x.n);
@@ -311,6 +317,8 @@ async function sosAck(id, close){ const note=($('note-'+id)||{}).value||''; if(c
 async function exportCsv(){ try{ const u=await blob('/admin/finance/export.csv'); const a=document.createElement('a'); a.href=u; a.download='opus-financeiro.csv'; a.click(); }catch(e){ alert(e.message); } }
 async function delPost(id){ const reason=prompt('Motivo (o profissional é avisado):','Conteúdo impróprio'); if(reason===null) return; try{ await api('/admin/posts/'+id+'?reason='+encodeURIComponent(reason),{method:'DELETE'}); VIEWS.social(); }catch(e){ alert(e.message); } }
 async function sendBroadcast(){ const text=$('btxt').value.trim(), audience=$('aud').value; if(!text) return; if(!confirm('Enviar para '+$('aud').selectedOptions[0].text.toLowerCase()+'?')) return; try{ const r=await api('/admin/broadcast',{method:'POST',body:JSON.stringify({text,audience})}); alert('Aviso enviado para '+r.sent+' pessoas.'); VIEWS.avisos(); }catch(e){ $('bmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function reviewCert(id,ok){ const note= ok?'':prompt('Motivo da recusa:')||''; try{ await api('/admin/certificates/'+id+'/review',{method:'POST',body:JSON.stringify({approve:ok,note})}); VIEWS.certs(); }catch(e){ alert(e.message); } }
+async function certPhoto(id){ try{ window.open(await blob('/admin/certificates/'+id+'/photo')); }catch(e){ alert('Não foi possível abrir.'); } }
 async function saveStore(){ try{ await api('/admin/partners/stores',{method:'POST',body:JSON.stringify({name:$('sn').value,category:$('sc').value,whatsapp:$('sw').value,address:$('sa').value,lat:$('slat').value,lng:$('slng').value,couponCode:$('scc').value,couponText:$('sct').value,hours:$('sh').value})}); VIEWS.parceiros(); }catch(e){ $('smsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function delStore(id){ if(!confirm('Remover esta loja?')) return; try{ await api('/admin/partners/stores/'+id,{method:'DELETE'}); VIEWS.parceiros(); }catch(e){ alert(e.message); } }
 async function savePlan(){ try{ await api('/admin/partners/plans',{method:'POST',body:JSON.stringify({audience:$('pa').value,title:$('pt').value,kind:$('pk').value,partner:$('pp').value,price:$('pv').value,link:$('pl').value,coverage:$('pc').value})}); VIEWS.parceiros(); }catch(e){ $('pmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
