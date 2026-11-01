@@ -27,6 +27,7 @@ public class OrderController {
 
   private final OrderService orderService;
   private final AsaasService asaasService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
@@ -45,9 +46,20 @@ public class OrderController {
   @PostMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva uma nova order")
-  public void save(@RequestBody Order order) {
-    /* TODO Verificar o motivo do pedido não retornar corretamente. Foi colocado como void provisoriamente */
+  public Map<String, Object> save(@RequestBody Order order, @RequestParam(value = "mode", required = false) String mode) {
+    if (order.getProfessional() != null && order.getProfessional().getId() != null && order.getCustomer() != null && order.getCustomer().getId() != null) {
+      Long blocked = jdbc.queryForObject("SELECT COUNT(*) FROM pro_blocked_client_ WHERE professional_id = ? AND client_id = ?", Long.class,
+          order.getProfessional().getId(), order.getCustomer().getId());
+      if (blocked != null && blocked > 0) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Este profissional não está disponível para você. Escolha outro profissional.");
+    }
     orderService.save(order);
+    if (order.getId() != null && mode != null && java.util.Arrays.asList("HOME", "PRO_PLACE", "ONLINE").contains(mode.toUpperCase())) {
+      jdbc.update("UPDATE order_ SET service_mode = ? WHERE id = ?", mode.toUpperCase(), order.getId());
+    }
+    Map<String, Object> out = new java.util.LinkedHashMap<>();
+    out.put("id", order.getId());
+    out.put("status", order.getStatus());
+    return out;
   }
 
   /*

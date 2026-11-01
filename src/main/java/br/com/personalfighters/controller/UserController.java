@@ -24,6 +24,7 @@ public class UserController {
   private final UserService userService;
   private final br.com.personalfighters.service.AreaService areaService;
   private final UserRecordsService userRecordsService;
+  private final ProGrowthController proGrowthController;
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
@@ -164,6 +165,11 @@ public class UserController {
       if (seen.contains(id)) continue;
       try { User u = userService.findById(id); if (u != null && u.getProfessional() != null && Boolean.TRUE.equals(u.getActive())) out.add(u); } catch (Exception ignored) { }
     }
+    // destaque pago aparece primeiro
+    try {
+      java.util.Set<Long> boosted = new java.util.HashSet<>(proGrowthController.boostedIds());
+      out.sort((a, b) -> Boolean.compare(boosted.contains(b.getId()), boosted.contains(a.getId())));
+    } catch (Exception ignored) { }
     return out;
   }
 
