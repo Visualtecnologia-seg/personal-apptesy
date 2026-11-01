@@ -56,7 +56,7 @@ public class AreaController {
     jdbc.update("INSERT INTO professional_area_ (professional_id, mode, center_lat, center_lng, center_label, radius_km, neighborhoods, service_modes, place_address, place_lat, place_lng, weekly_goal, updated_at) " +
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (professional_id) DO UPDATE SET mode = EXCLUDED.mode, center_lat = EXCLUDED.center_lat, center_lng = EXCLUDED.center_lng, " +
             "center_label = EXCLUDED.center_label, radius_km = EXCLUDED.radius_km, neighborhoods = EXCLUDED.neighborhoods, service_modes = EXCLUDED.service_modes, " +
-            "place_address = EXCLUDED.place_address, place_lat = EXCLUDED.place_lat, place_lng = EXCLUDED.place_lng, weekly_goal = EXCLUDED.weekly_goal, updated_at = EXCLUDED.updated_at",
+            "place_address = EXCLUDED.place_address, place_lat = EXCLUDED.place_lat, place_lng = EXCLUDED.place_lng, weekly_goal = COALESCE(EXCLUDED.weekly_goal, professional_area_.weekly_goal), updated_at = EXCLUDED.updated_at",
         me.getId(), mode, num(b.get("centerLat")), num(b.get("centerLng")), str(b.get("centerLabel"), 160), radius,
         str(b.get("neighborhoods"), 4000), modes, str(b.get("placeAddress"), 255), num(b.get("placeLat")), num(b.get("placeLng")),
         b.get("weeklyGoal") == null || Objects.toString(b.get("weeklyGoal")).isBlank() ? null : AreaService.bd(b.get("weeklyGoal"), "0"),
