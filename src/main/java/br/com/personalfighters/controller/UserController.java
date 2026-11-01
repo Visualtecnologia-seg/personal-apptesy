@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
   private final UserService userService;
+  private final br.com.personalfighters.service.AreaService areaService;
   private final UserRecordsService userRecordsService;
 
   @GetMapping
@@ -147,8 +148,23 @@ public class UserController {
   @ApiOperation(value = "Retorna profissionais próximos num raio especificado.")
   public Object nearbyProfessionals(@RequestParam double lat,
                                     @RequestParam double lng,
-                                    @RequestParam(defaultValue = "20") double radiusKm) {
-    return userService.nearbyProfessionals(lat, lng, radiusKm);
+                                    @RequestParam(defaultValue = "20") double radiusKm,
+                                    @RequestParam(required = false) String neighborhood) {
+    java.util.List<User> base = userService.nearbyProfessionals(lat, lng, Math.max(radiusKm, 60));
+    java.util.List<User> out = new java.util.ArrayList<>();
+    java.util.Set<Long> seen = new java.util.HashSet<>();
+    for (User u : base) {
+      Boolean ok = areaService.covers(u, lat, lng, neighborhood);
+      boolean inRadius = u.getLatitude() != null && u.getLongitude() != null
+          && br.com.personalfighters.service.AreaService.km(lat, lng, u.getLatitude(), u.getLongitude()) <= radiusKm;
+      if (Boolean.TRUE.equals(ok) || (ok == null && inRadius)) { out.add(u); seen.add(u.getId()); }
+    }
+    // profissionais em viagem para esta região aparecem também
+    for (Long id : areaService.travellersNear(lat, lng)) {
+      if (seen.contains(id)) continue;
+      try { User u = userService.findById(id); if (u != null && u.getProfessional() != null && Boolean.TRUE.equals(u.getActive())) out.add(u); } catch (Exception ignored) { }
+    }
+    return out;
   }
 
 }
