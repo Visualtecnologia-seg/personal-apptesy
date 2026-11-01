@@ -372,43 +372,7 @@ public class AdminController {
 
   // ───────────── Equipe ─────────────
 
-  @GetMapping("/team")
-  public List<Map<String, Object>> team() {
-    return jdbc.queryForList("SELECT u.id, u.name, u.username, u.email FROM user_ u JOIN user_role r ON r.user_id = u.id WHERE r.role = 'ADMIN' ORDER BY u.name");
-  }
-
-  @PostMapping("/team")
-  @Transactional
-  public ResponseEntity<?> addAdmin(@RequestBody Map<String, Object> body) {
-    User admin = userService.findAuthUser();
-    String key = Objects.toString(body.get("username"), "").trim();
-    User u = userRepository.findByUsername(key);
-    if (u == null) u = userRepository.findByEmail(key);
-    if (u == null) return bad("Não achamos ninguém com esse usuário ou e-mail. A pessoa precisa se cadastrar no app antes.");
-    List<Role> roles = u.getRole() == null ? new ArrayList<>() : new ArrayList<>(u.getRole());
-    if (!roles.contains(Role.ADMIN)) {
-      roles.add(Role.ADMIN);
-      u.setRole(roles);
-      userRepository.save(u);
-    }
-    settings.audit(admin, "TEAM_ADD", u.getUsername(), null);
-    return ResponseEntity.ok(team());
-  }
-
-  @DeleteMapping("/team/{id}")
-  @Transactional
-  public ResponseEntity<?> removeAdmin(@PathVariable Long id) {
-    User admin = userService.findAuthUser();
-    if (admin.getId().equals(id)) return bad("Você não pode tirar o seu próprio acesso.");
-    User u = userRepository.findById(id).orElse(null);
-    if (u == null) return bad("Usuário não encontrado.");
-    List<Role> roles = new ArrayList<>(u.getRole());
-    roles.remove(Role.ADMIN);
-    u.setRole(roles);
-    userRepository.save(u);
-    settings.audit(admin, "TEAM_REMOVE", u.getUsername(), null);
-    return ResponseEntity.ok(team());
-  }
+  // Equipe: veja PanelAuthController (acesso do painel separado do app)
 
   @GetMapping("/actions")
   public List<Map<String, Object>> actions() {

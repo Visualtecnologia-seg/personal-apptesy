@@ -1,5 +1,7 @@
 package br.com.personalfighters.controller.auth;
 
+import br.com.personalfighters.controller.PanelAuthController;
+
 import br.com.personalfighters.entity.LoginHistory;
 import br.com.personalfighters.entity.User;
 import br.com.personalfighters.entity.auth.AuthRequest;
@@ -58,6 +60,10 @@ public class AuthenticationController {
       HttpServletResponse response) throws Exception {
 
     String email = authenticationRequest.getUsername();
+    // Acesso do painel é separado: essas contas não entram pelo app
+    if (email != null && (email.trim().toLowerCase().startsWith(PanelAuthController.PREFIX) || email.trim().toLowerCase().endsWith(PanelAuthController.DOMAIN))) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciais inválidas.", "message", "Credenciais inválidas."));
+    }
     String ip    = getClientIp(request);
     String ua    = request.getHeader("User-Agent");
 

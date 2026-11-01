@@ -79,8 +79,9 @@
 <body>
 <section id="loginBox" class="login hidden">
   <div class="side"><div class="row" style="gap:12px"><div class="brand" style="padding:0"><div class="logo">O</div></div><b>OPUS</b></div><div><h2 style="font-size:30px;line-height:1.25;margin-bottom:14px">Tudo da OPUS<br>num só lugar.</h2><p>Pedidos, pagamentos no cofre, disputas, verificações e a equipe. Entre com sua conta de administrador.</p></div><small style="color:#7FA6E8">Painel administrativo</small></div>
-  <div class="box"><h2 style="font-size:24px">Entrar no painel</h2><div class="muted">Use seu usuário ou e-mail de administrador.</div>
-  <div><label for="u">Usuário ou e-mail</label><input id="u" autocomplete="username" style="height:46px"></div>
+  <div class="box"><h2 style="font-size:24px" id="lgTitle">Entrar no painel</h2><div class="muted" id="lgSub">Use o login do painel. Ele é separado da conta do app.</div>
+  <div id="codeBox" class="hidden"><label for="sc">Código de primeiro acesso</label><input id="sc" inputmode="numeric" autocomplete="one-time-code" style="height:46px"></div>
+  <div><label for="u">Login do painel</label><input id="u" autocomplete="username" autocapitalize="none" style="height:46px"></div>
   <div><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password" style="height:46px"></div>
   <button id="doLogin" class="primary">Entrar</button>
   <div id="loginMsg" class="msg hidden"></div></div>
@@ -90,7 +91,7 @@
     <div class="brand"><div class="logo">O</div><div><b>OPUS</b><small>Painel administrativo</small></div></div>
     <nav id="nav" aria-label="Menu do painel"></nav>
     <div style="flex:1"></div>
-    <div class="me"><div class="av" id="meAv">A</div><div style="min-width:0"><div class="nm" id="meNm">Administrador</div><small>Administrador</small></div><button id="logout" title="Sair" aria-label="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></button></div>
+    <div class="me"><div class="av" id="meAv">A</div><div style="min-width:0"><div class="nm" id="meNm">Administrador</div><small>Painel OPUS</small></div><button id="logout" title="Sair" aria-label="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></button></div>
   </aside>
   <main>
     <div class="sosbar" id="sosbar" role="alert"><span style="font-size:22px">🆘</span><span id="sostext">SOS ativo</span><button class="ghost" style="margin-left:auto" onclick="go('sos')">Ver agora</button></div>
@@ -106,19 +107,27 @@ const day = d => { if(!d) return '—'; try { return new Date(String(d).length<=
 let token = null; try { token = sessionStorage.getItem('opus_admin_token'); } catch(e) {}
 async function api(path, opts={}) {
   const r = await fetch(path, {...opts, headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{})}});
-  if ((r.status === 401 || r.status === 403) && path !== '/auth') { logout(); throw new Error('Sessão expirada ou sem permissão de administrador.'); }
+  if ((r.status === 401 || r.status === 403) && !path.startsWith('/panel-auth')) { logout(); throw new Error('Sessão expirada ou sem permissão de administrador.'); }
   const txt = await r.text(); let data; try { data = JSON.parse(txt); } catch(e) { data = txt; }
   if (!r.ok) throw new Error((data && data.message) || 'Erro '+r.status);
   return data;
 }
 async function blob(path){ const r = await fetch(path,{headers:{Authorization:'Bearer '+token}}); if(!r.ok) throw new Error('Erro '+r.status); return URL.createObjectURL(await r.blob()); }
-function logout(){ token=null; try{sessionStorage.removeItem('opus_admin_token');}catch(e){} $('app').classList.add('hidden'); $('loginBox').classList.remove('hidden'); }
+function logout(){ token=null; try{sessionStorage.removeItem('opus_admin_token');}catch(e){} $('app').classList.add('hidden'); $('loginBox').classList.remove('hidden'); checkSetup(); }
 $('logout').onclick = logout;
+let setupMode = false;
+async function checkSetup(){ try { const r = await fetch('/panel-auth/status'); const d = await r.json(); setupMode = !!d.needsSetup; } catch(e){}
+  $('codeBox').classList.toggle('hidden', !setupMode);
+  $('lgTitle').textContent = setupMode ? 'Criar o acesso do painel' : 'Entrar no painel';
+  $('lgSub').textContent = setupMode ? 'Primeira vez: digite o código que aparece no log do servidor (Render) e escolha um login e uma senha só para o painel.' : 'Use o login do painel. Ele é separado da conta do app.';
+  $('doLogin').textContent = setupMode ? 'Criar acesso e entrar' : 'Entrar'; }
 $('doLogin').onclick = async () => {
   $('loginMsg').classList.add('hidden');
   try {
-    const t = await api('/auth', {method:'POST', body: JSON.stringify({username:$('u').value.trim(), password:$('p').value})});
-    token = typeof t === 'string' ? t : (t.token || ''); try { sessionStorage.setItem('opus_admin_token', token); const nm=(t && (t.user&&t.user.name || t.name)) || $('u').value.trim().split('@')[0]; localStorage.setItem('opus_admin_name', nm); } catch(e) {}
+    const body = {login:$('u').value.trim(), password:$('p').value};
+    if (setupMode) { body.code = $('sc').value.trim(); await api('/panel-auth/setup', {method:'POST', body: JSON.stringify(body)}); }
+    const t = await api('/panel-auth/login', {method:'POST', body: JSON.stringify(body)});
+    token = t.token || ''; try { sessionStorage.setItem('opus_admin_token', token); } catch(e) {}
     start();
   } catch(e) { const m=$('loginMsg'); m.textContent=e.message||'Não foi possível entrar.'; m.className='msg p-bad'; }
 };
@@ -171,7 +180,7 @@ const VIEWS = {
   async inicio(range='week'){
     V(head('Visão geral','Carregando…')); let d; try { d = await api('/admin/dashboard?range='+range); } catch(e){ V(head('Visão geral',esc(e.message))); return; }
     const seg = ['day','week','month'].map(r=>`<button class="${r===range?'on':''}" onclick="VIEWS.inicio('${r}')">${{day:'Hoje',week:'Semana',month:'Mês'}[r]}</button>`).join('');
-    const hr=new Date().getHours(), hi=(hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite')+', '+esc(adminName().split(' ')[0]);
+    const hr=new Date().getHours(), hi=(hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite')+', Administrador';
     const [d1,c1]=delta(d.orders,d.ordersPrev),[d2,c2]=delta(+d.gmv,+d.gmvPrev),[d3,c3]=delta(+d.fee,+d.feePrev);
     const a=d.alerts||{};
     const al=[[a.sos,'pedido(s) de SOS ativos','sos','#DC2626'],[a.verifications,'documento(s) para aprovar','verif','#1D4ED8'],[a.disputes,'disputa(s) abertas','suporte','#B91C1C'],[a.support,'conversa(s) de suporte sem resposta','suporte','#B45309']].filter(x=>x[0]);
@@ -321,8 +330,9 @@ const VIEWS = {
   async equipe(){
     let team=[], acts=[]; try { [team, acts] = await Promise.all([api('/admin/team'), api('/admin/actions')]); } catch(e){}
     V(head('Equipe','Quem pode entrar no painel e tudo o que cada um fez')+`<div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><h2 style="font-size:17px;padding:10px 12px">Histórico de ações</h2><div class="wrap"><table><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Detalhe</th></tr></thead><tbody>${acts.map(a=>`<tr><td>${fmt(a.createdAt)}</td><td>${esc(a.adminName)}</td><td>${esc(a.action)} ${esc(a.target||'')}</td><td style="white-space:normal;max-width:320px">${esc(a.detail||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Nada registrado ainda.</td></tr>'}</tbody></table></div></div>
-      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Administradores</h2>${team.map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9"><div><b>${esc(t.name)}</b><div class="muted">${esc(t.email||t.username)}</div></div><button class="danger" onclick="removeAdmin(${t.id})">Tirar acesso</button></div>`).join('')}
-      <label for="na" style="margin-top:8px">Dar acesso a alguém (usuário ou e-mail do app)</label><div class="row"><input id="na" style="flex:1" placeholder="email@exemplo.com"><button class="primary" onclick="addAdmin()">Dar acesso</button></div><div id="tmsg"></div><div class="muted">A pessoa precisa já ter conta no app. Ela entra aqui com o mesmo login.</div></div></div>`);
+      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Acessos do painel</h2><div class="muted">Esses logins só entram no painel. Eles são separados das contas do app.</div>${team.filter(t=>t.active).map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9"><div class="row" style="gap:10px"><div class="ini">A</div><div><b>Administrador</b><div class="muted">login: ${esc(t.login)}</div></div></div><button class="danger" onclick="removeAdmin(${t.id})">Tirar acesso</button></div>`).join('')}
+      <h2 style="font-size:15px;margin-top:10px">Criar novo acesso</h2><div><label for="na">Login</label><input id="na" autocapitalize="none" placeholder="ex.: suporte.ana"></div><div><label for="np">Senha (mínimo 8 caracteres)</label><input id="np" type="password" autocomplete="new-password"></div><button class="primary" onclick="addAdmin()">Criar acesso</button><div id="tmsg"></div>
+      <h2 style="font-size:15px;margin-top:14px">Trocar minha senha</h2><div><label for="cp0">Senha atual</label><input id="cp0" type="password" autocomplete="current-password"></div><div><label for="cp1">Nova senha</label><input id="cp1" type="password" autocomplete="new-password"></div><button class="ghost" onclick="changePw()">Trocar senha</button><div id="pmsg"></div></div></div>`);
   },
 };
 
@@ -373,13 +383,14 @@ async function delPlan(id){ if(!confirm('Remover este plano?')) return; try{ awa
 async function createCoupon(){ try{ await api('/admin/coupons',{method:'POST',body:JSON.stringify({code:$('cc').value,description:$('cd').value,percent:$('cp').value,amount:$('ca').value,minOrder:$('cm').value,maxUses:$('cu').value,validUntil:$('cv').value})}); VIEWS.cupons(); }catch(e){ $('cmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function toggleCoupon(code){ try{ await api('/admin/coupons/'+encodeURIComponent(code)+'/toggle',{method:'PUT'}); VIEWS.cupons(); }catch(e){ alert(e.message); } }
 async function saveSettings(){ const body={}; window._settingKeys.forEach(k=>body[k]=$('s-'+k).value); try{ await api('/admin/settings',{method:'PUT',body:JSON.stringify(body)}); $('smsg').innerHTML='<span class="pill p-ok">Salvo</span>'; }catch(e){ $('smsg').innerHTML='<span class="pill p-bad">'+esc(e.message)+'</span>'; } }
-async function addAdmin(){ try{ await api('/admin/team',{method:'POST',body:JSON.stringify({username:$('na').value})}); VIEWS.equipe(); }catch(e){ $('tmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function addAdmin(){ try{ await api('/admin/team',{method:'POST',body:JSON.stringify({login:$('na').value,password:$('np').value})}); VIEWS.equipe(); }catch(e){ $('tmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function changePw(){ try{ await api('/admin/me/password',{method:'POST',body:JSON.stringify({current:$('cp0').value,password:$('cp1').value})}); $('pmsg').innerHTML='<div class="msg p-ok">Senha trocada.</div>'; $('cp0').value=$('cp1').value=''; }catch(e){ $('pmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function removeAdmin(id){ if(!confirm('Tirar o acesso desta pessoa ao painel?')) return; try{ await api('/admin/team/'+id,{method:'DELETE'}); VIEWS.equipe(); }catch(e){ alert(e.message); } }
 
-function adminName(){ try { return localStorage.getItem('opus_admin_name') || 'Administrador'; } catch(e){ return 'Administrador'; } }
+function adminName(){ return 'Administrador'; }
 document.addEventListener('keydown', e => { if (e.key==='Enter' && e.target && e.target.id==='gsearch') { const q=e.target.value.trim(); if(!q) return; cur='pedidos'; location.hash='pedidos'; navHtml(); VIEWS.pedidos('ALL', q); } });
-function start(){ const n=adminName(); $('meNm').textContent=n; $('meAv').textContent=(n.trim()[0]||'A').toUpperCase(); $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
-if (token) start(); else $('loginBox').classList.remove('hidden');
+function start(){  $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
+if (token) start(); else { $('loginBox').classList.remove('hidden'); checkSetup(); }
 </script>
 </body>
 </html>

@@ -32,7 +32,8 @@ public class AdminBootstrap implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    if (adminUsernames == null || adminUsernames.isBlank()) return;
+    // Desativado: o painel agora tem acesso próprio (PanelAuthController). Contas do app não viram administrador.
+    if (true) return;
     for (String raw : adminUsernames.split(",")) {
       String key = raw.trim();
       if (key.isEmpty()) continue;

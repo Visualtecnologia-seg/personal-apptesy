@@ -98,7 +98,12 @@ public class AuthenticationService {
       UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
       if (userDetails != null) {
-        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        // Só as contas do painel (login separado) têm poder de administrador
+        java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> auths = userDetails.getAuthorities();
+        if (username != null && !username.startsWith("painel:")) {
+          auths = auths.stream().filter(a -> !"ROLE_ADMIN".equals(a.getAuthority())).collect(java.util.stream.Collectors.toList());
+        }
+        return new UsernamePasswordAuthenticationToken(userDetails, null, auths);
       }
     }
     return null;
