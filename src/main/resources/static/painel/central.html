@@ -50,6 +50,7 @@
   .zoom{position:fixed;inset:0;background:rgba(2,6,23,.92);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
   .zoom img{max-width:100%;max-height:100%;object-fit:contain}
   .hidden{display:none !important}
+  .emb header{display:none!important}.emb body{background:transparent}
 </style>
 <style>
   .cols{display:grid;grid-template-columns:320px 1fr;gap:14px}
@@ -74,6 +75,7 @@
 </style>
 </head>
 <body>
+<script>/* embed-hide */ if (window.top !== window.self) document.documentElement.classList.add("emb");</script>
 <header>
   <h1>OPUS · Suporte e disputas</h1>
   <div class="row"><a href="/painel/" style="color:#fff;font-weight:700;text-decoration:none;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)">← Verificações</a></div>

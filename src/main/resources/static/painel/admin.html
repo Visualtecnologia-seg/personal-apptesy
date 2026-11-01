@@ -40,7 +40,7 @@
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:var(--muted);font-size:13px}
   .bars{display:flex;align-items:flex-end;gap:6px;height:190px}.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%}.bars i{display:block;width:100%;max-width:34px;border-radius:8px 8px 3px 3px;background:var(--blue)}.bars span{font-size:10px;color:var(--muted)}
   .info{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.info div{background:#F8FAFC;border-radius:10px;padding:9px 11px;font-size:13px}.info b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:2px}
-  .alert{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:#F8FAFC;text-decoration:none;color:var(--text);font-weight:600;font-size:14px}.alert i{width:10px;height:10px;border-radius:50%;display:block;flex-shrink:0}
+  .alert{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:#F8FAFC;text-decoration:none;color:var(--text);font-weight:600;font-size:14px}.alert span{white-space:nowrap}.alert i{width:10px;height:10px;border-radius:50%;display:block;flex-shrink:0}
   .sosbar{display:none;background:#DC2626;color:#fff;border-radius:14px;padding:14px 18px;font-weight:700;align-items:center;gap:12px;animation:blink 1s infinite}
   @keyframes blink{50%{background:#991B1B}}
   .hidden{display:none!important}
@@ -48,25 +48,49 @@
   .msg{padding:10px 12px;border-radius:10px;font-size:14px}
   .posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}.posts img{width:100%;height:180px;object-fit:cover;border-radius:12px;background:#E2E8F0}
   .map{height:520px;border-radius:16px;overflow:hidden}
-  iframe{width:100%;height:calc(100vh - 120px);border:none;border-radius:16px;background:#fff}
+  iframe{width:100%;height:calc(100vh - 140px);border:none;border-radius:16px;background:transparent}
   .tl{border-left:2px solid #E5E7EB;margin-left:6px;padding-left:14px;display:flex;flex-direction:column;gap:10px}.tl div{font-size:13px}.tl b{display:block}
   .chat{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto;background:#F8FAFC;border-radius:12px;padding:10px}.chat div{font-size:13px;padding:8px 10px;border-radius:10px;background:#fff;max-width:90%}.chat .sys{align-self:center;background:#FEF3C7;color:#92400E}.chat img{max-width:200px;border-radius:8px;display:block;margin-top:4px}
+
+  .brand .logo{width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;font-family:Montserrat;font-weight:800;color:#0B1F4D;font-size:18px;flex-shrink:0}
+  nav .grp{font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#7FA6E8;padding:14px 14px 6px}
+  nav a svg{width:18px;height:18px;flex-shrink:0}
+  nav a{padding:9px 14px}
+  nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+  .me{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:rgba(255,255,255,.08);margin-top:12px}
+  .me .av{width:34px;height:34px;border-radius:50%;background:#22D3EE;color:#0B1530;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+  .me .nm{font-size:13px;font-weight:700;color:#fff}.me small{font-size:11px;color:#93C5FD;display:block}
+  .me button{margin-left:auto;background:transparent;color:#BFDBFE;padding:6px 8px;border-radius:9px}.me button:hover{background:rgba(255,255,255,.12);color:#fff}
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.top h1{font-size:26px}.top .gs{width:320px;max-width:100%;height:44px;border:1px solid #DBE4F5;border-radius:12px;padding:0 14px 0 40px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%235B6474' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 13px center}
+  .seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:#fff;border:1px solid #DBE4F5}.seg button{height:36px;padding:0 14px;border-radius:9px;background:transparent;color:#334155;font-size:13px}.seg button.on{background:var(--navy);color:#fff}
+  .ini{width:38px;height:38px;border-radius:12px;background:#DBEAFE;color:#1E40AF;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+  .prow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F1F5F9;text-decoration:none;color:inherit}.prow:last-child{border-bottom:none}.prow:hover .pn{color:var(--blue)}
+  .pn{font-size:14px;font-weight:700}
+  main a{color:var(--blue)}
+  #view{display:flex;flex-direction:column;gap:18px}
+  .login{max-width:none;margin:0;min-height:100vh;display:grid;grid-template-columns:1fr 1fr;padding:0;border-radius:0;box-shadow:none;background:#fff}
+  .login .side{background:linear-gradient(160deg,#0B1F4D 0%,#10306F 60%,#1D4ED8 100%);color:#fff;padding:56px;display:flex;flex-direction:column;justify-content:space-between}
+  .login .side b{font-family:Montserrat;font-weight:800;letter-spacing:6px;font-size:26px}.login .side p{font-size:15px;color:#BFDBFE;max-width:380px;line-height:1.6}
+  .login .box{display:flex;flex-direction:column;justify-content:center;gap:16px;padding:56px;max-width:440px;width:100%;margin:0 auto}
+  .login .box button{height:48px}
+  @media(max-width:800px){.login{grid-template-columns:1fr}.login .side{display:none}}
 </style>
 </head>
 <body>
-<section id="loginBox" class="card login hidden">
-  <h2>Entrar no painel OPUS</h2>
-  <div><label for="u">Usuário ou e-mail</label><input id="u" autocomplete="username"></div>
-  <div><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password"></div>
+<section id="loginBox" class="login hidden">
+  <div class="side"><div class="row" style="gap:12px"><div class="brand" style="padding:0"><div class="logo">O</div></div><b>OPUS</b></div><div><h2 style="font-size:30px;line-height:1.25;margin-bottom:14px">Tudo da OPUS<br>num só lugar.</h2><p>Pedidos, pagamentos no cofre, disputas, verificações e a equipe. Entre com sua conta de administrador.</p></div><small style="color:#7FA6E8">Painel administrativo</small></div>
+  <div class="box"><h2 style="font-size:24px">Entrar no painel</h2><div class="muted">Use seu usuário ou e-mail de administrador.</div>
+  <div><label for="u">Usuário ou e-mail</label><input id="u" autocomplete="username" style="height:46px"></div>
+  <div><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password" style="height:46px"></div>
   <button id="doLogin" class="primary">Entrar</button>
-  <div id="loginMsg" class="msg hidden"></div>
+  <div id="loginMsg" class="msg hidden"></div></div>
 </section>
 <div class="layout hidden" id="app">
   <aside>
-    <div class="brand"><img src="/painel/logo.png" onerror="this.style.display='none'" alt="" style="width:36px;height:36px;border-radius:10px;background:#fff"><div><b>OPUS</b><small>Painel administrativo</small></div></div>
+    <div class="brand"><div class="logo">O</div><div><b>OPUS</b><small>Painel administrativo</small></div></div>
     <nav id="nav" aria-label="Menu do painel"></nav>
     <div style="flex:1"></div>
-    <button class="ghost" id="logout" style="background:rgba(255,255,255,.1);color:#fff;border:none">Sair</button>
+    <div class="me"><div class="av" id="meAv">A</div><div style="min-width:0"><div class="nm" id="meNm">Administrador</div><small>Administrador</small></div><button id="logout" title="Sair" aria-label="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></button></div>
   </aside>
   <main>
     <div class="sosbar" id="sosbar" role="alert"><span style="font-size:22px">🆘</span><span id="sostext">SOS ativo</span><button class="ghost" style="margin-left:auto" onclick="go('sos')">Ver agora</button></div>
@@ -94,15 +118,37 @@ $('doLogin').onclick = async () => {
   $('loginMsg').classList.add('hidden');
   try {
     const t = await api('/auth', {method:'POST', body: JSON.stringify({username:$('u').value.trim(), password:$('p').value})});
-    token = typeof t === 'string' ? t : (t.token || ''); try { sessionStorage.setItem('opus_admin_token', token); } catch(e) {}
+    token = typeof t === 'string' ? t : (t.token || ''); try { sessionStorage.setItem('opus_admin_token', token); const nm=(t && (t.user&&t.user.name || t.name)) || $('u').value.trim().split('@')[0]; localStorage.setItem('opus_admin_name', nm); } catch(e) {}
     start();
   } catch(e) { const m=$('loginMsg'); m.textContent=e.message||'Não foi possível entrar.'; m.className='msg p-bad'; }
 };
 $('p').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
 
-const NAV = [['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],['fin','Financeiro'],['social','Rede social'],['avisos','Avisos'],['cupons','Cupons'],['parceiros','Lojas e seguros'],['certs','Certificados'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],['config','Configurações'],['equipe','Equipe']];
+const P = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const IC = {
+  inicio:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  pedidos:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+  usuarios:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/>',
+  verif:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  suporte:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  sos:'<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  fin:'<rect x="2.5" y="6" width="19" height="13" rx="2"/><path d="M2.5 10h19M7 15h3"/>',
+  cupons:'<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M13 5v14" stroke-dasharray="2 2"/>',
+  parceiros:'<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>',
+  social:'<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/>',
+  certs:'<circle cx="12" cy="9" r="5"/><path d="M8.5 13l-1.5 8 5-3 5 3-1.5-8"/>',
+  avisos:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+  golpes:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16h.01"/>',
+  demanda:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  config:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  equipe:'<circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
+};
+const NAV = [['g','Operação'],['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],
+  ['g','Dinheiro'],['fin','Financeiro'],['cupons','Cupons'],['parceiros','Lojas e seguros'],
+  ['g','Comunidade'],['social','Rede social'],['certs','Certificados'],['avisos','Avisos'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],
+  ['g','Sistema'],['config','Configurações'],['equipe','Equipe']];
 let cur = 'inicio', counts = {}, timer = null, lastSos = 0;
-function navHtml(){ $('nav').innerHTML = NAV.map(([k,l,c]) => `<a href="#${k}" class="${k===cur?'on':''}" onclick="go('${k}');return false">${l}<span class="bd ${k==='sos'?'red':''}" id="bd-${k}"></span></a>`).join(''); paintBadges(); }
+function navHtml(){ $('nav').innerHTML = NAV.map(([k,l]) => k==='g' ? `<div class="grp">${l}</div>` : `<a href="#${k}" class="${k===cur?'on':''}" onclick="go('${k}');return false">${P(IC[k]||'')}<span>${l}</span><span class="bd ${k==='sos'?'red':''}" id="bd-${k}"></span></a>`).join(''); paintBadges(); }
 function paintBadges(){ const map={verif:counts.verifications,suporte:(counts.support||0)+(counts.disputes||0),sos:counts.sos}; for(const k in map){ const el=$('bd-'+k); if(!el) continue; el.textContent=map[k]||''; el.style.display=map[k]?'flex':'none'; } }
 function go(k){ cur=k; location.hash=k; navHtml(); clearInterval(timer); timer=null; VIEWS[k](); }
 const V = html => { $('view').innerHTML = html; };
@@ -124,16 +170,17 @@ function beep(){ try { const c=new (window.AudioContext||window.webkitAudioConte
 const VIEWS = {
   async inicio(range='week'){
     V(head('Visão geral','Carregando…')); let d; try { d = await api('/admin/dashboard?range='+range); } catch(e){ V(head('Visão geral',esc(e.message))); return; }
-    const seg = ['day','week','month'].map(r=>`<button class="chip ${r===range?'on':''}" onclick="VIEWS.inicio('${r}')">${{day:'Hoje',week:'7 dias',month:'30 dias'}[r]}</button>`).join('');
+    const seg = ['day','week','month'].map(r=>`<button class="${r===range?'on':''}" onclick="VIEWS.inicio('${r}')">${{day:'Hoje',week:'Semana',month:'Mês'}[r]}</button>`).join('');
+    const hr=new Date().getHours(), hi=(hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite')+', '+esc(adminName().split(' ')[0]);
     const [d1,c1]=delta(d.orders,d.ordersPrev),[d2,c2]=delta(+d.gmv,+d.gmvPrev),[d3,c3]=delta(+d.fee,+d.feePrev);
     const a=d.alerts||{};
     const al=[[a.sos,'pedido(s) de SOS ativos','sos','#DC2626'],[a.verifications,'documento(s) para aprovar','verif','#1D4ED8'],[a.disputes,'disputa(s) abertas','suporte','#B91C1C'],[a.support,'conversa(s) de suporte sem resposta','suporte','#B45309']].filter(x=>x[0]);
-    V(head('Visão geral','Como está a OPUS', `<div class="chips">${seg}</div>`)+`
+    V(`<div class="top"><div style="flex:1;min-width:240px"><h1>${hi}</h1><div class="muted" style="margin-top:4px">Resumo da OPUS ${{day:'hoje',week:'nesta semana',month:'neste mês'}[range]}</div></div><input class="gs" id="gsearch" type="search" placeholder="Buscar pedido, cliente ou profissional" aria-label="Buscar"><div class="seg">${seg}</div></div>`+`
       <div class="grid k4">${kpi('Pedidos',d.orders,d1,c1)}${kpi('Valor movimentado',brl(d.gmv),d2,c2)}${kpi('Sua taxa',brl(d.fee),d3,c3)}${kpi('Guardado no cofre agora',brl(d.escrow),d.escrowOrders+' pedidos esperando conclusão')}</div>
       <div class="grid c2"><div class="card"><h2 style="font-size:17px;margin-bottom:14px">Sua taxa por dia</h2>${bars(d.series.map(x=>+x.fee),d.series.map(x=>day(x.date).slice(0,5)))}</div>
       <div class="card"><h2 style="font-size:17px;margin-bottom:12px">Precisa de você</h2><div style="display:flex;flex-direction:column;gap:8px">${al.length?al.map(x=>`<a class="alert" href="#" onclick="go('${x[2]}');return false"><i style="background:${x[3]}"></i>${x[0]} ${x[1]}<span class="muted" style="margin-left:auto">abrir →</span></a>`).join(''):'<div class="muted">Tudo em dia. 🎉</div>'}</div></div></div>
       <div class="grid c3"><div class="card"><h2 style="font-size:17px">Novos cadastros</h2><div class="row" style="gap:28px;margin-top:12px"><div><div class="kpi"><div class="v">${d.newCustomers}</div></div><div class="muted">clientes</div></div><div><div class="kpi"><div class="v">${d.newProfessionals}</div></div><div class="muted">profissionais</div></div></div><div class="muted" style="margin-top:12px">Pedidos concluídos sem disputa: <b class="up">${d.cleanRate}%</b></div></div>
-      <div class="card"><h2 style="font-size:17px;margin-bottom:8px">Melhores profissionais</h2>${(d.topProfessionals||[]).map(p=>`<div class="row" style="padding:8px 0;border-bottom:1px solid #F1F5F9;justify-content:space-between"><a href="#" onclick="openUser(${p.id});return false"><b>${esc(p.name)}</b></a><span class="muted">${p.rating?'★ '+p.rating+' · ':''}${p.done} serviços</span></div>`).join('')||'<div class="muted">Ainda sem serviços concluídos.</div>'}</div>
+      <div class="card"><h2 style="font-size:17px;margin-bottom:8px">Melhores profissionais</h2>${(d.topProfessionals||[]).map(p=>`<a class="prow" href="#" onclick="go('usuarios');setTimeout(()=>openUser(${p.id}),600);return false"><div class="ini">${esc((p.name||'?').trim()[0]||'?').toUpperCase()}</div><div style="flex:1;min-width:0"><div class="pn">${esc(p.name)}</div></div><div style="text-align:right"><div style="font-size:13px;font-weight:700">${p.rating?'★ '+String(p.rating).replace('.',','):'novo'}</div><div class="muted" style="font-size:12px">${p.done} serviços</div></div></a>`).join('')||'<div class="muted">Ainda sem serviços concluídos.</div>'}</div>
       <div class="card"><h2 style="font-size:17px;margin-bottom:10px">Serviços mais pedidos (30 dias)</h2>${(()=>{const t=(d.topServices||[]).reduce((s,x)=>s+ +x.n,0)||1;return (d.topServices||[]).map(x=>`<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between;font-size:13px;font-weight:600"><span>${esc(x.name)}</span><span>${Math.round(100*x.n/t)}%</span></div><div style="height:8px;border-radius:4px;background:#EEF2F7;margin-top:5px"><div style="width:${Math.round(100*x.n/t)}%;height:8px;border-radius:4px;background:#0891B2"></div></div></div>`).join('')||'<div class="muted">Sem pedidos ainda.</div>';})()}</div></div>`);
   },
 
@@ -160,8 +207,8 @@ const VIEWS = {
     $('uq').addEventListener('keydown', e => { if (e.key==='Enter') VIEWS.usuarios(type, $('uq').value); });
   },
 
-  verif(){ V(`<iframe src="/painel/index.html" title="Verificações"></iframe>`); },
-  suporte(){ V(`<iframe src="/painel/central.html" title="Suporte e disputas"></iframe>`); },
+  verif(){ V(head('Verificações','Documentos e selfies enviados pelos profissionais')+`<iframe src="/painel/index.html" title="Verificações"></iframe>`); },
+  suporte(){ V(head('Suporte e disputas','Conversas com clientes e profissionais e disputas com prazo')+`<iframe src="/painel/central.html" title="Suporte e disputas"></iframe>`); },
 
   async sos(all=false){
     const load = async () => {
@@ -329,7 +376,9 @@ async function saveSettings(){ const body={}; window._settingKeys.forEach(k=>bod
 async function addAdmin(){ try{ await api('/admin/team',{method:'POST',body:JSON.stringify({username:$('na').value})}); VIEWS.equipe(); }catch(e){ $('tmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function removeAdmin(id){ if(!confirm('Tirar o acesso desta pessoa ao painel?')) return; try{ await api('/admin/team/'+id,{method:'DELETE'}); VIEWS.equipe(); }catch(e){ alert(e.message); } }
 
-function start(){ $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
+function adminName(){ try { return localStorage.getItem('opus_admin_name') || 'Administrador'; } catch(e){ return 'Administrador'; } }
+document.addEventListener('keydown', e => { if (e.key==='Enter' && e.target && e.target.id==='gsearch') { const q=e.target.value.trim(); if(!q) return; cur='pedidos'; location.hash='pedidos'; navHtml(); VIEWS.pedidos('ALL', q); } });
+function start(){ const n=adminName(); $('meNm').textContent=n; $('meAv').textContent=(n.trim()[0]||'A').toUpperCase(); $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
 if (token) start(); else $('loginBox').classList.remove('hidden');
 </script>
 </body>
