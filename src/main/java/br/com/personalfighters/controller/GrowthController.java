@@ -92,6 +92,7 @@ public class GrowthController {
     UUID id = UUID.randomUUID();
     jdbc.update("INSERT INTO lesson_package_ (id, professional_id, title, sessions, hours_each, price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         id, me.getId(), title, sessions, hours, price, Timestamp.valueOf(LocalDateTime.now()));
+    if (Boolean.TRUE.equals(b.get("monthly"))) jdbc.update("UPDATE lesson_package_ SET monthly = true WHERE id = ?", id);
     return ResponseEntity.ok(packages(me.getId()));
   }
 
