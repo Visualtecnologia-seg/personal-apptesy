@@ -86,7 +86,7 @@ public class MoreController {
         "SELECT o.id, o.status, o.total_cost AS \"total\", o.service_value AS \"labor\", o.warranty_days AS \"warranty\", o.date, o.start_time AS \"startTime\", " +
             "u.id AS \"proId\", u.name AS \"proName\", (SELECT ROUND(AVG(r.rating)::numeric,1) FROM review_ r WHERE r.professional_id = u.id) AS \"rating\", " +
             "(SELECT COUNT(*) FROM order_ d WHERE d.professional_id = u.id AND d.status IN ('DONE','REVIEWED')) AS \"done\", " +
-            "(SELECT COALESCE(SUM(m.qty * m.price),0) FROM order_material_ m WHERE m.order_id = o.id) AS \"materials\", " +
+            "(SELECT COALESCE(SUM(m.qty * m.price),0) FROM order_material_ m WHERE m.order_id = o.id AND m.buyer <> 'HAVE') AS \"materials\", " +
             "(SELECT m2.quote_total_cost FROM message_ m2 WHERE m2.order_id = o.id AND m2.message_type = 'QUOTE' ORDER BY m2.created_at DESC LIMIT 1) AS \"quoteTotal\" " +
             "FROM order_ o JOIN user_ u ON u.id = o.professional_id WHERE o.quote_group = ? AND o.customer_id = ? ORDER BY o.created_at", group, me.getId());
     return rows;
