@@ -256,12 +256,14 @@ public class SearchController {
 
   /** Profissionais de um serviço, perto do cliente, com filtros e ordem. */
   @GetMapping("/search/pros")
-  public List<Map<String, Object>> pros(@RequestParam String productIds, @RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng,
+  public List<Map<String, Object>> pros(@RequestParam(defaultValue = "") String productIds, @RequestParam(required = false) Long categoryId, @RequestParam(required = false) Double lat, @RequestParam(required = false) Double lng,
                                         @RequestParam(defaultValue = "false") boolean online, @RequestParam(defaultValue = "false") boolean verified,
                                         @RequestParam(defaultValue = "false") boolean today, @RequestParam(required = false) Double minRating,
                                         @RequestParam(required = false) Double maxPrice, @RequestParam(defaultValue = "near") String sort) {
     User me = userService.findAuthUser();
     String in = Arrays.stream(productIds.split(",")).map(String::trim).filter(s -> s.matches("\\d+")).collect(Collectors.joining(","));
+    if (in.isEmpty() && categoryId != null)
+      in = jdbc.queryForList("SELECT id FROM product_ WHERE category_id = ? AND COALESCE(active, TRUE) = TRUE", Long.class, categoryId).stream().map(String::valueOf).collect(Collectors.joining(","));
     if (in.isEmpty()) return List.of();
     List<Map<String, Object>> rows = jdbc.queryForList(
         "SELECT DISTINCT u.id, u.name, u.avatar_url AS \"avatarUrl\", u.latitude AS lat, u.longitude AS lng, COALESCE(u.verified, FALSE) AS verified, " +
