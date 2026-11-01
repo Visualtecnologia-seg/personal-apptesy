@@ -62,6 +62,8 @@ public class ConferenceController {
     out.put("disputeOpen", completionService.disputeOpen(o));
     out.put("proofs", jdbc.queryForList(
         "SELECT id, content_type AS \"contentType\", created_at AS \"createdAt\" FROM order_photo_ WHERE order_id = ? AND kind = 'PROOF' ORDER BY created_at", id));
+    out.put("requestPhotos", jdbc.queryForList(
+        "SELECT id, content_type AS \"contentType\" FROM order_photo_ WHERE order_id = ? AND kind = 'REQUEST' ORDER BY created_at", id));
     return ResponseEntity.ok(out);
   }
 
@@ -78,7 +80,9 @@ public class ConferenceController {
 
   /** Prova em vídeo ou foto (envio em multipart: campo "file"). */
   @PostMapping(value = "/orders/{id}/proof", consumes = "multipart/form-data")
-  public ResponseEntity<?> proof(@PathVariable UUID id, @RequestParam("file") MultipartFile file) {
+  public ResponseEntity<?> proof(@PathVariable UUID id, @RequestParam("file") MultipartFile file,
+                                 @RequestParam(value = "kind", required = false) String kindParam) {
+    String kind = "REQUEST".equalsIgnoreCase(kindParam) ? "REQUEST" : "PROOF";
     User me = userService.findAuthUser();
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isCustomer(o, me)) return bad("Pedido não encontrado.");
@@ -86,12 +90,12 @@ public class ConferenceController {
     if (file.getSize() > MAX_PROOF_BYTES) return bad("O vídeo ficou grande demais. Grave até 30 segundos.");
     String type = Optional.ofNullable(file.getContentType()).orElse("application/octet-stream");
     if (!type.startsWith("video/") && !type.startsWith("image/")) return bad("Envie um vídeo ou uma foto.");
-    Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM order_photo_ WHERE order_id = ? AND kind = 'PROOF'", Integer.class, id);
+    Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM order_photo_ WHERE order_id = ? AND kind = ?", Integer.class, id, kind);
     if (count != null && count >= 6) return bad("Você já enviou provas suficientes para este pedido.");
     try {
       UUID pid = UUID.randomUUID();
-      jdbc.update("INSERT INTO order_photo_ (id, order_id, kind, content_type, data, created_at, size_bytes) VALUES (?, ?, 'PROOF', ?, ?, ?, ?)",
-          pid, id, type, file.getBytes(), Timestamp.valueOf(LocalDateTime.now()), (int) file.getSize());
+      jdbc.update("INSERT INTO order_photo_ (id, order_id, kind, content_type, data, created_at, size_bytes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          pid, id, kind, type, file.getBytes(), Timestamp.valueOf(LocalDateTime.now()), (int) file.getSize());
       return ResponseEntity.ok(Map.of("id", pid, "contentType", type));
     } catch (Exception e) {
       log.warn("Prova do pedido {} não salva: {}", id, e.getMessage());
