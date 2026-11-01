@@ -121,7 +121,10 @@ public class AdminController {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("rows", jdbc.queryForList("SELECT o.id, o.created_at AS \"createdAt\", o.date, o.start_time AS \"startTime\", o.status, o.total_cost AS \"totalCost\", " +
         "o.service_value AS \"serviceValue\", o.pix_paid AS \"pixPaid\", o.pix_released AS \"pixReleased\", o.dispute_status AS \"disputeStatus\", " +
-        "c.name AS \"customerName\", p.name AS \"professionalName\", pr.name AS \"product\"" + base + " ORDER BY o.created_at DESC NULLS LAST LIMIT 50 OFFSET ?", pageArgs.toArray()));
+        "c.name AS \"customerName\", p.name AS \"professionalName\", pr.name AS \"product\", o.quote_group AS \"quoteGroup\", o.disputed_at AS \"disputedAt\", " +
+        "(SELECT COUNT(*) FROM order_stage_ s WHERE s.order_id = o.id) AS \"stages\", (SELECT COUNT(*) FROM order_stage_ s WHERE s.order_id = o.id AND s.status = 'APPROVED') AS \"stagesApproved\", " +
+        "(SELECT COUNT(*) FROM order_stage_ s WHERE s.order_id = o.id AND s.status = 'DONE') AS \"stagesDone\", " +
+        "(SELECT COUNT(*) FROM protection_session_ ps WHERE ps.order_id = o.id AND ps.active = TRUE AND ps.level >= 3) AS \"sos\"" + base + " ORDER BY o.created_at DESC NULLS LAST LIMIT 50 OFFSET ?", pageArgs.toArray()));
     out.put("total", jdbc.queryForObject("SELECT COUNT(*)" + base, Long.class, args.toArray()));
     Map<String, Object> counts = new LinkedHashMap<>();
     for (Map<String, Object> r : jdbc.queryForList("SELECT status, COUNT(*) AS n FROM order_ GROUP BY status")) counts.put(String.valueOf(r.get("status")), r.get("n"));
@@ -129,6 +132,18 @@ public class AdminController {
     counts.put("DISPUTE", count("SELECT COUNT(*) FROM order_ WHERE dispute_status = 'OPEN'"));
     counts.put("ALL", count("SELECT COUNT(*) FROM order_"));
     out.put("counts", counts);
+    Map<String, Object> k = new LinkedHashMap<>();
+    k.put("escrow", money("SELECT COALESCE(SUM(o.total_cost - COALESCE(o.discount_amount,0)),0) FROM order_ o WHERE " + PAID + " AND COALESCE(o.pix_released,FALSE) = FALSE AND o.status NOT IN ('CANCELLED')"));
+    k.put("escrowOrders", counts.get("ESCROW"));
+    k.put("toApprove", count("SELECT COUNT(*) FROM order_ WHERE status = 'PENDING_CLIENT_CONFIRMATION'"));
+    k.put("toApproveValue", money("SELECT COALESCE(SUM(COALESCE(service_value, total_cost/1.05)),0) FROM order_ WHERE status = 'PENDING_CLIENT_CONFIRMATION'"));
+    k.put("disputes", counts.get("DISPUTE"));
+    List<Map<String, Object>> nd = jdbc.queryForList("SELECT MIN(disputed_at) AS d FROM order_ WHERE dispute_status = 'OPEN'");
+    Object first = nd.isEmpty() ? null : nd.get(0).get("d");
+    if (first instanceof java.sql.Timestamp) k.put("nextDisputeDeadline", ((java.sql.Timestamp) first).toLocalDateTime().plusHours(Math.max(1, settings.getInt(SettingsService.DISPUTE_TIMEOUT_HOURS))));
+    k.put("stagesWaiting", count("SELECT COUNT(*) FROM order_stage_ WHERE status = 'DONE'"));
+    k.put("stagesOrders", count("SELECT COUNT(DISTINCT order_id) FROM order_stage_ WHERE status = 'DONE'"));
+    out.put("kpis", k);
     return out;
   }
 
@@ -168,6 +183,21 @@ public class AdminController {
         "FROM user_ u " + where + " ORDER BY u.id DESC LIMIT 200", args.toArray());
   }
 
+  @GetMapping("/users/kpis")
+  public Map<String, Object> usersKpis() {
+    Map<String, Object> k = new LinkedHashMap<>();
+    LocalDateTime week = LocalDateTime.now().minusDays(7);
+    k.put("customers", count("SELECT COUNT(DISTINCT user_id) FROM user_role WHERE role = 'CUSTOMER'"));
+    k.put("customersWeek", count("SELECT COUNT(DISTINCT u.id) FROM user_ u JOIN user_role r ON r.user_id = u.id WHERE r.role = 'CUSTOMER' AND u.created_at_ >= ?", ts(week)));
+    k.put("pros", count("SELECT COUNT(DISTINCT user_id) FROM user_role WHERE role = 'PROFESSIONAL'"));
+    k.put("prosOnline", count("SELECT COUNT(*) FROM professional_ WHERE COALESCE(is_online, FALSE) = TRUE"));
+    k.put("pending", count("SELECT COUNT(*) FROM identity_verification_ WHERE status = 'PENDING'"));
+    List<Map<String, Object>> old = jdbc.queryForList("SELECT MIN(submitted_at) AS d FROM identity_verification_ WHERE status = 'PENDING'");
+    k.put("oldestPending", old.isEmpty() ? null : old.get(0).get("d"));
+    k.put("blocked", count("SELECT COUNT(*) FROM user_ WHERE COALESCE(blocked, FALSE) = TRUE"));
+    return k;
+  }
+
   @GetMapping("/users/{id}")
   public ResponseEntity<?> user(@PathVariable Long id) {
     User u = userRepository.findById(id).orElse(null);
@@ -183,6 +213,13 @@ public class AdminController {
     out.put("avatarUrl", u.getAvatarUrl());
     out.putAll(jdbc.queryForMap("SELECT COALESCE(blocked,FALSE) AS blocked, blocked_reason AS \"blockedReason\", created_at_ AS \"createdAt\" FROM user_ WHERE id = ?", id));
     out.put("stats", stats(id));
+    out.put("pixKey", br.com.personalfighters.service.WalletService.mask(u.getPixKey()));
+    out.put("verificationStatus", u.getVerificationStatus());
+    out.put("earnedMonth", money("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND created_at >= ?", id, ts(LocalDate.now().withDayOfMonth(1).atStartOfDay())));
+    out.put("earnedTotal", money("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE')", id));
+    out.put("acceptRate", jdbc.queryForObject("SELECT CASE WHEN COUNT(*) = 0 THEN NULL ELSE ROUND(100.0 * SUM(CASE WHEN status NOT IN ('BLOCKED','OPEN') THEN 1 ELSE 0 END) / COUNT(*)) END FROM order_ WHERE professional_id = ?", Long.class, id));
+    List<Map<String, Object>> ver = jdbc.queryForList("SELECT id, status, submitted_at AS \"submittedAt\", reviewed_at AS \"reviewedAt\", reviewed_by AS \"reviewedBy\" FROM identity_verification_ WHERE user_id = ? ORDER BY submitted_at DESC NULLS LAST LIMIT 1", id);
+    out.put("verification", ver.isEmpty() ? null : ver.get(0));
     out.put("points", count("SELECT COALESCE(SUM(amount),0) FROM points_ WHERE user_id = ?", id));
     out.put("orders", jdbc.queryForList("SELECT o.id, o.date, o.status, o.total_cost AS \"totalCost\", o.dispute_status AS \"disputeStatus\", " +
         "CASE WHEN o.customer_id = ? THEN 'cliente' ELSE 'profissional' END AS papel FROM order_ o WHERE o.customer_id = ? OR o.professional_id = ? ORDER BY o.created_at DESC NULLS LAST LIMIT 20", id, id, id));
@@ -283,6 +320,16 @@ public class AdminController {
     }
     out.put("monthly", monthly);
     out.put("movements", movements(60));
+    out.put("gmv", money("SELECT COALESCE(SUM(o.total_cost - COALESCE(o.discount_amount,0)),0) FROM order_ o WHERE " + PAID + " AND o.created_at >= ?", ts(month)));
+    out.put("paidOrders", count("SELECT COUNT(*) FROM order_ o WHERE " + PAID + " AND o.created_at >= ?", ts(month)));
+    out.put("escrowOrders", count("SELECT COUNT(*) FROM order_ o WHERE " + PAID + " AND COALESCE(o.pix_released,FALSE) = FALSE AND o.status NOT IN ('CANCELLED')"));
+    out.put("withdrawn", money("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE kind = 'WITHDRAW' AND status = 'DONE' AND created_at >= ?", ts(month)));
+    out.put("withdrawFailed", count("SELECT COUNT(*) FROM wallet_entry_ WHERE kind = 'WITHDRAW' AND status = 'FAILED' AND created_at >= ?", ts(month)));
+    out.put("stagesReleased", money("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE kind = 'STAGE' AND created_at >= ?", ts(month)));
+    out.put("wallets", money("SELECT COALESCE(SUM(CASE WHEN kind IN ('CREDIT','STAGE') THEN amount WHEN status = 'DONE' THEN -amount ELSE 0 END),0) FROM wallet_entry_ WHERE status IN ('DONE','PENDING')"));
+    out.put("boosts", money("SELECT COALESCE(SUM(price),0) FROM pro_boost_ WHERE status IN ('PAID','ACTIVE') AND created_at >= ?", ts(month)));
+    out.put("prevFee", money("SELECT COALESCE(SUM(o.total_cost - COALESCE(o.discount_amount,0) - COALESCE(o.service_value, o.total_cost/1.05)),0) FROM order_ o WHERE " + PAID + " AND o.status <> 'CANCELLED' AND o.created_at >= ? AND o.created_at < ?", ts(month.minusMonths(1)), ts(month)));
+    out.put("wallet", jdbc.queryForList("SELECT w.created_at AS at, w.order_id AS \"orderId\", w.kind, w.status, w.amount AS value, u.name AS person FROM wallet_entry_ w LEFT JOIN user_ u ON u.id = w.professional_id ORDER BY w.created_at DESC LIMIT 40"));
     return out;
   }
 

@@ -35,6 +35,7 @@ public class CompletionService {
   private final PointsAwarder pointsAwarder;
   private final ExtrasService extrasService;
   private final WalletService walletService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   public LocalDateTime now() {
     return LocalDateTime.now(ZONE);
@@ -88,12 +89,20 @@ public class CompletionService {
     List<Order> pending = orderRepository.findByStatus(Status.PENDING_CLIENT_CONFIRMATION);
     for (Order o : pending) {
       try {
-        if (o.getRequestedCompletionAt() != null && o.getRequestedCompletionAt().isBefore(cutoff) && !disputeOpen(o)) {
+        if (o.getRequestedCompletionAt() != null && o.getRequestedCompletionAt().isBefore(cutoff) && !disputeOpen(o) && !sosActive(o)) {
           finalizeAndRelease(o, "automático após " + AUTO_RELEASE_HOURS + "h");
         }
       } catch (Exception e) {
         log.error("Falha na liberação automática do pedido {}: {}", o.getId(), e.getMessage());
       }
     }
+  }
+
+  /** Enquanto houver SOS ativo ligado ao pedido, a liberação automática fica pausada. */
+  private boolean sosActive(Order o) {
+    try {
+      Long n = jdbc.queryForObject("SELECT COUNT(*) FROM protection_session_ WHERE order_id = ? AND active = TRUE AND level >= 3", Long.class, o.getId());
+      return n != null && n > 0;
+    } catch (Exception e) { return false; }
   }
 }

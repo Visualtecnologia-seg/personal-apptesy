@@ -165,6 +165,7 @@ public class MoreController {
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isCustomer(o, me)) return bad("Pedido não encontrado.");
     if (!Boolean.TRUE.equals(o.getPixPaid())) return bad("O pagamento ainda não está no cofre.");
+    if (n("SELECT COUNT(*) FROM protection_session_ WHERE order_id = ? AND active = TRUE AND level >= 3", id) > 0) return bad("Há um SOS ativo neste pedido. Os pagamentos ficam pausados até a equipe encerrar.");
     int ok = jdbc.update("UPDATE order_stage_ SET status = 'APPROVED', approved_at = ? WHERE order_id = ? AND idx = ? AND status = 'DONE'", now(), id, idx);
     if (ok == 0) return bad("Esta etapa ainda não foi marcada como feita.");
     Integer pct = jdbc.queryForObject("SELECT percent FROM order_stage_ WHERE order_id = ? AND idx = ?", Integer.class, id, idx);
