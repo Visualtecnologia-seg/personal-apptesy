@@ -32,7 +32,7 @@ import java.util.Collections;
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
   private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*"};
-  private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users"};
+  private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users", "/partners/lead"};
   private static final String[] WHITELIST = {
       // -- swagger ui
       "/swagger-resources/**",

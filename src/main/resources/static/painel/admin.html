@@ -100,7 +100,7 @@ $('doLogin').onclick = async () => {
 };
 $('p').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
 
-const NAV = [['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],['fin','Financeiro'],['social','Rede social'],['avisos','Avisos'],['cupons','Cupons'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],['config','Configurações'],['equipe','Equipe']];
+const NAV = [['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],['fin','Financeiro'],['social','Rede social'],['avisos','Avisos'],['cupons','Cupons'],['parceiros','Lojas e seguros'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],['config','Configurações'],['equipe','Equipe']];
 let cur = 'inicio', counts = {}, timer = null, lastSos = 0;
 function navHtml(){ $('nav').innerHTML = NAV.map(([k,l,c]) => `<a href="#${k}" class="${k===cur?'on':''}" onclick="go('${k}');return false">${l}<span class="bd ${k==='sos'?'red':''}" id="bd-${k}"></span></a>`).join(''); paintBadges(); }
 function paintBadges(){ const map={verif:counts.verifications,suporte:(counts.support||0)+(counts.disputes||0),sos:counts.sos}; for(const k in map){ const el=$('bd-'+k); if(!el) continue; el.textContent=map[k]||''; el.style.display=map[k]?'flex':'none'; } }
@@ -203,6 +203,34 @@ const VIEWS = {
       <div class="card"><h2 style="font-size:17px;margin-bottom:10px">Enviados</h2>${rows.map(b=>`<div style="padding:10px 0;border-bottom:1px solid #F1F5F9"><div style="font-size:14px">${esc(b.text)}</div><div class="muted">${fmt(b.createdAt)} · ${{ALL:'Todos',CUSTOMERS:'Clientes',PROFESSIONALS:'Profissionais'}[b.audience]} · ${b.sentCount} pessoas · ${esc(b.adminName||'')}</div></div>`).join('')||'<div class="muted">Nenhum aviso enviado.</div>'}</div></div>`);
   },
 
+  async parceiros(){
+    let d={stores:[],plans:[],interest:[],leads:[]}; try { d = await api('/admin/partners'); } catch(e){}
+    const im={}; (d.interest||[]).forEach(x=>im[x.plan]=x.n);
+    V(head('Lojas parceiras e seguros','Vitrine dentro dos apps · página pública: <a href="/painel/parceiros.html" target="_blank">/painel/parceiros.html</a>')+`
+    <div class="grid c11" style="align-items:start">
+     <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Lojas parceiras (${d.stores.length})</h2>
+      ${d.stores.map(x=>`<div class="row" style="justify-content:space-between;padding:10px;background:#F8FAFC;border-radius:12px"><div><b>${esc(x.name)}</b> <span class="muted">${esc(x.category||'')}</span><div class="muted">${esc(x.address||'')} · WhatsApp ${esc(x.whatsapp||'—')} · cupom ${esc(x.couponCode||'—')}</div></div><button class="danger" onclick="delStore('${x.id}')">Remover</button></div>`).join('')||'<p class="muted">Nenhuma loja ainda.</p>'}
+      <h3 style="font-size:15px;margin:8px 0 0">Nova loja</h3>
+      <input id="sn" placeholder="Nome da loja"><input id="sc" placeholder="Categoria (Hidráulica, Elétrica, Construção…)"><input id="sw" placeholder="WhatsApp com DDD"><input id="sa" placeholder="Endereço">
+      <div class="row"><input id="slat" placeholder="Latitude" style="flex:1"><input id="slng" placeholder="Longitude" style="flex:1"></div>
+      <div class="row"><input id="scc" placeholder="Cupom (OPUS10)" style="flex:1"><input id="sct" placeholder="Texto do cupom (10% OFF)" style="flex:2"></div>
+      <input id="sh" placeholder="Horário (seg a sáb, 8h–18h)"><button class="ok" onclick="saveStore()">Salvar loja</button><div id="smsg"></div>
+      <p class="muted">Dica: pegue latitude e longitude no Google Maps (clique com o botão direito no endereço).</p>
+     </div>
+     <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Planos de seguro</h2>
+      ${d.plans.map(x=>`<div class="row" style="justify-content:space-between;padding:10px;background:#F8FAFC;border-radius:12px"><div><b>${esc(x.title)}</b> <span class="pill">${x.audience==='PRO'?'Profissional':'Cliente'}</span><div class="muted">${esc(x.partner||'sem parceiro')} · ${esc(x.price||'preço a definir')} · ${im[x.id]||0} interessados</div></div><button class="danger" onclick="delPlan('${x.id}')">Remover</button></div>`).join('')||'<p class="muted">Sem planos cadastrados: o app mostra os planos de exemplo com "Quero ser avisado".</p>'}
+      <h3 style="font-size:15px;margin:8px 0 0">Novo plano</h3>
+      <select id="pa"><option value="PRO">Para profissionais</option><option value="CLIENT">Para clientes</option></select>
+      <input id="pt" placeholder="Nome (Acidentes pessoais)"><input id="pk" placeholder="Tipo (Por serviço / Mensal)"><input id="pp" placeholder="Seguradora parceira"><input id="pv" placeholder="Preço (R$ 4,90 por serviço)"><input id="pl" placeholder="Link para contratar">
+      <textarea id="pc" placeholder="Coberturas, uma por linha"></textarea><button class="ok" onclick="savePlan()">Salvar plano</button><div id="pmsg"></div>
+      <h3 style="font-size:15px;margin:8px 0 0">Lista de espera ("Quero ser avisado")</h3>
+      ${(d.interest||[]).map(x=>`<div class="row" style="justify-content:space-between"><span>${esc(x.plan)}</span><b>${x.n}</b></div>`).join('')||'<p class="muted">Ninguém ainda.</p>'}
+     </div>
+    </div>
+    <div class="card" style="margin-top:14px"><h2 style="font-size:17px">Quem quer ser parceiro (${d.leads.length})</h2><div class="wrap"><table><thead><tr><th>Tipo</th><th>Empresa</th><th>Contato</th><th>Mensagem</th><th>Quando</th></tr></thead><tbody>
+      ${d.leads.map(x=>`<tr><td>${x.kind==='INSURER'?'Seguradora':'Loja'}</td><td><b>${esc(x.company)}</b></td><td>${esc(x.contact||'')}<div class="muted">${esc(x.phone||'')} ${esc(x.email||'')}</div></td><td>${esc(x.message||'')}</td><td>${day(x.createdAt)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nenhum contato ainda.</td></tr>'}
+    </tbody></table></div></div>`);
+  },
   async cupons(){
     let rows=[]; try { rows = await api('/admin/coupons'); } catch(e){}
     V(head('Cupons e promoções','O desconto sai da taxa OPUS — o profissional recebe o valor cheio')+`<div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Código</th><th>Desconto</th><th>Mínimo</th><th>Validade</th><th>Usos</th><th></th></tr></thead><tbody>
@@ -283,6 +311,10 @@ async function sosAck(id, close){ const note=($('note-'+id)||{}).value||''; if(c
 async function exportCsv(){ try{ const u=await blob('/admin/finance/export.csv'); const a=document.createElement('a'); a.href=u; a.download='opus-financeiro.csv'; a.click(); }catch(e){ alert(e.message); } }
 async function delPost(id){ const reason=prompt('Motivo (o profissional é avisado):','Conteúdo impróprio'); if(reason===null) return; try{ await api('/admin/posts/'+id+'?reason='+encodeURIComponent(reason),{method:'DELETE'}); VIEWS.social(); }catch(e){ alert(e.message); } }
 async function sendBroadcast(){ const text=$('btxt').value.trim(), audience=$('aud').value; if(!text) return; if(!confirm('Enviar para '+$('aud').selectedOptions[0].text.toLowerCase()+'?')) return; try{ const r=await api('/admin/broadcast',{method:'POST',body:JSON.stringify({text,audience})}); alert('Aviso enviado para '+r.sent+' pessoas.'); VIEWS.avisos(); }catch(e){ $('bmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function saveStore(){ try{ await api('/admin/partners/stores',{method:'POST',body:JSON.stringify({name:$('sn').value,category:$('sc').value,whatsapp:$('sw').value,address:$('sa').value,lat:$('slat').value,lng:$('slng').value,couponCode:$('scc').value,couponText:$('sct').value,hours:$('sh').value})}); VIEWS.parceiros(); }catch(e){ $('smsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function delStore(id){ if(!confirm('Remover esta loja?')) return; try{ await api('/admin/partners/stores/'+id,{method:'DELETE'}); VIEWS.parceiros(); }catch(e){ alert(e.message); } }
+async function savePlan(){ try{ await api('/admin/partners/plans',{method:'POST',body:JSON.stringify({audience:$('pa').value,title:$('pt').value,kind:$('pk').value,partner:$('pp').value,price:$('pv').value,link:$('pl').value,coverage:$('pc').value})}); VIEWS.parceiros(); }catch(e){ $('pmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function delPlan(id){ if(!confirm('Remover este plano?')) return; try{ await api('/admin/partners/plans/'+id,{method:'DELETE'}); VIEWS.parceiros(); }catch(e){ alert(e.message); } }
 async function createCoupon(){ try{ await api('/admin/coupons',{method:'POST',body:JSON.stringify({code:$('cc').value,description:$('cd').value,percent:$('cp').value,amount:$('ca').value,minOrder:$('cm').value,maxUses:$('cu').value,validUntil:$('cv').value})}); VIEWS.cupons(); }catch(e){ $('cmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function toggleCoupon(code){ try{ await api('/admin/coupons/'+encodeURIComponent(code)+'/toggle',{method:'PUT'}); VIEWS.cupons(); }catch(e){ alert(e.message); } }
 async function saveSettings(){ const body={}; window._settingKeys.forEach(k=>body[k]=$('s-'+k).value); try{ await api('/admin/settings',{method:'PUT',body:JSON.stringify(body)}); $('smsg').innerHTML='<span class="pill p-ok">Salvo</span>'; }catch(e){ $('smsg').innerHTML='<span class="pill p-bad">'+esc(e.message)+'</span>'; } }
