@@ -63,7 +63,7 @@ public class CompletionController {
     String code = completionService.newCode(o);
     orderRepository.save(o);
     notificationService.sendToUser(o.getCustomer(), false,
-        firstName(o.getProfessional()) + " terminou o serviço. Confira e aprove para liberar o pagamento.");
+        firstName(o.getProfessional()) + " marcou o serviço como pronto. Agora é com você: olhe, teste e grave um vídeo. Se estiver tudo certo, mostre o seu código a ele para liberar o pagamento.");
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("code", code);
     out.put("photosSaved", saved);
@@ -164,11 +164,18 @@ public class CompletionController {
     boolean released = Boolean.TRUE.equals(o.getPixReleased());
     boolean dispute = completionService.disputeOpen(o);
 
+    Map<String, Object> extra = jdbc.queryForMap("SELECT client_checked_at, departed_at, arrived_at FROM order_ WHERE id = ?", o.getId());
+    LocalDateTime checkedAt = extra.get("client_checked_at") == null ? null : ((Timestamp) extra.get("client_checked_at")).toLocalDateTime();
+    LocalDateTime arrivedAt = extra.get("arrived_at") == null ? null : ((Timestamp) extra.get("arrived_at")).toLocalDateTime();
+    boolean arrived = arrivedAt != null || Boolean.TRUE.equals(o.getClientConfirmedArrival()) || Boolean.TRUE.equals(o.getProConfirmedArrival());
+
     List<Map<String, Object>> steps = new ArrayList<>();
     steps.add(step("PAID", "Pagamento guardado no cofre OPUS", paid, null));
+    steps.add(step("ARRIVED", "Profissional chegou", arrived || finished, arrivedAt));
     steps.add(step("STARTED", "Serviço em andamento", started, null));
     steps.add(step("FINISHED", "Profissional terminou", finished, o.getRequestedCompletionAt()));
-    steps.add(step("APPROVED", dispute ? "Problema relatado: em análise" : "Cliente aprovou o serviço", approved && !dispute, o.getDoneAt()));
+    steps.add(step("CHECKED", "Cliente conferiu o serviço", checkedAt != null || approved, checkedAt));
+    steps.add(step("APPROVED", dispute ? "Problema relatado: em análise" : "Código entregue e pagamento aprovado", approved && !dispute, o.getDoneAt()));
     steps.add(step("RELEASED", "Pagamento enviado ao profissional", released, o.getPaymentReleasedAt()));
 
     Map<String, Object> out = new LinkedHashMap<>();

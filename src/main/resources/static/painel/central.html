@@ -124,7 +124,8 @@ async function load(){
       list.querySelectorAll('.item').forEach(el => el.onclick = () => openThread(Number(el.dataset.u)));
     } else {
       const rows = await api('/admin/disputes?status=' + (tab === 'all' ? 'ALL' : 'OPEN'));
-      list.innerHTML = rows.length ? rows.map(r => '<div class="item" data-o="'+r.id+'"><span class="pill '+esc(r.disputeStatus)+'" style="float:right">'+esc(r.disputeStatus==='OPEN'?'Aberta':'Resolvida')+'</span><b>'+esc(r.customerName)+' × '+esc(r.professionalName)+'</b><small>'+esc(r.disputeReason)+'</small><small>'+fmt(r.disputedAt)+' · '+brl(r.totalCost)+'</small></div>').join('') : '<p class="muted">Nenhuma disputa '+(tab==='all'?'registrada':'aberta')+'.</p>';
+      if (tab !== 'all') disputeAlarm(rows.filter(r => r.disputeStatus === 'OPEN').length);
+      list.innerHTML = rows.length ? rows.map(r => '<div class="item" data-o="'+r.id+'"><span class="pill '+esc(r.disputeStatus)+'" style="float:right">'+esc(r.disputeStatus==='OPEN'?'Aberta':'Resolvida')+'</span><b>'+esc(r.customerName)+' × '+esc(r.professionalName)+'</b><small>'+esc(r.disputeReason)+'</small><small>'+fmt(r.disputedAt)+' · '+brl(r.totalCost)+'</small>'+(r.disputeStatus==='OPEN'?deadline(r.disputedAt):'')+'</div>').join('') : '<p class="muted">Nenhuma disputa '+(tab==='all'?'registrada':'aberta')+'.</p>';
       list.querySelectorAll('.item').forEach(el => el.onclick = () => openDispute(el.dataset.o));
     }
   } catch(e) { list.innerHTML = '<p class="muted">'+esc(e.message)+'</p>'; }
@@ -189,7 +190,12 @@ async function openDispute(id){
 }
 
 if (!token) { $('needLogin').classList.remove('hidden'); }
-else { $('app').classList.remove('hidden'); load(); refresh = setInterval(() => { if (tab === 'sup') load(); }, 20000); }
+else { $('app').classList.remove('hidden'); load(); refresh = setInterval(() => { load(); }, 20000); }
+
+function deadline(at){ if(!at) return ''; const end=new Date(new Date(at).getTime()+2*3600e3); const m=Math.round((end-Date.now())/60000);
+  return m>0 ? '<small style="color:#B91C1C;font-weight:700">Decidir em '+(m>=60?Math.floor(m/60)+'h '+(m%60)+'min':m+' min')+' (depois o sistema decide sozinho)</small>' : '<small style="color:#B91C1C;font-weight:700">Prazo esgotado: o sistema vai decidir</small>'; }
+let _openDisputes = null;
+function disputeAlarm(n){ if(_openDisputes!==null && n>_openDisputes){ try{ const a=new (window.AudioContext||window.webkitAudioContext)(); [0,0.25,0.5].forEach(t=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);g.gain.value=0.15;o.start(a.currentTime+t);o.stop(a.currentTime+t+0.15);}); }catch(e){} document.title='Nova disputa · OPUS'; } _openDisputes=n; }
 </script>
 </body>
 </html>

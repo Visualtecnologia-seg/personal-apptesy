@@ -33,6 +33,10 @@ public class SettingsService implements ApplicationRunner {
   public static final String REDEEM_MIN_ORDER = "redeem_min_order";
   public static final String REFERRAL_POINTS = "referral_points";
   public static final String PACKAGE_MAX_DISCOUNT = "package_max_discount";
+  /** Horas que um problema relatado pode ficar travado sem decisão. */
+  public static final String DISPUTE_TIMEOUT_HOURS = "dispute_timeout_hours";
+  /** 1 = sem decisão no prazo, devolve ao cliente; 0 = libera ao profissional. */
+  public static final String DISPUTE_TIMEOUT_REFUND = "dispute_timeout_refund";
 
   private final JdbcTemplate jdbc;
 
@@ -102,6 +106,8 @@ public class SettingsService implements ApplicationRunner {
     m.put(REDEEM_MIN_ORDER, "100");
     m.put(REFERRAL_POINTS, "100");
     m.put(PACKAGE_MAX_DISCOUNT, "30");
+    m.put(DISPUTE_TIMEOUT_HOURS, "2");
+    m.put(DISPUTE_TIMEOUT_REFUND, "1");
     return m;
   }
 }

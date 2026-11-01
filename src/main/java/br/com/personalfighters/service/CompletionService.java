@@ -34,6 +34,7 @@ public class CompletionService {
   private final NotificationService notificationService;
   private final PointsAwarder pointsAwarder;
   private final ExtrasService extrasService;
+  private final WalletService walletService;
 
   public LocalDateTime now() {
     return LocalDateTime.now(ZONE);
@@ -64,7 +65,8 @@ public class CompletionService {
     if (disputeOpen(order) || Boolean.TRUE.equals(order.getPixReleased())) return;
     try {
       if (Boolean.TRUE.equals(order.getPixPaid())) {
-        asaasService.releasePaymentToProfessional(order);
+        // O valor sai do cofre e entra na carteira do profissional; ele saca no PIX quando quiser.
+        walletService.credit(order);
       } else {
         log.info("Pedido {} sem PIX pago (modo de teste): liberação apenas registrada", order.getId());
       }
