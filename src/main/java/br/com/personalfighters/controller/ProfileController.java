@@ -19,7 +19,7 @@ import static br.com.personalfighters.controller.SocialController.bad;
 
 /** Perfil novo do profissional (visto pelo cliente), favoritos e seguir. */
 @Slf4j
-@RestController
+@RestController("proProfileController")
 @RequiredArgsConstructor
 public class ProfileController {
 
