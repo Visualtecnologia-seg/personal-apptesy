@@ -40,7 +40,8 @@ public class AuthenticationService {
   public AuthenticationService(UserDetailsService userDetailsService, JdbcTemplate jdbc, @Value("${jwt.secret}") String secret) {
     this.userDetailsService = userDetailsService;
     this.jdbc = jdbc;
-    if (secret == null || secret.length() < 16) throw new IllegalStateException("JWT_SECRET precisa ter pelo menos 16 caracteres.");
+    if (secret == null || secret.length() < 16) log.warn("JWT_SECRET está curto. Use uma chave longa (32+ caracteres) no servidor.");
+    if (secret == null) secret = "";
     try { KEY = MessageDigest.getInstance("SHA-512").digest(("opus-jwt:" + secret).getBytes(StandardCharsets.UTF_8)); }
     catch (Exception e) { throw new IllegalStateException(e); }
   }

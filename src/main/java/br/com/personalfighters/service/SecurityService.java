@@ -75,9 +75,8 @@ public class SecurityService {
   public void logDocAccess(User admin, Long subjectUserId, String what) {
     jdbc.update("INSERT INTO doc_access_log_ (admin_id, subject_user_id, what, created_at) VALUES (?, ?, ?, ?)", admin.getId(), subjectUserId, what, now());
     String subject = subjectUserId == null ? "" : Objects.toString(jdbc.query("SELECT name FROM user_ WHERE id = ?", rs -> rs.next() ? rs.getString(1) : "", subjectUserId), "");
-    String login = admin.getUsername() != null && admin.getUsername().startsWith("painel:") ? admin.getUsername().substring(7) : Objects.toString(admin.getUsername(), "");
     jdbc.update("INSERT INTO admin_action_ (admin_id, admin_name, action, target, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        admin.getId(), "Administrador (" + login + ")", "Abriu documento", subject, what, now());
+        admin.getId(), Objects.toString(admin.getName(), "Painel"), "Abriu documento", subject, what, now());
   }
 
   /** Avisa o profissional quando a chave PIX dele é trocada (a troca é registrada pelo banco de dados). */

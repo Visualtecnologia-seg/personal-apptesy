@@ -128,7 +128,7 @@ public class SupportController {
     String text = clean(body.get("text"));
     if (text.isEmpty()) return bad("Escreva a resposta.");
     jdbc.update("INSERT INTO support_message_ (user_id, from_admin, admin_name, text, created_at, read_by_user, read_by_admin) VALUES (?, TRUE, ?, ?, ?, FALSE, TRUE)",
-        userId, "Equipe OPUS · " + firstName(admin), text, Timestamp.valueOf(LocalDateTime.now()));
+        userId, "Equipe OPUS", text, Timestamp.valueOf(LocalDateTime.now()));
     state(userId);
     jdbc.update("UPDATE support_state_ SET human = TRUE, priority = FALSE, updated_at = ? WHERE user_id = ?", Timestamp.valueOf(LocalDateTime.now()), userId);
     try {

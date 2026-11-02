@@ -219,10 +219,22 @@ b: Aparência|/aparencia
 k: notificacao, notificacoes, nao recebo aviso, nao toca, som do chamado, nao chega aviso
 r: {nome}, para não perder chamados: Configurações do celular → Aplicativos → OPUS Profissional → Notificações: deixe tudo ligado e tire a "economia de bateria" do app. 🔔
 
-@excluir-conta|humano
-k: excluir conta, apagar conta, deletar conta, encerrar conta, sair da opus, parar de atender
-r: Que pena, {nome}. 😢 Já passei o seu pedido para a equipe OPUS. Antes, confira se não tem saldo para sacar.
-b: Meus ganhos|/(tabs)/carteira
+@excluir-conta|normal
+k: excluir conta, apagar conta, deletar conta, encerrar conta, sair da opus, cancelar cadastro, apagar meus dados, lgpd, parar de atender
+r: Que pena, {nome}. 😢 Você mesmo consegue apagar: Perfil → Meus dados → Apagar minha conta (pede a sua senha).
+r: Antes, termine os pedidos em andamento e saque o saldo, se tiver. Se foi algo que deu errado, me conta? Talvez a gente resolva.
+b: Meus dados|/meus-dados
+
+@baixar-dados|normal
+k: baixar meus dados, meus dados, copia dos meus dados, quais dados voces tem, exportar dados, dados pessoais
+r: {nome}, em Perfil → Meus dados → Baixar meus dados você recebe um arquivo com tudo o que a OPUS guarda sobre você. 📄 O link vale uma vez só, por 10 minutos.
+b: Meus dados|/meus-dados
+
+@celular-estranho|normal
+k: celular estranho, aparelho estranho, entraram na minha conta, acesso estranho, aviso de novo acesso, novo acesso, nao reconheco esse celular, alguem entrou
+r: {nome}, abra Perfil → Segurança. Lá aparecem os celulares onde a sua conta está aberta. 🔒
+r: Se tiver algum que você não conhece, toque em "Não fui eu": a conta é desconectada de todos os aparelhos, os saques ficam segurados por 24 horas e a equipe é avisada.
+b: Segurança|/seguranca
 
 @indicar|normal
 k: indicar, indicacao, convidar, indique e ganhe, trazer clientes, trazer profissionais

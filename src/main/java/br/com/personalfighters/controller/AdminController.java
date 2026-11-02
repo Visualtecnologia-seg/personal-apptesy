@@ -270,7 +270,7 @@ public class AdminController {
     String text = Objects.toString(body.get("text"), "").trim();
     if (text.isEmpty()) return bad("Escreva a mensagem.");
     jdbc.update("INSERT INTO support_message_ (user_id, from_admin, admin_name, text, created_at, read_by_user, read_by_admin) VALUES (?, TRUE, ?, ?, ?, FALSE, TRUE)",
-        id, "Equipe OPUS · " + firstName(admin), text, ts(LocalDateTime.now()));
+        id, "Equipe OPUS", text, ts(LocalDateTime.now()));
     notificationService.sendToUser(u, SocialController.hasRole(u, Role.PROFESSIONAL), "Equipe OPUS: " + (text.length() > 80 ? text.substring(0, 80) + "…" : text));
     settings.audit(admin, "USER_MESSAGE", String.valueOf(id), text);
     return ResponseEntity.ok(Map.of("ok", true));

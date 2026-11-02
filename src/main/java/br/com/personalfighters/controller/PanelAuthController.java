@@ -165,6 +165,16 @@ public class PanelAuthController implements ApplicationRunner {
     return false;
   }
 
+  /** Quem está usando o painel agora (aparece no menu). */
+  @GetMapping("/admin/me")
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
+  public Map<String, Object> me() {
+    User me = userService.findAuthUser();
+    Integer mat = jdbc.query("SELECT panel_matricula FROM user_ WHERE id = ?", rs -> rs.next() ? (Integer) rs.getObject(1) : null, me.getId());
+    return Map.of("matricula", mat == null ? "" : String.format("%02d", mat), "name", Objects.toString(me.getName(), ""),
+        "login", me.getUsername().startsWith(PREFIX) ? me.getUsername().substring(PREFIX.length()) : me.getUsername());
+  }
+
   @GetMapping("/admin/me/2fa")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public Map<String, Object> myTwoFactor() {
@@ -253,9 +263,9 @@ public class PanelAuthController implements ApplicationRunner {
   @GetMapping("/admin/team")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public List<Map<String, Object>> team() {
-    return jdbc.queryForList("SELECT u.id, SUBSTRING(u.username FROM 8) AS login, COALESCE(u.active, TRUE) AS active, COALESCE(f.enabled, FALSE) AS \"twoFactor\", COALESCE(pp.can_view_docs, FALSE) AS \"canViewDocs\", " +
+    return jdbc.queryForList("SELECT u.id, SUBSTRING(u.username FROM 8) AS login, LPAD(COALESCE(u.panel_matricula, 0)::text, 2, '0') AS matricula, COALESCE(u.active, TRUE) AS active, COALESCE(f.enabled, FALSE) AS \"twoFactor\", COALESCE(pp.can_view_docs, FALSE) AS \"canViewDocs\", " +
         "(SELECT MAX(created_at) FROM doc_access_log_ d WHERE d.admin_id = u.id) AS \"lastDocView\" " +
-        "FROM user_ u LEFT JOIN panel_2fa_ f ON f.user_id = u.id LEFT JOIN panel_permission_ pp ON pp.user_id = u.id WHERE u.username LIKE 'painel:%' ORDER BY u.username");
+        "FROM user_ u LEFT JOIN panel_2fa_ f ON f.user_id = u.id LEFT JOIN panel_permission_ pp ON pp.user_id = u.id WHERE u.username LIKE 'painel:%' ORDER BY u.panel_matricula NULLS LAST, u.username");
   }
 
   /** Libera ou tira a permissão de ver documentos e selfies (só quem já tem a permissão pode mudar). */
@@ -269,8 +279,8 @@ public class PanelAuthController implements ApplicationRunner {
     if (me.getId().equals(id)) return bad("Você não pode mudar a sua própria permissão.");
     boolean allow = Boolean.TRUE.equals(b.get("allow"));
     jdbc.update("INSERT INTO panel_permission_ (user_id, can_view_docs) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET can_view_docs = EXCLUDED.can_view_docs", id, allow);
-    jdbc.update("INSERT INTO admin_action_ (admin_id, admin_name, action, target, detail, created_at) VALUES (?, 'Administrador', ?, ?, '', ?)",
-        me.getId(), allow ? "Liberou ver documentos" : "Tirou permissão de documentos", jdbc.query("SELECT SUBSTRING(username FROM 8) FROM user_ WHERE id = ?", rs -> rs.next() ? rs.getString(1) : "", id), new java.sql.Timestamp(System.currentTimeMillis()));
+    jdbc.update("INSERT INTO admin_action_ (admin_id, admin_name, action, target, detail, created_at) VALUES (?, ?, ?, ?, '', ?)",
+        me.getId(), me.getName(), allow ? "Liberou ver documentos" : "Tirou permissão de documentos", jdbc.query("SELECT SUBSTRING(username FROM 8) FROM user_ WHERE id = ?", rs -> rs.next() ? rs.getString(1) : "", id), new java.sql.Timestamp(System.currentTimeMillis()));
     return ResponseEntity.ok(team());
   }
 
@@ -312,9 +322,12 @@ public class PanelAuthController implements ApplicationRunner {
     if (!login.matches("[a-z0-9._-]{3,30}")) return bad("O login precisa ter de 3 a 30 letras, números, ponto, traço ou sublinhado, sem espaço e sem @.");
     if (password.length() < 8) return bad("A senha precisa ter pelo menos 8 caracteres.");
     if (userRepository.findByUsername(PREFIX + login) != null) return bad("Esse login já existe.");
-    User u = User.builder().username(PREFIX + login).email(login + DOMAIN).name("Administrador").cpf("00000000000")
+    Integer last = jdbc.queryForObject("SELECT COALESCE(MAX(panel_matricula), 0) FROM user_ WHERE username LIKE 'painel:%'", Integer.class);
+    int mat = (last == null ? 0 : last) + 1;
+    User u = User.builder().username(PREFIX + login).email(login + DOMAIN).name(String.format("Matrícula %02d", mat)).cpf("00000000000")
         .password(passwordEncoder.encode(password)).role(new ArrayList<>(List.of(Role.ADMIN))).active(true).build();
     userRepository.save(u);
+    jdbc.update("UPDATE user_ SET panel_matricula = ? WHERE id = ?", mat, u.getId());
     return ResponseEntity.ok(Map.of("ok", true));
   }
 }
