@@ -36,99 +36,33 @@ public class SearchController {
     String product() { return product; } String label() { return label; } String sub() { return sub; } String why() { return why; } String tip() { return tip; } String[] words() { return words; }
   }
 
-  static final List<Svc> DICT = List.of(
-      new Svc("Eletricista", "Eletricista", "Tomadas, fiação, disjuntor, chuveiro", "parece um problema na parte elétrica", "Desligue o disjuntor daquele circuito até o profissional chegar.",
-          "eletric", "chuveiro", "resistencia", "tomada", "fio", "fiacao", "disjuntor", "curto", "choque", "luz", "lampada", "interruptor", "quadro de luz", "energia", "queimou", "nao esquenta", "piscando", "faisca", "ventilador de teto", "lustre", "padrao de luz", "relogio de luz"),
-      new Svc("Encanador", "Encanador", "Vazamentos, canos, torneiras, descarga", "parece um problema de água ou encanamento", "Feche o registro de água se estiver vazando.",
-          "encan", "vazament", "vazando", "cano", "torneira", "descarga", "privada", "vaso sanitario", "registro", "infiltra", "pinga", "pingando", "goteira", "caixa d agua", "boia", "sifao", "agua quente", "pressao da agua", "hidraulic"),
-      new Svc("Desentupidor", "Desentupidor", "Pia, ralo, vaso e esgoto entupidos", "parece entupimento", "Não use soda cáustica antes do profissional ver.",
-          "entup", "ralo", "esgoto", "fossa", "caixa de gordura", "nao desce", "transbord", "mau cheiro no ralo"),
-      new Svc("Técnico em Refrigeração", "Técnico em Refrigeração", "Geladeira, freezer, ar-condicionado", "parece algo na refrigeração", "Se a geladeira parou, mantenha a porta fechada.",
-          "geladeira", "freezer", "refrigera", "nao gela", "parou de gelar", "gas da geladeira", "ar condicionado pingando", "ar nao gela", "frigobar"),
-      new Svc("Instalador de Ar-condicionado", "Instalação de ar-condicionado", "Instalar, limpar e consertar ar", "é serviço de ar-condicionado", null,
-          "ar condicionado", "ar-condicionado", "split", "instalar ar", "limpeza do ar", "higienizacao do ar"),
-      new Svc("Chaveiro", "Chaveiro", "Abrir porta, trocar fechadura, cópia", "parece serviço de chaveiro", "Se for urgente, use o botão Urgente na tela inicial.",
-          "chave", "chaveiro", "fechadura", "trancad", "tranquei", "porta emperrada", "perdi a chave", "segredo", "cadeado", "fechadura digital"),
-      new Svc("Pintor", "Pintor", "Paredes, portas, grades e fachadas", "é serviço de pintura", null,
-          "pint", "parede manchada", "mofo", "descascando", "textura", "grafiato", "verniz", "massa corrida", "repintar"),
-      new Svc("Pedreiro", "Pedreiro", "Obras, reboco, muro, contrapiso", "é serviço de pedreiro", null,
-          "pedreiro", "obra", "reboco", "muro", "rachadura", "trinca", "contrapiso", "alvenaria", "tijolo", "concreto", "laje", "calcada"),
-      new Svc("Reformas em Geral", "Reformas em geral", "Reformas completas de casa e apartamento", "parece uma reforma", null,
-          "reforma", "reformar", "renovar", "banheiro novo", "cozinha nova"),
-      new Svc("Azulejista", "Azulejista", "Azulejo, porcelanato, rejunte", "é serviço de revestimento", null,
-          "azulejo", "porcelanato", "rejunte", "ceramica", "revestimento", "piso solto"),
-      new Svc("Instalador de Piso", "Instalação de piso", "Piso laminado, vinílico e porcelanato", "é instalação de piso", null,
-          "piso", "laminado", "vinilico", "taco", "rodape"),
-      new Svc("Gesseiro", "Gesseiro", "Gesso, sanca, drywall, forro", "é serviço de gesso", null,
-          "gesso", "sanca", "drywall", "forro", "teto caindo", "moldura de gesso"),
-      new Svc("Impermeabilizador", "Impermeabilização", "Laje, infiltração e umidade", "parece infiltração/umidade", null,
-          "impermeabiliz", "umidade", "laje vazando", "infiltracao na parede"),
-      new Svc("Instalador de Telhado", "Telhado", "Telhas, calhas e goteiras", "parece problema no telhado", null,
-          "telhado", "telha", "calha", "rufo", "chovendo dentro"),
-      new Svc("Vidraceiro", "Vidraceiro", "Vidros, box, espelhos, janelas", "é serviço de vidraçaria", null,
-          "vidro", "box do banheiro", "espelho", "janela quebrada", "vidraca", "vidraceiro"),
-      new Svc("Serralheiro", "Serralheiro", "Portões, grades e estruturas de metal", "é serviço de serralheria", null,
-          "portao", "grade", "serralh", "solda", "ferro", "metalon", "corrimao"),
-      new Svc("Marceneiro", "Marceneiro", "Móveis sob medida e reparos em madeira", "é serviço de marcenaria", null,
-          "marcen", "movel sob medida", "armario", "madeira", "porta de madeira", "dobradica", "gaveta"),
-      new Svc("Montador de Móveis", "Montador de móveis", "Montar e desmontar móveis", "é montagem de móveis", null,
-          "montar", "montagem", "desmontar", "guarda roupa", "guarda-roupa", "movel novo", "estante", "rack"),
-      new Svc("Limpeza Residencial", "Faxina / limpeza", "Faxina completa da casa", "é serviço de limpeza", null,
-          "faxina", "limpeza", "limpar", "diarista", "faxineira", "casa suja", "passar roupa", "arrumar a casa"),
-      new Svc("Limpeza Pós-Obra", "Limpeza pós-obra", "Limpeza pesada depois de obra", "é limpeza pós-obra", null,
-          "pos obra", "pos-obra", "limpeza pesada", "sujeira de obra"),
-      new Svc("Higienização de Estofados", "Higienização de estofados", "Sofá, colchão, tapete e cadeiras", "é limpeza de estofados", null,
-          "sofa", "colchao", "estofado", "tapete", "carpete", "cadeira manchada"),
-      new Svc("Limpeza de Piscina", "Limpeza de piscina", "Tratamento e limpeza de piscina", "é limpeza de piscina", null, "piscina", "agua verde"),
-      new Svc("Dedetizador", "Dedetização", "Baratas, cupins, ratos e formigas", "parece caso de pragas", null,
-          "barata", "cupim", "rato", "formiga", "pulga", "dedetiz", "praga", "inseto", "escorpiao", "percevejo"),
-      new Svc("Jardineiro", "Jardineiro", "Jardim, grama, poda e plantas", "é serviço de jardinagem", null,
-          "jardim", "grama", "gramado", "planta", "poda", "jardinag", "horta", "paisagismo"),
-      new Svc("Lenhador / Poda de Árvores", "Poda de árvores", "Corte e poda de árvores", "é poda de árvore", null, "arvore", "galho", "cortar arvore"),
-      new Svc("Instalador de Câmeras", "Câmeras de segurança", "Instalação de câmeras e CFTV", "é instalação de câmeras", null, "camera", "cftv", "monitoramento", "dvr"),
-      new Svc("Técnico em Alarme", "Alarme e segurança", "Alarme, cerca elétrica, interfone", "é serviço de segurança eletrônica", null, "alarme", "cerca eletrica", "interfone", "portao eletronico", "motor do portao"),
-      new Svc("Técnico em Energia Solar", "Energia solar", "Placas solares", "é serviço de energia solar", null, "solar", "placa solar", "painel solar", "fotovoltaic"),
-      new Svc("Suporte em Informática", "Informática", "Computador, notebook, internet e Wi-Fi", "parece problema de informática", null,
-          "computador", "notebook", "pc ", "lento", "virus", "formatar", "internet", "wifi", "wi-fi", "roteador", "impressora", "celular travando"),
-      new Svc("Personal Trainer", "Personal trainer", "Treino em casa, emagrecer, ganhar massa", "você quer treinar com acompanhamento", null,
-          "personal", "treino", "treinar", "academia", "emagrec", "perder peso", "barriga", "musculacao", "hipertrofia", "condicionamento", "funcional", "ganhar massa"),
-      new Svc("Instrutor de Dança", "Aula de dança", "Samba, forró, zouk, ballet e mais", "você quer aprender a dançar", null,
-          "danca", "dancar", "forro", "samba", "zouk", "salsa", "bachata", "ballet", "bale", "valsa", "danca de salao", "hip hop", "funk", "sertanejo"),
-      new Svc("Instrutor de Yoga", "Yoga", "Aulas de yoga e meditação", "você procura yoga", null, "yoga", "ioga", "meditacao", "respiracao"),
-      new Svc("Instrutor de Pilates", "Pilates", "Pilates em casa ou no estúdio", "você procura pilates", null, "pilates", "postura", "dor nas costas"),
-      new Svc("Instrutor de Natação", "Natação", "Aulas de natação", "você procura natação", null, "natacao", "nadar", "aprender a nadar"),
-      new Svc("Instrutor de Muay Thai", "Lutas", "Muay thai, boxe, jiu-jitsu", "você procura aula de luta", null, "luta", "muay", "boxe", "jiu", "karate", "mma", "defesa pessoal"),
-      new Svc("Fisioterapeuta", "Fisioterapia", "Dores, lesões e reabilitação", "parece caso de fisioterapia", "Se a dor for forte ou começou de repente, procure um médico.",
-          "fisio", "lesao", "torci", "reabilita", "dor no joelho", "dor no ombro", "coluna", "lombar"),
-      new Svc("Massoterapeuta", "Massagem", "Massagem relaxante e terapêutica", "você procura massagem", null, "massagem", "relaxar", "drenagem", "tensao"),
-      new Svc("Nutricionista", "Nutricionista", "Dieta e reeducação alimentar", "você procura um nutricionista", null, "dieta", "nutri", "alimentacao", "cardapio"),
-      new Svc("Cuidador de Idosos", "Cuidador de idosos", "Acompanhante para idosos", "você procura um cuidador", null, "idoso", "cuidador", "acompanhante", "vovo", "vovó"),
-      new Svc("Enfermeiro(a)", "Enfermagem", "Curativos, injeções e cuidados", "é serviço de enfermagem", null, "curativo", "injecao", "enferm", "soro", "aferir pressao"),
-      new Svc("Psicólogo(a)", "Psicólogo", "Terapia e acompanhamento", "você procura um psicólogo", null, "psicolog", "terapia", "ansiedade", "depressao"),
-      new Svc("Cabeleireiro(a)", "Cabeleireiro", "Corte, escova, química", "é serviço de cabelo", null, "cabelo", "corte de cabelo", "escova", "progressiva", "luzes", "tintura"),
-      new Svc("Barbeiro", "Barbeiro", "Corte masculino e barba", "é serviço de barbearia", null, "barba", "barbeiro", "degrade"),
-      new Svc("Manicure e Pedicure", "Manicure e pedicure", "Unhas das mãos e dos pés", "é serviço de unhas", null, "unha", "manicure", "pedicure", "esmalte", "alongamento de unha"),
-      new Svc("Maquiador(a)", "Maquiagem", "Maquiagem para eventos", "é serviço de maquiagem", null, "maquiag", "make"),
-      new Svc("Designer de Sobrancelhas", "Sobrancelhas", "Design e henna", "é serviço de sobrancelha", null, "sobrancelha", "henna"),
-      new Svc("Banho e Tosa", "Banho e tosa", "Banho e tosa no seu endereço", "é cuidado para o seu pet", null, "banho no cachorro", "tosa", "banho e tosa"),
-      new Svc("Dog Walker", "Passeador de cães", "Passeios com o seu cachorro", "você procura passeio para o pet", null, "passear com o cachorro", "passeador", "dog walker"),
-      new Svc("Pet Sitter", "Pet sitter", "Cuidar do pet enquanto você viaja", "você procura quem cuide do pet", null, "pet sitter", "cuidar do gato", "cuidar do cachorro", "viajar e deixar o pet"),
-      new Svc("Adestrador de Cães", "Adestrador", "Educação e comportamento", "você procura um adestrador", null, "adestra", "cachorro late", "cachorro morde", "comportamento do cachorro"),
-      new Svc("Veterinário(a)", "Veterinário", "Consulta e vacinas em casa", "é cuidado veterinário", "Se o animal estiver muito mal, vá a uma emergência veterinária.", "veterin", "vacina do cachorro", "pet doente", "gato doente", "cachorro doente"),
-      new Svc("Fotógrafo", "Fotógrafo", "Ensaios, eventos e produtos", "você procura um fotógrafo", null, "foto", "fotograf", "ensaio", "book"),
-      new Svc("DJ para Festas", "DJ", "Som para festas", "você procura um DJ", null, "dj", "som para festa", "festa"),
-      new Svc("Chef a Domicílio", "Chef em casa", "Jantar e eventos na sua casa", "você procura um chef", null, "chef", "cozinheiro", "jantar em casa", "churrasqueiro", "churrasco"),
-      new Svc("Confeiteiro(a)", "Confeitaria", "Bolos e doces", "você procura confeitaria", null, "bolo", "doce", "confeit", "brigadeiro"),
-      new Svc("Professor Particular", "Professor particular", "Reforço escolar e aulas", "você procura um professor", null, "reforco", "professor", "aula particular", "matematica", "vestibular", "enem", "dever de casa"),
-      new Svc("Professor de Inglês", "Professor de inglês", "Aulas de inglês", "você quer aprender inglês", null, "ingles", "english"),
-      new Svc("Motoboy", "Motoboy / entregas", "Entregas rápidas", "é serviço de entrega", null, "entrega", "motoboy", "levar um documento"),
-      new Svc("Coletor de Entulho", "Fretes e entulho", "Retirada de entulho e móveis", "é transporte/retirada", null, "entulho", "frete", "mudanca", "carreto", "levar movel"),
-      new Svc("Personal Organizer", "Personal organizer", "Organização de armários e casa", "você procura organização", null, "organizar", "organizacao", "bagunca"),
-      new Svc("Programador(a)", "Programador", "Sites e sistemas", "é serviço de tecnologia", null, "site", "aplicativo", "sistema", "programa"),
-      new Svc("Social Media", "Social media", "Instagram e redes sociais", "é serviço de redes sociais", null, "instagram", "redes sociais", "social media", "postagens"),
-      new Svc("Advogado(a)", "Advogado", "Orientação jurídica", "é um assunto jurídico", null, "advogado", "processo", "juridic", "contrato"),
-      new Svc("Contador(a)", "Contador", "Impostos e MEI", "é assunto de contabilidade", null, "imposto", "mei", "contador", "declaracao", "irpf")
-  );
+  /** Dicionário (src/main/resources/search/dicionario.txt): fácil de aumentar sem mexer no código. */
+  static final List<Svc> DICT = loadDict();
+
+  static List<Svc> loadDict() {
+    List<Svc> out = new ArrayList<>();
+    try (java.io.InputStream in = SearchController.class.getResourceAsStream("/search/dicionario.txt")) {
+      if (in == null) return out;
+      String[] head = null;
+      for (String raw : new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).split("\\r?\\n")) {
+        String line = raw.trim();
+        if (line.isEmpty() || line.startsWith("#")) continue;
+        if (line.startsWith("@")) { head = line.substring(1).split("\\|", -1); continue; }
+        if (head == null) continue;
+        String[] words = Arrays.stream(line.split(",")).map(String::trim).filter(w -> !w.isEmpty()).toArray(String[]::new);
+        String tip = head.length > 4 && !head[4].isBlank() ? head[4].trim() : null;
+        String prod = head[0].trim();
+        Svc prev = out.stream().filter(x -> x.product.equals(prod)).findFirst().orElse(null);
+        if (prev != null) { // mesmo serviço em dois lugares: junta as palavras
+          out.set(out.indexOf(prev), new Svc(prev.product, prev.label, prev.sub, prev.why, prev.tip != null ? prev.tip : tip,
+              java.util.stream.Stream.concat(Arrays.stream(prev.words), Arrays.stream(words)).toArray(String[]::new)));
+        } else out.add(new Svc(prod, head[1].trim(), head[2].trim(), head[3].trim(), tip, words));
+        head = null;
+      }
+    } catch (Exception e) { log.error("Não consegui ler o dicionário da busca", e); }
+    return out;
+  }
+
 
   static String norm(String s) {
     String t = java.text.Normalizer.normalize(Objects.toString(s, "").toLowerCase(), java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
@@ -146,33 +80,52 @@ public class SearchController {
     return p[b.length()];
   }
 
+  /** Primeiras palavras genéricas de nomes de serviço (não servem para adivinhar por semelhança). */
+  static final Set<String> GENERIC_LABEL = Set.of("instalacao", "instalador", "instalacoes", "conserto", "tecnico", "limpeza", "professor", "instrutor", "reformas", "aula", "cuidador", "preparador", "servicos", "designer", "consultor", "assistente", "especialista", "lavagem", "higienizacao", "energia");
+
   /** Pontua o quanto a frase combina com o serviço (aceita erros pequenos de digitação). */
-  static int score(String q, Svc s) {
+  /** Palavras que não ajudam a entender ("o", "da", "meu"...): somem da frase e do dicionário. */
+  static final Set<String> STOP = Set.of("o", "a", "os", "as", "de", "do", "da", "dos", "das", "d", "um", "uma", "uns", "umas", "meu", "minha", "meus", "minhas",
+      "no", "na", "nos", "nas", "em", "pra", "pro", "para", "por", "com", "que", "e", "ta", "esta", "estao", "ficou", "fica", "muito", "bem", "tambem", "ja", "agora",
+      "preciso", "precisa", "precisando", "quero", "queria", "gostaria", "alguem", "algum", "alguma", "ele", "ela", "isso", "aqui", "la", "sei", "nao sei", "favor", "socorro", "urgente", "hoje", "amanha");
+  static String clean(String s) {
+    StringBuilder b = new StringBuilder(" ");
+    for (String w : s.trim().split(" ")) if (!w.isEmpty() && !STOP.contains(w)) b.append(w).append(' ');
+    return b.length() == 1 ? s : b.toString();
+  }
+  /** Todas as palavras soltas do dicionário: se a pessoa escreveu uma delas certinho, não precisa adivinhar por semelhança. */
+  static final Set<String> ALL_WORDS = DICT.stream().flatMap(x -> Arrays.stream(x.words)).map(w -> norm(w).trim()).filter(w -> !w.contains(" ")).collect(Collectors.toSet());
+
+  static int score(String q0, Svc s) {
+    String q = clean(q0);
     int sc = 0;
     String[] toks = q.trim().split(" ");
     for (String w : s.words()) {
-      String nw = norm(w).trim();
+      String nw = clean(norm(w)).trim();
       if (nw.isEmpty()) continue;
-      if (q.contains(" " + nw) || q.contains(nw + " ") && nw.length() >= 5) { sc += nw.contains(" ") ? 4 : 3; continue; }
+      boolean hit = nw.length() < 5 ? q.contains(" " + nw + " ") : (q.contains(" " + nw) || q.contains(nw + " "));
+      if (hit) { sc += 3 + 3 * (nw.split(" ").length - 1); continue; }
       if (!nw.contains(" ") && nw.length() >= 5) {
-        for (String t : toks) if (t.length() >= 4 && (t.startsWith(nw) || (Math.abs(t.length() - nw.length()) <= 2 && lev(t, nw) <= (nw.length() >= 8 ? 2 : 1)))) { sc += 2; break; }
+        for (String t : toks) if (t.length() >= 4 && !ALL_WORDS.contains(t) && (t.startsWith(nw) || (Math.abs(t.length() - nw.length()) <= 2 && lev(t, nw) <= (nw.length() >= 8 ? 2 : 1)))) { sc += 2; break; }
       }
     }
     String name = norm(s.label()).trim(), prod = norm(s.product()).trim();
-    if (q.contains(name) || q.trim().length() >= 4 && (name.startsWith(q.trim()) || prod.startsWith(q.trim()))) sc += 6;
+    if (q.contains(" " + name + " ") || q.trim().length() >= 4 && (name.startsWith(q.trim()) || prod.startsWith(q.trim()))) sc += 4;
     else for (String t : toks) for (String nm : new String[]{name.split(" ")[0], prod.split(" ")[0]})
-      if (t.length() >= 6 && nm.length() >= 6 && lev(t, nm) <= 2) { sc += 5; break; }
+      if (t.length() >= 6 && nm.length() >= 6 && !GENERIC_LABEL.contains(nm) && !ALL_WORDS.contains(t) && lev(t, nm) <= (nm.length() >= 9 ? 2 : 1)) { sc += 4; break; }
     return sc;
   }
 
-  private static final String NAME_N = "LOWER(TRANSLATE(name, 'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ', 'aaaaeeiooouc' || 'aaaaeeiooouc'))";
+  private static final String NAME_N = "TRIM(REGEXP_REPLACE(LOWER(TRANSLATE(name, 'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ', 'aaaaeeiooouc' || 'aaaaeeiooouc')), '[^a-z0-9]+', ' ', 'g'))";
+  private static final Set<String> GENERIC = Set.of("instal", "tecnic", "limpez", "profes", "instru", "design", "consul", "especi", "assist", "cuidad", "operad");
 
   /** Serviços do catálogo com esse nome (aceita acento e variações: Eletricista / Elétrica). */
   private List<Long> productIds(String productName) {
     String n = norm(productName).trim();
     List<Long> ids = jdbc.queryForList("SELECT id FROM product_ WHERE COALESCE(active, TRUE) = TRUE AND " + NAME_N + " LIKE ?", Long.class, n + "%");
-    if (ids.isEmpty() && n.length() >= 6)
-      ids = jdbc.queryForList("SELECT id FROM product_ WHERE COALESCE(active, TRUE) = TRUE AND " + NAME_N + " LIKE ?", Long.class, "%" + n.substring(0, 6) + "%");
+    String stem = n.length() >= 6 ? n.substring(0, 6) : "";
+    if (ids.isEmpty() && !stem.isEmpty() && !GENERIC.contains(stem))
+      ids = jdbc.queryForList("SELECT id FROM product_ WHERE COALESCE(active, TRUE) = TRUE AND " + NAME_N + " LIKE ?", Long.class, stem + "%");
     return ids;
   }
 
@@ -204,7 +157,13 @@ public class SearchController {
       if (used.add(id)) options.add(option(List.of(id), Objects.toString(c.get("name")), Objects.toString(c.get("about"), ""), null, null, lat, lng));
     }
     out.put("understood", !options.isEmpty());
-    if (options.isEmpty()) {
+    if (options.isEmpty() && !ranked.isEmpty()) {
+      Svc s = ranked.get(0).getKey();
+      out.put("understood", false);
+      out.put("missing", s.label());
+      out.put("message", "Entendi que você precisa de " + s.label().toLowerCase() + ", mas ainda não temos esse serviço no app. Veja os mais procurados ou conte de outro jeito.");
+      out.put("popular", popular());
+    } else if (options.isEmpty()) {
       out.put("message", "Não entendi bem. Tente contar de outro jeito, por exemplo \"tomada sem energia\" ou \"quero aprender a dançar\", ou escolha um dos serviços abaixo.");
       out.put("popular", popular());
     } else {

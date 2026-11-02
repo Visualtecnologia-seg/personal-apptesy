@@ -1,0 +1,453 @@
+# Dicionário da busca da OPUS
+# Cada serviço tem 2 linhas:
+#   @Nome no catálogo | Como aparece | O que faz | "Entendi! <por quê>" | Dica de segurança (ou vazio)
+#   palavras e frases do dia a dia, separadas por vírgula (sem acento ou com, tanto faz)
+# Palavras com 5+ letras também acham começos ("eletric" acha eletricidade) e erros pequenos de digitação.
+
+## ---------- CASA: ELÉTRICA E ÁGUA ----------
+@Eletricista|Eletricista|Tomadas, fiação, disjuntor, chuveiro|parece um problema na parte elétrica|Desligue o disjuntor daquele circuito e não mexa nos fios até o profissional chegar.
+eletric, eletrisista, eletricista, chuveiro, resistencia, resistencia do chuveiro, tomada, tomadas, tomada derreteu, tomada derretida, tomada queimada, tomada esquentando, tomada soltando faisca, tomada solta, tomada frouxa, tomada nao funciona, plugue derreteu, benjamin derreteu, extensao derreteu, fio derreteu, fio derretido, fio queimado, fio desencapado, fio solto, fio esquentando, fiacao, fiacao esquentando, fiacao velha, cheiro de queimado, cheiro de plastico queimado, cheiro de fio queimado, fumaca na tomada, faisca, faiscando, estalo na tomada, disjuntor, disjuntor caindo, disjuntor desarmando, disjuntor desarma, chave geral, quadro de luz, quadro de energia, quadro de disjuntores, curto, curto circuito, deu curto, choque, levei choque, dando choque, torneira dando choque, chuveiro dando choque, geladeira dando choque, luz, sem luz, acabou a luz so em casa, metade da casa sem luz, falta de energia, energia caindo, oscilando, luz piscando, piscando, lampada, lampada queimou, lampada nao acende, trocar lampada, interruptor, interruptor quebrado, energia, queimou, chuveiro queimou, chuveiro nao esquenta, chuveiro frio, chuveiro so sai agua fria, nao esquenta, chuveiro desarmando, ventilador de teto, instalar ventilador, lustre, instalar lustre, luminaria, spot, fita de led, padrao de luz, relogio de luz, aterramento, dps, tres pinos, 220, 110, voltagem, instalar tomada, tomada nova, tomada usb, chuveiro novo, instalar chuveiro, ponto de luz, ponto de energia, eletrico, fio, derreteu, derretendo, derretida, ventilador, ventilador nao liga, caiu a energia, sem energia, trocar chuveiro, chuveiro novo
+@Encanador|Encanador|Vazamentos, canos, torneiras, descarga|parece um problema de água ou encanamento|Feche o registro de água se estiver vazando.
+encan, encanador, encanado, bombeiro hidraulico, hidraulic, vazament, vazamento, vazando, vazando agua, agua vazando, agua no chao, poca de agua, cano, cano estourou, cano furado, cano rachado, cano quebrado, torneira, torneira pingando, torneira vazando, torneira quebrada, trocar torneira, descarga, descarga nao para, descarga vazando, descarga fraca, caixa acoplada, valvula de descarga, privada, privada vazando, vaso sanitario, vaso vazando, trocar vaso, registro, registro quebrado, registro vazando, registro nao fecha, pinga, pingando, goteira na pia, caixa d agua, caixa dagua, caixa d agua transbordando, boia, boia da caixa, sifao, flexivel, engate, agua quente, aquecedor a gas, aquecedor, pressao da agua, agua fraca, sem agua, falta agua so em casa, conta de agua alta, hidrometro girando, pressurizador, filtro de agua, instalar filtro, tanque vazando, maquina de lavar vazando, pia vazando, embaixo da pia molhado, conta de agua, conta de agua alta, agua alta
+@Desentupidor|Desentupidor|Pia, ralo, vaso e esgoto entupidos|parece entupimento|Não jogue soda cáustica antes do profissional ver.
+entup, entupido, entupida, entupiu, desentup, ralo, ralo entupido, ralo voltando agua, ralo com cheiro, esgoto, esgoto voltando, esgoto entupido, cheiro de esgoto, fossa, fossa cheia, caixa de gordura, caixa de gordura cheia, nao desce, agua nao desce, pia nao escoa, pia entupida, vaso entupido, privada entupida, transbord, transbordando, mau cheiro no ralo, banheiro alagando, agua subindo pelo ralo, tanque entupido
+@Aquecedor a Gás|Aquecedor a gás|Instalação e conserto de aquecedor|parece algo no aquecedor de água|Se sentir cheiro de gás, feche o registro do gás e abra as janelas.
+aquecedor a gas, aquecedor nao liga, aquecedor apagando, boiler, agua nao esquenta no aquecedor, passagem, cheiro de gas, vazamento de gas, gas vazando, botijao, registro de gas, mangueira de gas, instalar fogao, fogao, cooktop, gas encanado
+
+## ---------- CASA: OBRAS E ACABAMENTO ----------
+@Pedreiro|Pedreiro|Obras, reboco, muro, contrapiso|é serviço de pedreiro|
+pedreiro, pedrero, obra, obras, reboco, rebocar, muro, muro caindo, muro rachado, levantar muro, rachadura, rachadura na parede, trinca, trincado, contrapiso, alvenaria, tijolo, bloco, concreto, laje, calcada, quebrar parede, derrubar parede, abrir porta na parede, fazer churrasqueira, churrasqueira de alvenaria, fundacao, pilar, viga, construcao, construir, ampliar, puxadinho, edicula, pedra, chapisco
+@Reformas em Geral|Reformas em geral|Reformas completas de casa e apartamento|parece uma reforma|
+reforma, reformar, renovar, banheiro novo, reformar banheiro, cozinha nova, reformar cozinha, reformar apartamento, reformar casa, empreiteiro, mestre de obras, faz tudo, marido de aluguel, pequenos reparos, reparo, consertos em casa, manutencao da casa
+@Azulejista|Azulejista|Azulejo, porcelanato, rejunte|é serviço de revestimento|
+azulejo, azulejista, porcelanato, rejunte, rejuntar, rejunte preto, ceramica, revestimento, piso solto, piso estufou, piso quebrado, piso trincado, piso oco, assentar piso, pastilha, revestir parede
+@Instalador de Piso|Instalação de piso|Piso laminado, vinílico e porcelanato|é instalação de piso|
+piso, laminado, piso laminado, vinilico, piso vinilico, taco, taco solto, sinteco, raspar taco, rodape, assoalho, deck, piso de madeira
+@Gesseiro|Gesseiro|Gesso, sanca, drywall, forro|é serviço de gesso|
+gesso, gesseiro, sanca, drywall, parede de drywall, forro, forro de gesso, forro de pvc, teto caindo, teto rachado, moldura de gesso, rebaixar teto, rebaixamento, cortineiro
+@Impermeabilizador|Impermeabilização|Laje, infiltração e umidade|parece infiltração ou umidade|
+impermeabiliz, umidade, parede umida, parede molhada, laje vazando, infiltracao, infiltracao na parede, infiltracao no teto, teto molhado, mancha no teto, teto pingando, bolor, salitre, parede estufando, tinta estufando, agua passando pela parede, pingando agua do teto, agua do teto, goteira no teto, teto do banheiro pingando
+@Instalador de Telhado|Telhado|Telhas, calhas e goteiras|parece problema no telhado|
+telhado, telhadista, telha, telha quebrada, trocar telha, calha, calha entupida, calha vazando, rufo, chovendo dentro, goteira, goteiras, pingando quando chove, vazando quando chove, cumeeira, estrutura do telhado, manta termica
+@Pintor|Pintor|Paredes, portas, grades e fachadas|é serviço de pintura|
+pint, pintor, pinta, pintura, pintar, pintar parede, pintar casa, pintar apartamento, pintar portao, pintar grade, parede manchada, parede suja, mofo, mofo na parede, descascando, tinta descascando, textura, grafiato, verniz, envernizar, massa corrida, repintar, fachada, pintura externa, efeito cimento queimado, papel de parede
+@Vidraceiro|Vidraceiro|Vidros, box, espelhos, janelas|é serviço de vidraçaria|
+vidro, vidro quebrado, vidro trincado, box do banheiro, box, box quebrado, box saiu do trilho, espelho, instalar espelho, janela quebrada, vidraca, vidraceiro, janela de vidro, porta de vidro, guarda corpo de vidro, sacada de vidro, cortina de vidro, envidracamento
+@Serralheiro|Serralheiro|Portões, grades e estruturas de metal|é serviço de serralheria|
+portao, portao emperrado, portao arrastando, portao caindo, grade, grade de janela, serralh, serralheiro, solda, soldar, ferro, metalon, corrimao, escada de ferro, estrutura metalica, cobertura metalica, toldo, policarbonato
+@Marceneiro|Marceneiro|Móveis sob medida e reparos em madeira|é serviço de marcenaria|
+marcen, marceneiro, movel sob medida, moveis planejados, planejado, armario, armario de cozinha, madeira, porta de madeira, porta empenada, porta arrastando, porta nao fecha, dobradica, dobradica quebrada, gaveta, gaveta quebrada, corrediça, trilho da gaveta, painel de tv, cupim no movel
+@Montador de Móveis|Montador de móveis|Montar e desmontar móveis|é montagem de móveis|
+montar, montagem, montador, desmontar, montar movel, montar guarda roupa, guarda roupa, guarda-roupa, movel novo, estante, rack, comoda, cama box, beliche, cabeceira, escrivaninha, mesa, montar cama, movel de loja, magazine, casas bahia, mobly
+@Instalador de Persiana|Cortinas e persianas|Instalar cortina, persiana e varão|é instalação de cortina ou persiana|
+cortina, persiana, varao, trilho de cortina, blackout, rolo, instalar cortina, instalar persiana
+@Instalador (Pequenos Serviços)|Instalações rápidas|Pendurar quadro, TV, prateleira, suporte|é uma instalação rápida|
+pendurar quadro, furar parede, furadeira, instalar tv, suporte de tv, pendurar tv, prateleira, nicho, varal, instalar varal, suporte, bucha, olho magico, instalar olho magico, kit banheiro, toalheiro, papeleira
+@Limpeza de Calhas|Calhas|Instalação e limpeza de calhas|é serviço de calha|
+calha, calhas, limpar calha, condutor, agua pluvial
+
+## ---------- CASA: APARELHOS ----------
+@Técnico em Refrigeração|Geladeira e freezer|Geladeira, freezer e ar-condicionado|parece algo na refrigeração|Se a geladeira parou, mantenha a porta fechada para segurar o frio.
+geladeira, geladeira parou, geladeira nao gela, geladeira esquentando, geladeira fazendo barulho, geladeira com gelo, geladeira pingando, geladeira vazando agua, freezer, freezer nao congela, refrigera, refrigeracao, nao gela, parou de gelar, gas da geladeira, carregar gas, frigobar, adega, expositor, motor da geladeira
+@Instalador de Ar-condicionado|Ar-condicionado|Instalar, limpar e consertar ar|é serviço de ar-condicionado|
+ar condicionado, ar-condicionado, arcondicionado, ar condicionado pingando, ar pingando, ar nao gela, ar nao liga, ar fazendo barulho, ar com cheiro, split, inverter, instalar ar, desinstalar ar, limpeza do ar, higienizacao do ar, manutencao do ar, gas do ar, carga de gas, btus, ar de janela
+@Técnico em Eletrodomésticos|Conserto de eletrodomésticos|Máquina de lavar, micro-ondas, fogão|parece conserto de eletrodoméstico|
+maquina de lavar, lavadora, maquina nao centrifuga, maquina nao bate, maquina nao liga, maquina nao enche, maquina nao escoa, tanquinho, lava e seca, secadora, micro ondas, microondas, microondas nao esquenta, forno eletrico, lava loucas, lava louca, depurador, coifa, purificador, bebedouro, eletrodomestico, conserto de eletrodomestico, airfryer, fritadeira
+@Técnico em TV e Eletrônicos|TV e eletrônicos|TV, som e videogame|parece conserto de eletrônico|
+televisao, tv nao liga, tv sem imagem, tv sem som, tela da tv, tv quebrada, smart tv, home theater, som, caixa de som, antena, antena digital, parabolica, conversor, sky, instalar antena
+@Técnico de Celular|Conserto de celular|Tela, bateria e celular molhado|parece conserto de celular|
+celular, celular quebrado, tela do celular, tela quebrada, tela trincada, trocar tela, bateria do celular, bateria viciada, celular nao carrega, conector de carga, celular caiu na agua, celular molhado, celular nao liga, iphone, samsung, xiaomi, motorola, tablet, ipad
+@Suporte em Informática|Informática|Computador, notebook, internet e Wi-Fi|parece problema de informática|
+computador, notebook, pc, computador lento, notebook lento, lento, travando, tela azul, virus, formatar, formatacao, instalar programa, windows, office, backup, recuperar arquivos, internet, internet lenta, sem internet, wifi, wi fi, wi-fi, sinal fraco, roteador, repetidor, rede, cabo de rede, impressora, impressora nao imprime, celular travando, configurar, senha do wifi, ti
+@Técnico em Energia Solar|Energia solar|Placas solares|é serviço de energia solar|
+solar, energia solar, placa solar, placas solares, painel solar, fotovoltaic, inversor solar, limpeza de placa solar
+@Instalador de Câmeras|Câmeras de segurança|Instalação de câmeras e CFTV|é instalação de câmeras|
+camera, cameras, camera de seguranca, cftv, monitoramento, dvr, nvr, camera wifi, camera nao grava, ver camera no celular
+@Técnico em Alarme|Alarme e portão eletrônico|Alarme, cerca elétrica, interfone, motor do portão|é serviço de segurança eletrônica|
+alarme, alarme disparando, cerca eletrica, concertina, interfone, interfone mudo, video porteiro, portao eletronico, motor do portao, portao nao abre, controle do portao, fechadura eletrica, fechadura digital, sensor de presenca
+
+## ---------- CASA: CHAVES ----------
+@Chaveiro|Chaveiro|Abrir porta, trocar fechadura, cópia|parece serviço de chaveiro|Se for urgente, use o botão Urgente na tela inicial.
+chave, chaves, chaveiro, xaveiro, fechadura, fechadura quebrada, trocar fechadura, trancad, trancado, trancada, tranquei, tranquei a porta, fiquei trancado, fiquei pra fora, fiquei para fora, chave dentro, esqueci a chave, chave quebrou, chave quebrada na fechadura, porta emperrada, porta travada, perdi a chave, perdi as chaves, copia de chave, segredo, trocar segredo, cadeado, cofre, abrir cofre, chave de carro, chave codificada, tetra
+
+## ---------- CASA: LIMPEZA E CUIDADO ----------
+@Limpeza Residencial|Faxina / limpeza|Faxina completa da casa|é serviço de limpeza|
+faxina, faxineira, faxinera, limpeza, limpeza de casa, limpar, limpar casa, limpar apartamento, diarista, casa suja, arrumar a casa, limpeza pesada da casa, limpeza de vidros, limpar janela, limpeza de geladeira, limpeza de forno, mensalista, empregada, domestica, auxiliar de limpeza
+@Passadeira|Passar roupa|Passar e dobrar roupas|é serviço de passar roupa|
+passar roupa, passadeira, roupa amassada, lavar e passar, lavanderia, lavar roupa
+@Limpeza Pós-Obra|Limpeza pós-obra|Limpeza pesada depois de obra|é limpeza pós-obra|
+pos obra, pos-obra, limpeza pos obra, limpeza pesada, sujeira de obra, cimento no piso, tinta no piso, limpeza de mudanca, entrega de apartamento
+@Higienização de Estofados|Higienização de estofados|Sofá, colchão, tapete e cadeiras|é limpeza de estofados|
+sofa, sofa sujo, sofa manchado, lavar sofa, colchao, colchao manchado, xixi no colchao, estofado, tapete, lavar tapete, carpete, cadeira manchada, banco do carro, impermeabilizar sofa, acaro
+@Limpeza de Piscina|Limpeza de piscina|Tratamento e limpeza de piscina|é limpeza de piscina|
+piscina, piscina suja, agua verde, piscina verde, tratar piscina, piscineiro, cloro, filtro da piscina, bomba da piscina
+@Limpeza de Caixa d'Água|Limpeza de caixa d'água|Lavagem e higienização da caixa|é limpeza de caixa d'água|
+limpar caixa d agua, limpeza de caixa d agua, lavar caixa d agua, caixa d agua suja, agua suja na torneira, agua barrenta, cisterna
+@Limpeza de Fachada|Lavagem de fachada|Fachadas, telhados e pisos com alta pressão|é lavagem com alta pressão|
+lavar fachada, lavagem de fachada, lavadora de alta pressao, lavar quintal, lavar garagem, lavar telhado, limpar muro, lodo, limo
+@Dedetizador|Dedetização|Baratas, cupins, ratos e formigas|parece caso de pragas|
+barata, baratas, baratinha, cupim, cupins, rato, ratos, camundongo, ratazana, formiga, formigas, pulga, pulgas, carrapato, dedetiz, dedetizacao, desratizacao, descupinizacao, praga, inseto, insetos, escorpiao, aranha, percevejo, mosquito, dengue, traca, morcego, pombo, abelha, vespa, marimbondo, enxame, cupim no armario, cupim na porta, cupim no telhado, rato no forro, barulho no forro, rato no telhado
+@Jardineiro|Jardineiro|Jardim, grama, poda e plantas|é serviço de jardinagem|
+jardim, jardineiro, grama, gramado, cortar grama, aparar grama, planta, plantas, poda, podar, jardinag, horta, paisagismo, plantar, adubo, cerca viva, vaso de planta, irrigacao
+@Lenhador / Poda de Árvores|Poda de árvores|Corte e poda de árvores|é poda de árvore|
+arvore, arvores, galho, galhos, cortar arvore, podar arvore, arvore caindo, raiz, toco, remover arvore
+@Personal Organizer|Personal organizer|Organização de armários e casa|você procura organização|
+organizar, organizacao, organizar armario, organizar guarda roupa, bagunca, casa baguncada, destralhar, organizar mudanca, organizar guarda roupa, organizar closet, organizar cozinha
+
+## ---------- MUDANÇA E TRANSPORTE ----------
+@Coletor de Entulho|Fretes e entulho|Retirada de entulho e móveis|é transporte ou retirada|
+entulho, retirar entulho, cacamba, frete, fretes, carreto, levar movel, transportar, transporte de moveis, retirar movel velho, descarte, jogar fora sofa, sucata
+@Mudanças|Mudança|Mudança residencial com ajudantes|é serviço de mudança|
+mudanca, mudar de casa, mudanca de apartamento, caminhao de mudanca, ajudante de mudanca, embalar, empacotar, desmontar e montar na mudanca
+@Motoboy|Motoboy / entregas|Entregas rápidas|é serviço de entrega|
+entrega, entregar, motoboy, moto boy, levar um documento, buscar um documento, entregador, delivery, levar encomenda, buscar encomenda
+@Motorista Particular|Motorista particular|Motorista para levar e buscar|você procura um motorista|
+motorista, motorista particular, levar ao medico, levar ao aeroporto, buscar no aeroporto, motorista para idoso, motorista para evento, dirigir meu carro
+
+## ---------- CARRO E MOTO ----------
+@Mecânico|Mecânico|Conserto de carro no seu endereço|parece um problema no carro|Se o carro esquentou muito, desligue e não abra a tampa do radiador quente.
+mecanico, carro, carro nao liga, carro nao pega, carro morreu, carro esquentando, motor, barulho no carro, freio, troca de oleo, oleo, embreagem, suspensao, correia, radiador, injecao eletronica, luz de injecao, motor falhando
+@Eletricista Automotivo|Eletricista de carro|Bateria, partida e parte elétrica do carro|parece problema elétrico no carro|
+bateria do carro, bateria arriou, carro sem bateria, chupeta, pane eletrica, alternador, motor de arranque, farol, farol queimado, vidro eletrico, trava eletrica, som do carro, alarme do carro
+@Borracheiro|Borracheiro|Pneu furado e troca de pneu|parece problema no pneu|Se o pneu furou na rua, pare em lugar seguro e ligue o pisca-alerta.
+pneu, pneu furado, pneu furou, pneu vazio, pneu murcho, trocar pneu, estepe, borracheiro, calibrar, remendo
+@Lavagem de Carros|Lavagem de carro|Lavagem e higienização no seu endereço|é lavagem de carro|
+lavar carro, lavagem de carro, lava jato, lavagem a seco, polimento, polir carro, cristalizacao, vitrificacao, higienizacao do carro, limpar banco do carro, enceramento, lavar o carro, lavar meu carro, carro sujo
+@Funileiro|Funilaria e pintura|Amassados e pintura do carro|é funilaria|
+funilaria, funileiro, amassado, amassou o carro, risco no carro, arranhao, martelinho de ouro, pintura de carro, para choque, amassado no carro, bati o carro, batida no carro, ralei o carro
+@Mecânico de Motos|Mecânico de moto|Conserto de moto|parece um problema na moto|
+moto, moto nao liga, moto nao pega, mecanico de moto, corrente da moto, relacao, pneu da moto, bicicleta, bike, conserto de bicicleta
+
+## ---------- BELEZA ----------
+@Cabeleireiro(a)|Cabeleireiro|Corte, escova, química|é serviço de cabelo|
+cabelo, cabeleireiro, cabeleireira, corte de cabelo, cortar cabelo, escova, progressiva, selagem, botox capilar, luzes, mechas, reflexo, tintura, pintar cabelo, coloracao, hidratacao, cauterizacao, penteado, cacheado, megahair, aplique, cabelo afro
+@Barbeiro|Barbeiro|Corte masculino e barba|é serviço de barbearia|
+barba, barbeiro, barbearia, degrade, corte masculino, pezinho, fazer a barba, bigode, platinado, nevou
+@Manicure e Pedicure|Manicure e pedicure|Unhas das mãos e dos pés|é serviço de unhas|
+unha, unhas, manicure, pedicure, esmalte, fazer as unhas, alongamento de unha, unha de gel, blindagem, spa dos pes
+@Maquiador(a)|Maquiagem|Maquiagem para eventos|é serviço de maquiagem|
+maquiag, maquiagem, make, maquiadora, maquiador, maquiagem de noiva, maquiagem para festa, formatura
+@Designer de Sobrancelhas|Sobrancelhas e cílios|Design, henna e cílios|é serviço de sobrancelha|
+sobrancelha, sobrancelhas, design de sobrancelha, henna, micropigmentacao, cilios, extensao de cilios, lash, lifting de cilios
+@Depilador(a)|Depilação|Depilação com cera ou laser|é serviço de depilação|
+depilacao, depilar, cera, depilacao a laser, buco, virilha, axila
+@Esteticista|Estética|Limpeza de pele e tratamentos|é serviço de estética|
+estetica, esteticista, limpeza de pele, cravo, espinha, acne, peeling, drenagem linfatica, massagem modeladora, celulite, gordura localizada, radiofrequencia
+
+## ---------- SAÚDE E BEM-ESTAR ----------
+@Fisioterapeuta|Fisioterapia|Dores, lesões e reabilitação|parece caso de fisioterapia|Se a dor for forte ou começou de repente, procure um médico.
+fisio, fisioterapia, fisioterapeuta, lesao, torci, torci o pe, torcao, entorse, reabilita, reabilitacao, dor no joelho, dor no ombro, dor nas costas, coluna, lombar, hernia, ciatico, tendinite, bursite, pos cirurgia, fisio respiratoria, rpg, avc
+@Massoterapeuta|Massagem|Massagem relaxante e terapêutica|você procura massagem|
+massagem, massagista, massoterapia, relaxar, relaxante, drenagem, tensao, torcicolo, pescoco travado, quick massage, pedras quentes, reflexologia, shiatsu, liberacao miofascial
+@Nutricionista|Nutricionista|Dieta e reeducação alimentar|você procura um nutricionista|
+dieta, nutri, nutricionista, alimentacao, cardapio, reeducacao alimentar, comer melhor, low carb, diabetes alimentacao, colesterol
+@Cuidador de Idosos|Cuidador de idosos|Acompanhante para idosos|você procura um cuidador|
+idoso, idosa, idosos, cuidador, cuidadora, acompanhante, acompanhante hospitalar, vovo, vovó, avo, avó, minha mae idosa, meu pai idoso, alzheimer, acamado, cuidar de idoso, folguista
+@Enfermeiro(a)|Enfermagem|Curativos, injeções e cuidados|é serviço de enfermagem|
+curativo, injecao, aplicar injecao, enferm, enfermeira, enfermeiro, tecnico de enfermagem, soro, aferir pressao, medir pressao, glicemia, insulina, sonda, troca de sonda, home care, vacina em casa
+@Psicólogo(a)|Psicólogo|Terapia e acompanhamento|você procura um psicólogo|
+psicolog, psicologa, psicologo, terapia, terapeuta, ansiedade, depressao, crise de ansiedade, conversar com alguem, estresse, burnout, luto, terapia de casal
+@Fonoaudiólogo(a)|Fonoaudiologia|Fala, voz e audição|você procura fonoaudiologia|
+fono, fonoaudiologa, fonoaudiologia, fala, gagueira, atraso na fala, voz rouca, degluticao
+@Terapeuta Ocupacional|Terapia ocupacional|Autonomia no dia a dia|você procura terapia ocupacional|
+terapia ocupacional, terapeuta ocupacional, to, autismo, tea, integracao sensorial
+@Doula|Doula e gestante|Apoio na gestação e no parto|você procura apoio na gestação|
+doula, gestante, gravida, parto, amamentacao, consultora de amamentacao, pos parto
+@Babá|Babá|Cuidar das crianças|você procura uma babá|
+baba, babysitter, baby sitter, cuidar de crianca, cuidar do meu filho, cuidar da minha filha, crianca, criancas, bebe, recem nascido, folguista de baba
+
+## ---------- ESPORTE E AULAS ----------
+@Personal Trainer|Personal trainer|Treino em casa, emagrecer, ganhar massa|você quer treinar com acompanhamento|
+personal, personal trainer, treino, treinar, academia, emagrec, emagrecer, perder peso, perder barriga, barriga, musculacao, hipertrofia, condicionamento, funcional, treino funcional, ganhar massa, definir, crossfit, corrida, correr, assessoria de corrida, treino em casa, treino no condominio
+@Instrutor de Dança|Aula de dança|Samba, forró, zouk, ballet e mais|você quer aprender a dançar|
+danca, dancar, aula de danca, professor de danca, forro, samba, samba de gafieira, gafieira, zouk, salsa, bachata, kizomba, ballet, bale, valsa, valsa de casamento, danca de salao, hip hop, funk, sertanejo, danca do ventre, jazz, sapateado, axe, pagode, tango, k pop, coreografia, danca para noivos, aula de forro, aula de samba, aula de zouk, aula de salsa, quero dancar
+@Instrutor de Yoga|Yoga|Aulas de yoga e meditação|você procura yoga|
+yoga, ioga, yôga, meditacao, meditar, respiracao, mindfulness, alongamento
+@Instrutor de Pilates|Pilates|Pilates em casa ou no estúdio|você procura pilates|
+pilates, postura, dor nas costas, pilates solo, pilates em casa
+@Instrutor de Natação|Natação|Aulas de natação|você procura natação|
+natacao, nadar, aprender a nadar, aula de natacao, hidroginastica, medo de agua
+@Instrutor de Muay Thai|Lutas|Muay thai, boxe, jiu-jitsu|você procura aula de luta|
+luta, lutas, muay, muay thai, boxe, box, jiu, jiu jitsu, jiujitsu, karate, judo, mma, kickboxing, capoeira, defesa pessoal, krav maga
+@Instrutor de Tênis|Tênis e beach tennis|Aulas de tênis e beach tennis|você procura aula de tênis|
+tenis, beach tennis, beach tenis, raquete, padel, futevolei, volei
+@Professor Particular|Professor particular|Reforço escolar e aulas|você procura um professor|
+reforco, reforco escolar, professor, professora, aula particular, explicadora, matematica, portugues, redacao, fisica, quimica, biologia, historia, vestibular, enem, concurso, dever de casa, licao de casa, alfabetizacao, aprender a ler
+@Professor de Inglês|Professor de inglês|Aulas de inglês|você quer aprender um idioma|
+ingles, english, aprender ingles, ingles para viagem, ingles para trabalho, ingles para criancas, conversacao em ingles, toefl, ielts, ingles basico, fluencia, idioma
+@Professor de Música|Aula de música|Violão, piano, canto e mais|você quer aprender música|
+musica, aula de musica, violao, guitarra, piano, teclado, bateria musical, canto, cantar, aula de canto, ukulele, flauta, saxofone, violino, baixo
+@Instrutor de Direção|Aula de direção|Perder o medo de dirigir|você procura aula de direção|
+aula de direcao, aprender a dirigir, medo de dirigir, habilitado com medo, baliza, instrutor de direcao, autoescola
+@Professor de Informática|Aula de informática|Computador e celular para iniciantes|você quer aprender informática|
+aula de informatica, aprender computador, aprender a usar celular, excel, word, informatica para idosos, aula de excel
+
+## ---------- PETS ----------
+@Banho e Tosa|Banho e tosa|Banho e tosa no seu endereço|é cuidado para o seu pet|
+banho no cachorro, banho de cachorro, banho no gato, tosa, tosar, banho e tosa, tosador, pet shop em casa, cortar unha do cachorro, banho, cachorro sujo, gato sujo, cachorro fedido, banho cachorro
+@Dog Walker|Passeador de cães|Passeios com o seu cachorro|você procura passeio para o pet|
+passear com o cachorro, passear cachorro, passeador, dog walker, levar cachorro para passear
+@Pet Sitter|Pet sitter|Cuidar do pet enquanto você viaja|você procura quem cuide do pet|
+pet sitter, cuidar do gato, cuidar do cachorro, cuidar do pet, viajar e deixar o pet, hospedagem de cachorro, hotel para cachorro, creche de cachorro
+@Adestrador de Cães|Adestrador|Educação e comportamento|você procura um adestrador|
+adestra, adestrador, adestramento, cachorro late, cachorro latindo muito, cachorro morde, cachorro bravo, cachorro faz xixi no lugar errado, comportamento do cachorro, filhote
+@Veterinário(a)|Veterinário|Consulta e vacinas em casa|é cuidado veterinário|Se o animal estiver muito mal, vá a uma emergência veterinária.
+veterin, veterinario, veterinaria, vacina do cachorro, vacina do gato, pet doente, gato doente, cachorro doente, cachorro vomitando, gato vomitando, cachorro nao come, castrar, castracao, vermifugo
+
+## ---------- EVENTOS ----------
+@Fotógrafo|Fotógrafo|Ensaios, eventos e produtos|você procura um fotógrafo|
+foto, fotos, fotograf, fotografo, fotografa, ensaio, ensaio fotografico, book, fotos de casamento, fotos de aniversario, newborn, gestante fotos, fotos de produto
+@Editor de Vídeo|Vídeo e filmagem|Filmagem de eventos e vídeos|você procura filmagem|
+video, filmagem, filmar, videomaker, drone, edicao de video, editar video, video para instagram
+@DJ|DJ e som|Som e música para festas|você procura um DJ|
+dj, som para festa, aluguel de som, festa, balada, musica para festa, iluminacao de festa
+@Músico(a)|Música ao vivo|Banda, voz e violão, saxofonista|você procura música ao vivo|
+musico, banda, voz e violao, musica ao vivo, saxofonista, cantor para casamento, cerimonial musica
+@Chef a Domicílio|Chef em casa|Jantar e eventos na sua casa|você procura um chef|
+chef, chef em casa, cozinheiro, cozinheira, jantar em casa, jantar romantico, churrasqueiro, churrasco, marmita, marmitas, comida congelada, cozinhar
+@Garçom|Garçom e copeira|Atendimento para festas|você procura garçom|
+garcom, garcons, garconete, copeira, barman, bartender, drinks
+@Decorador(a) de Eventos|Decoração de festa|Decoração e balões|você procura decoração de festa|
+decoracao, decoracao de festa, baloes, arco de baloes, mesa de festa, festa infantil, cha de bebe, cha revelacao, decoradora
+@Animador(a) Infantil|Animação infantil|Recreação e personagens|você procura animação de festa|
+recreacao, recreador, animador, animacao infantil, palhaco, magico, personagem, brinquedos para festa
+@Confeiteiro(a)|Confeitaria|Bolos e doces|você procura confeitaria|
+bolo, bolo de aniversario, doce, doces, confeit, confeiteira, brigadeiro, docinhos, salgadinhos, salgados, kit festa, cupcake
+@Cerimonialista|Cerimonialista|Organização de casamentos e eventos|você procura cerimonial|
+cerimonialista, cerimonial, organizar casamento, assessoria de casamento, organizar evento, celebrante
+
+## ---------- TECNOLOGIA E NEGÓCIOS ----------
+@Programador(a)|Programador|Sites e sistemas|é serviço de tecnologia|
+site, criar site, fazer site, aplicativo, criar aplicativo, sistema, programa, programador, desenvolvedor, loja virtual, ecommerce, landing page, wordpress
+@Designer Gráfico|Designer gráfico|Logo, cartão e artes|é serviço de design|
+logo, logotipo, logomarca, designer, design grafico, cartao de visita, arte para instagram, banner, panfleto, flyer, identidade visual, convite
+@Social Media|Social media|Instagram e redes sociais|é serviço de redes sociais|
+instagram, redes sociais, social media, postagens, gerenciar instagram, trafego pago, anuncio, marketing, tiktok, facebook
+@Advogado(a)|Advogado|Orientação jurídica|é um assunto jurídico|
+advogado, advogada, processo, juridic, contrato, divorcio, pensao, inventario, trabalhista, despejo, consumidor, usucapiao
+@Contador(a)|Contador|Impostos e MEI|é assunto de contabilidade|
+imposto, imposto de renda, mei, abrir mei, abrir empresa, contador, contadora, contabilidade, declaracao, irpf, nota fiscal, das
+@Tradutor(a)|Tradução|Tradução de textos e documentos|você procura tradução|
+traducao, traduzir, tradutor, traducao juramentada, versao
+@Digitador / Assistente|Assistente e digitação|Digitação, planilhas e tarefas|você procura um assistente|
+digitar, digitacao, digitador, planilha, assistente virtual, secretaria, transcricao
+
+## ---------- COSTURA E CONSERTOS ----------
+@Costureira|Costureira|Ajustes e consertos de roupa|é serviço de costura|
+costura, costureira, ajuste de roupa, apertar roupa, barra de calca, fazer barra, consertar roupa, ziper, ziper quebrado, bainha, roupa sob medida, cortina sob medida
+@Sapateiro|Sapateiro|Conserto de sapatos e bolsas|é conserto de sapato|
+sapateiro, sapato, salto quebrado, conserto de sapato, sola, tenis descolando, bolsa rasgada
+@Tapeceiro|Tapeceiro|Reforma de sofá e cadeiras|é reforma de estofado|
+tapeceiro, reformar sofa, trocar tecido do sofa, sofa rasgado, cadeira rasgada, espuma do sofa, estofador
+@Relojoeiro|Relojoeiro|Conserto de relógios|é conserto de relógio|
+relogio, relojoeiro, bateria do relogio, pulseira do relogio
+@Afiador|Afiação|Facas, tesouras e alicates|é afiação|
+afiar, amolar, faca cega, tesoura cega, afiador, amolador
+
+## =========================================================
+## PARTE 2: mais serviços (catálogo atual + novos)
+## =========================================================
+
+## ---------- CASA: MAIS OBRAS ----------
+@Carpinteiro|Carpinteiro|Estruturas de madeira, telhado e decks|é serviço de carpintaria|
+carpinteiro, carpintaria, estrutura de madeira, madeiramento, telhado de madeira, pergolado, deck de madeira, escada de madeira, caibro, ripa, forma de concreto, casinha de madeira
+@Poceiro / Perfurador de Poços|Poço artesiano|Perfurar e manter poço|é serviço de poço|
+poco, poco artesiano, poco semi artesiano, furar poco, perfurar poco, bomba do poco, poco secou, agua do poco, cacimba, cisterna
+@Roçador / Operador de Roçadeira|Roçada de terreno|Capina e limpeza de terreno com roçadeira|é roçada de terreno|
+rocador, rocadeira, rocar terreno, roçada, mato alto, terreno com mato, capina, capinar, limpar lote, lote sujo, terreno baldio, notificacao da prefeitura mato, limpar terreno, terreno sujo, mato
+@Instalador de Forro|Forro|Forro de PVC, gesso e madeira|é instalação de forro|
+instalar forro, forro pvc, forro de madeira, forro caindo, forro manchado, forro solto, lambri
+@Cortineiro|Cortineiro|Cortinas sob medida|é serviço de cortinas|
+cortineiro, cortina sob medida, varao de cortina, trilho suico, cortina de linho, cortina blackout, cortina para sala, cortina para quarto
+@Marmorista|Marmorista|Mármore, granito e pedras|é serviço de marmoraria|
+marmore, granito, marmorista, marmoraria, bancada de granito, pia de granito, soleira, peitoril, quartzo, silestone, polir marmore, bancada quebrada
+@Instalador de Box e Espelhos|Box e espelhos|Instalação de box e espelhos|é instalação de box|
+instalar box, box de vidro, box de acrilico, trilho do box, roldana do box, espelho de banheiro, espelho bisotado
+@Instalador de Papel de Parede|Papel de parede|Aplicação de papel e adesivo|é aplicação de papel de parede|
+papel de parede, adesivo de parede, envelopar, envelopamento de movel, adesivar geladeira, painel ripado
+@Instalador de Cerca|Cercas e alambrados|Cercas, alambrados e telas|é instalação de cerca|
+cerca, alambrado, tela mosquiteira, cerca de madeira, mourao
+@Instalador de Rede de Proteção|Rede de proteção|Janelas, sacadas e piscinas|é instalação de rede de proteção|
+rede de protecao, tela de protecao, protecao para crianca na janela, rede na sacada, rede para gatos, rede de piscina
+@Instalador de Toldos|Toldos e coberturas|Toldos, cobertura e pergolado|é instalação de cobertura|
+toldo, toldos, cobertura, cobertura de policarbonato, cobertura retratil, garagem coberta, pergolado
+@Climatização e Exaustão|Exaustão e ventilação|Exaustores, coifas e dutos|é serviço de exaustão|
+exaustor, coifa, duto, ventilacao, banheiro sem janela, cheiro de fritura, exaustor de banheiro
+@Automação Residencial|Casa inteligente|Alexa, lâmpadas e tomadas inteligentes|é automação da casa|
+automacao, casa inteligente, alexa, google home, lampada inteligente, tomada inteligente, interruptor inteligente, smart home, fechadura inteligente
+@Instalador de Gás|Instalação de gás|Gás encanado, botijão e fogão|é instalação de gás|Se sentir cheiro de gás, feche o registro e abra as janelas.
+instalacao de gas, gas encanado, ponto de gas, tubulacao de gas, conversao de fogao, kit conversao gas, regulador de gas, troca de mangueira de gas
+@Técnico em Bombas|Bombas d'água|Bomba, pressurizador e motor|parece problema na bomba d'água|
+bomba d agua, bomba nao liga, bomba nao puxa, bomba queimou, motor da bomba, pressurizador nao liga, bomba de piscina, bomba submersa
+@Desentupidor de Esgoto|Limpa-fossa|Fossa, caixa de esgoto e hidrojateamento|é limpeza de fossa e esgoto|
+limpa fossa, caminhao limpa fossa, hidrojateamento, sugar fossa, fossa septica, sumidouro
+
+## ---------- LIMPEZA EXTRA ----------
+@Limpador de Canil|Limpeza de canil|Limpeza de canis e gatis|é limpeza de canil|
+canil, gatil, limpar canil, limpeza de canil, caixa de areia, cheiro de xixi de cachorro, quintal com coco de cachorro
+@Limpeza de Vidros|Limpeza de vidros|Janelas e fachadas de vidro|é limpeza de vidros|
+limpar vidro, limpeza de vidros, janela suja, vidros altos, limpeza de janela, limpar sacada
+@Limpeza de Ar-condicionado|Limpeza de ar-condicionado|Higienização do ar|é limpeza de ar-condicionado|
+limpar ar condicionado, ar com mofo, ar com cheiro ruim, higienizar ar, limpeza de split
+@Lavanderia|Lavanderia|Lavar e passar roupas, edredons e tapetes|é serviço de lavanderia|
+lavanderia, lavar edredom, lavar cortina, lavar tenis, lavagem de tenis, lavagem a seco de roupa
+@Limpeza de Escritório|Limpeza comercial|Escritórios, lojas e condomínios|é limpeza comercial|
+limpeza de escritorio, limpeza comercial, limpar loja, limpeza de condominio, limpeza de consultorio, zeladoria, porteiro, conservacao
+
+## ---------- SEGURANÇA ----------
+@Segurança Pessoal|Segurança|Segurança para eventos e pessoal|você procura segurança|
+seguranca, seguranca para evento, seguranca particular, vigilante, guarda, escolta, seguranca de festa, controlador de acesso, recepcionista de evento
+
+## ---------- SAÚDE EXTRA ----------
+@Acupunturista|Acupuntura|Acupuntura e terapias orientais|você procura acupuntura|
+acupuntura, acupunturista, agulhas, ventosa, ventosaterapia, auriculoterapia, medicina chinesa
+@Podólogo(a)|Podologia|Unha encravada, calos e pés|é cuidado com os pés|
+podologo, podologa, podologia, unha encravada, calo, calos, rachadura no pe, pe diabetico, fungo na unha, micose de unha, olho de peixe
+@Fonoaudiólogo(a)|Fonoaudiologia|Fala, voz e audição|você procura fonoaudiologia|
+fono infantil, crianca nao fala, troca de letras, lingua presa, aparelho auditivo
+@Terapeuta Holístico|Terapias integrativas|Reiki, florais e aromaterapia|você procura terapia integrativa|
+reiki, florais, aromaterapia, terapia holistica, constelacao familiar, barras de access, thetahealing, cristais, massagem ayurvedica
+@Coach de Vida|Coach|Metas, carreira e desenvolvimento|você procura um coach|
+coach, coaching, coach de vida, carreira, mudar de carreira, metas, produtividade, procrastinacao, autoestima, lideranca, entrevista de emprego, curriculo
+@Consultor Financeiro|Consultor financeiro|Organizar dinheiro e dívidas|você procura orientação financeira|
+financeiro, consultor financeiro, organizar dinheiro, dividas, sair das dividas, investir, investimento, orcamento familiar, planilha de gastos, aposentadoria, educacao financeira
+@Médico a Domicílio|Médico em casa|Consulta médica no seu endereço|você procura consulta em casa|Em emergência, ligue 192 (SAMU).
+medico, medico em casa, consulta em casa, clinico geral, pediatra, geriatra, atestado, receita
+@Personal Diet|Marmitas fit|Refeições saudáveis da semana|você procura comida saudável pronta|
+marmita fit, marmitas fit, comida saudavel, refeicao saudavel, cardapio da semana, congelados fit
+
+## ---------- BELEZA EXTRA ----------
+@Colorista Capilar|Colorista|Coloração, loiro e mechas|é serviço de coloração|
+colorista, loiro, loira, morena iluminada, ombre, balayage, descoloracao, platinado, matizar, tonalizar, cabelo laranja, cabelo amarelado, corrigir cor do cabelo
+@Lash Designer|Cílios|Extensão e lifting de cílios|é serviço de cílios|
+lash, lash designer, extensao de cilios, fio a fio, volume russo, lifting de cilios, manutencao de cilios, cilios postico
+@Micropigmentador(a)|Micropigmentação|Sobrancelha, lábios e olhos|é micropigmentação|
+micropigmentacao, microblading, nanoblading, fio a fio sobrancelha, delineado permanente, labios, revitalizacao labial, remocao de micro
+@Nail Designer|Nail designer|Alongamento e decoração de unhas|é serviço de unhas|
+nail, nail designer, unha decorada, unha de fibra, unha de porcelana, unha postiça, unhas posticas, encapsulada, banho de gel, francesinha
+@Trancista|Tranças|Tranças, box braids e nagô|é serviço de tranças|
+trancista, trancas, tranca nago, nago, box braids, twist, fulani, dreads, dreadlocks, crochet braids
+@Visagista|Visagismo e consultoria de imagem|Imagem pessoal e estilo|você procura consultoria de imagem|
+visagismo, visagista, consultoria de imagem, coloracao pessoal, estilo, personal stylist, montar looks, guarda roupa capsula
+@Massagista Estética|Massagem estética|Modeladora e drenagem|é massagem estética|
+massagem modeladora, drenagem pos operatorio, pos operatorio, lipo, abdominoplastia, inchaço, retencao de liquido
+
+## ---------- ESPORTE EXTRA ----------
+@Instrutor de Boxe|Boxe|Aulas de boxe|você procura aula de boxe|
+boxe, boxing, aula de boxe, saco de pancada, luva de boxe
+@Instrutor de Jiu-Jitsu|Jiu-jitsu|Aulas de jiu-jitsu|você procura jiu-jitsu|
+jiu jitsu, jiujitsu, bjj, kimono, faixa
+@Instrutor de Crossfit|Crossfit e funcional|Treino de alta intensidade|você procura crossfit|
+crossfit, cross training, hiit, treino intenso, wod, kettlebell
+@Preparador Físico|Preparador físico|Preparação para esportes e provas|você procura preparação física|
+preparador fisico, preparacao fisica, teste fisico, taf, concurso policia teste fisico, maratona, meia maratona, triatlo
+@Treinador de Futebol|Treinador de futebol|Aulas e treinos de futebol|você procura treino de futebol|
+futebol, escolinha de futebol, treinador de futebol, goleiro, treino de goleiro, futsal, society
+@Árbitro Esportivo|Árbitro|Árbitro para jogos e campeonatos|você procura um árbitro|
+arbitro, juiz de futebol, apitar jogo, bandeirinha, campeonato
+@Instrutor de Ciclismo|Ciclismo|Aprender a pedalar e treinos|você procura aula de ciclismo|
+aprender a andar de bicicleta, ciclismo, pedal, treino de bike, mountain bike, spinning
+@Instrutor de Skate e Surf|Skate e surf|Aulas de skate, surf e stand up|você procura aula de skate ou surf|
+skate, surf, surfe, stand up paddle, sup, bodyboard, kitesurf
+@Instrutor de Hidroginástica|Hidroginástica|Exercícios na água|você procura hidroginástica|
+hidroginastica, hidro, exercicio na agua, deep running
+@Instrutor de Ginástica para Idosos|Atividade física para idosos|Exercícios leves e equilíbrio|você procura exercício para idosos|
+ginastica para idosos, exercicio para idosos, terceira idade, equilibrio, prevenir quedas, alongamento para idosos
+
+## ---------- AULAS EXTRA ----------
+@Professor de Espanhol|Professor de espanhol|Aulas de espanhol|você quer aprender espanhol|
+espanhol, aprender espanhol, castelhano, dele
+@Professor de Francês|Professor de francês|Aulas de francês|você quer aprender francês|
+frances, aprender frances, delf
+@Professor de Outros Idiomas|Outros idiomas|Italiano, alemão, japonês, libras|você quer aprender um idioma|
+italiano, alemao, japones, chines, mandarim, coreano, russo, arabe, libras, lingua de sinais, portugues para estrangeiros
+@Professor de Desenho e Pintura|Aula de arte|Desenho, pintura e artesanato|você quer aula de arte|
+desenho, aula de desenho, pintura em tela, aquarela, artesanato, croche, trico, bordado, ceramica artesanal, macrame, costura criativa
+@Professor de Culinária|Aula de culinária|Cozinhar, confeitar e panificar|você quer aprender a cozinhar|
+aula de culinaria, aprender a cozinhar, curso de bolo, aprender confeitaria, panificacao, fazer pao, sushi aula
+@Professor de Xadrez|Xadrez e jogos|Aulas de xadrez|você quer aprender xadrez|
+xadrez, aula de xadrez, dama, raciocinio logico
+@Professor de Programação|Aula de programação|Programação e robótica|você quer aprender programação|
+aprender programar, aula de programacao, python, javascript, robotica, programacao para criancas, scratch
+@Professor de Oratória|Oratória|Falar em público|você quer aprender a falar em público|
+oratoria, falar em publico, timidez, apresentacao, discurso, comunicacao
+
+## ---------- PETS EXTRA ----------
+@Tosador(a)|Tosador|Tosa higiênica e na tesoura|é tosa do pet|
+tosa higienica, tosa na tesoura, tosa bebe, tosa na maquina, desembolar pelo, pelo embolado, higienica
+@Táxi Dog|Táxi pet|Levar o pet ao veterinário ou banho|você procura transporte para o pet|
+taxi dog, taxi pet, transporte de cachorro, levar cachorro ao veterinario, levar gato ao veterinario, transporte pet, levar gato, levar cachorro, levar o gato, levar o cachorro, levar meu cachorro, levar meu gato
+@Cuidador de Animais Exóticos|Pets exóticos e aves|Aves, répteis e peixes|é cuidado com animal exótico|
+calopsita, papagaio, passaro, aves, coelho, hamster, porquinho da india, tartaruga, jabuti, aquario, limpar aquario, peixe
+
+## ---------- EVENTOS EXTRA ----------
+@Bartender|Bartender|Drinks para festas|você procura bartender|
+bartender, barman, drinks, open bar, caipirinha, coquetel, bar de festa
+@Cantor(a)|Cantor|Voz para casamento e eventos|você procura um cantor|
+cantor, cantora, cantar no casamento, voz para cerimonia, cantor gospel, serenata, parabens cantado
+@Mágico(a)|Mágico|Show de mágica|você procura um mágico|
+magico, magica, show de magica, ilusionista
+@Garçom|Garçom e copeira|Atendimento para festas|você procura garçom|
+garcom para festa, servir festa, copeira para festa, cumim, maitre
+@Buffet|Buffet|Comida para festas e eventos|você procura buffet|
+buffet, buffet em casa, comida para festa, salgados para festa, finger food, coffee break, crepe, crepeiro, churrasco para festa, feijoada, paella, pizza em casa, hamburguer para festa
+@Fotógrafo de Eventos|Fotógrafo de eventos|Casamentos, aniversários e formaturas|você procura fotógrafo de evento|
+fotografo de casamento, fotografo de aniversario, fotografo de 15 anos, fotografo de batizado, cabine de fotos, totem de fotos
+@Locação de Brinquedos|Brinquedos para festa|Pula-pula, piscina de bolinhas|você procura brinquedos para festa|
+pula pula, cama elastica, piscina de bolinha, tobogã, algodao doce, pipoca, carrinho de pipoca
+@Floricultura|Flores e arranjos|Arranjos e decoração com flores|você procura flores|
+flores, arranjo de flores, buque, buque de noiva, coroa de flores, decoracao com flores, florista
+@Celebrante|Celebrante|Cerimônia de casamento|você procura um celebrante|
+celebrante, celebrar casamento, casamento ao ar livre, renovacao de votos, mini wedding
+
+## ---------- TECNOLOGIA EXTRA ----------
+@Editor de Vídeo|Editor de vídeo|Edição de vídeos e reels|é edição de vídeo|
+editar video, edicao de video, reels, youtube, editor de video, legendas em video, corte de video, vinheta
+@Especialista em SEO|SEO e Google|Aparecer no Google|é serviço de marketing digital|
+seo, aparecer no google, google meu negocio, google maps empresa, ranquear, google ads
+@Redator(a)|Redator|Textos, artigos e revisão|é serviço de texto|
+redator, redacao de textos, escrever texto, artigo, blog, revisao de texto, revisar tcc, tcc, formatacao abnt, abnt, copywriter, legenda para post
+@Técnico em Redes|Redes e internet|Cabeamento, Wi-Fi e câmeras IP|é serviço de rede|
+cabeamento, cabeamento estruturado, rede wifi empresa, mesh, ponto de rede, rack de rede, fibra optica
+@Técnico em Impressoras|Impressoras|Conserto e manutenção de impressoras|parece problema na impressora|
+impressora, impressora atolando papel, impressora nao puxa papel, cartucho, tinta da impressora, toner, bulk ink, epson, hp impressora
+@Recuperação de Dados|Recuperar arquivos|HD, pendrive e celular|é recuperação de dados|
+recuperar fotos, recuperar arquivos apagados, hd queimou, pendrive nao abre, cartao de memoria, recuperacao de dados
+@Técnico em Videogame|Conserto de videogame|PlayStation, Xbox e Nintendo|parece conserto de videogame|
+videogame nao liga, ps4, ps5, playstation, xbox, nintendo, switch, controle com drift, controle nao conecta, drift, controle do videogame, controle do ps5, controle do ps4
+
+## ---------- DOCUMENTOS E SERVIÇOS ----------
+@Despachante|Despachante|Documentos de carro e licenças|é serviço de despachante|
+despachante, transferencia de veiculo, licenciamento, ipva, multa, recurso de multa, cnh, renovar cnh, documento do carro, vistoria, tirar cnh, cnh renovar, renovar carteira de motorista
+@Assistente Administrativo|Assistente administrativo|Burocracias, agendamentos e papéis|você procura ajuda com papéis|
+burocracia, organizar documentos, ajuda com documentos, agendar, inss, aposentadoria inss, cadastro, segunda via, preencher formulario
+@Corretor de Imóveis|Corretor de imóveis|Comprar, vender ou alugar|é assunto de imóvel|
+corretor, imovel, vender casa, alugar apartamento, comprar casa, avaliar imovel, avaliacao de imovel
+@Arquiteto(a)|Arquiteto|Projetos e plantas|você procura um arquiteto|
+arquiteto, arquiteta, projeto de casa, planta da casa, projeto de reforma, aprovar na prefeitura, alvara, projeto da casa, projeto de reforma, projeto
+@Designer de Interiores|Designer de interiores|Decoração e projeto de ambientes|você procura design de interiores|
+design de interiores, decorar casa, decoracao de apartamento, projeto de interiores, decoradora de interiores, ambientacao
+@Engenheiro(a)|Engenheiro|Laudos, projetos e obras|você procura um engenheiro|
+engenheiro, engenheira, laudo, laudo tecnico, art, projeto estrutural, vistoria de imovel, rachadura grave, calculo estrutural, laudo de rachadura, laudo de obra
+@Topógrafo|Topógrafo|Medição de terrenos|é serviço de topografia|
+topografo, topografia, medir terreno, levantamento topografico, georreferenciamento, demarcacao
+
+## ---------- CARRO EXTRA ----------
+@Guincho|Guincho|Reboque de carro e moto|você precisa de guincho|Se estiver na estrada, ligue o pisca-alerta e fique fora do carro, em lugar seguro.
+guincho, reboque, carro quebrou na rua, carro quebrado, rebocar carro, plataforma, moto quebrou
+@Auto Elétrica e Som|Som e acessórios do carro|Som, câmera de ré e insulfilm|é instalação no carro|
+insulfilm, pelicula, camera de re, sensor de estacionamento, multimidia, central multimidia, som automotivo, alto falante do carro
+@Vidraceiro Automotivo|Vidro do carro|Para-brisa e vidros do carro|é vidro de carro|
+parabrisa, para brisa, para-brisa trincado, vidro do carro, retrovisor quebrado, trinca no parabrisa
+@Ar-condicionado Automotivo|Ar do carro|Gás e conserto do ar do carro|é ar-condicionado do carro|
+ar do carro, ar condicionado do carro nao gela, gas do ar do carro, higienizacao do ar do carro
+
+## ---------- CUIDADOS COM A CASA ----------
+@Caseiro|Caseiro|Cuidar de sítio e casa|você procura um caseiro|
+caseiro, caseira, cuidar do sitio, sitio, chacara, cuidar da casa de praia, zelador
+@Cozinheira Doméstica|Cozinheira|Cozinhar no dia a dia em casa|você procura cozinheira|
+cozinheira diaria, cozinhar em casa, fazer comida, preparar refeicoes, cozinhar para a semana
+@Passeador de Idosos|Companhia para idosos|Passeios e companhia|você procura companhia para idoso|
+companhia para idoso, passear com idoso, acompanhar em consulta, acompanhante de idoso, conversar com idoso
+@Babá Noturna|Babá noturna|Cuidado à noite com o bebê|você procura babá noturna|
+baba noturna, bebe nao dorme, noite com bebe, consultora do sono, sono do bebe
