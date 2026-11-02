@@ -1,0 +1,320 @@
+# Opi — primeiro atendimento do APP DO CLIENTE
+# @id|tipo   tipo: normal (Opi responde) · humano (Opi acolhe e chama a equipe) · urgente (chama a equipe com prioridade)
+# k: palavras e frases que levam a esse assunto (sem acento ou com, tanto faz)
+# r: resposta (cada r: é uma linha). {nome} vira o primeiro nome da pessoa.
+# b: botão  Texto|/rota-do-app   ou   Texto|humano   ou   Texto|ok
+
+## ---------- URGENTES (vão direto para a equipe, com prioridade) ----------
+@golpe|urgente
+k: golpe, golpista, me enganou, fui enganado, fui enganada, fraude, estelionato, pediu pix por fora, pagar por fora, pagamento por fora, pediu dinheiro fora do app, pediu meu cartao, pediu minha senha, clonaram, perfil falso, profissional falso
+r: {nome}, obrigado por avisar. Isso é muito sério e eu já chamei a equipe OPUS agora, com prioridade. 🚨
+r: Enquanto isso: não faça nenhum pagamento fora do app e não passe senhas ou códigos para ninguém. Pagando pela OPUS, o seu dinheiro fica guardado no cofre.
+b: Ver meus pedidos|/(tabs)/orders
+
+@assedio|urgente
+k: assedio, assediou, assediada, assediado, me tocou, passou a mao, mensagem de cunho sexual, me ameacou, ameaca, ameacando, agressao, me agrediu, bateu, violencia, me xingou, ofendeu, racismo, racista, homofobia, preconceito, discriminacao, me seguiu, perseguindo, estou com medo, me sinto insegura, me sinto inseguro
+r: {nome}, sinto muito que isso aconteceu. Você não está sozinho(a): já chamei a equipe OPUS com prioridade máxima. 🚨
+r: Se você estiver em perigo agora, ligue 190. Durante um atendimento, o botão SOS avisa a equipe e o seu contato de confiança na hora.
+b: Meu contato de confiança|/contato-confianca
+
+@cobranca-indevida|urgente
+k: cobranca indevida, cobraram errado, cobrado duas vezes, cobrou duas vezes, cobranca em dobro, paguei duas vezes, valor errado, cobraram a mais, cobrou a mais, nao reconheco essa cobranca, estorno, chargeback, debito que nao fiz, cobranca errada, cobranca errado
+r: {nome}, entendi: uma cobrança que não está certa. Já passei para a equipe financeira da OPUS, com prioridade. 💳
+r: Se puder, mande aqui o comprovante (print) e diga em qual pedido aconteceu. Isso adianta muito.
+b: Ver meus pedidos|/(tabs)/orders
+
+@sos|urgente
+k: sos, emergencia, perigo, socorro, me ajuda rapido, aconteceu um acidente, acidente, me machuquei, profissional se machucou, incendio, fogo, pegou fogo
+r: {nome}, já chamei a equipe OPUS com prioridade máxima. 🚨
+r: Se alguém estiver ferido ou em perigo, ligue agora: 192 (SAMU), 193 (Bombeiros) ou 190 (Polícia).
+b: Meu contato de confiança|/contato-confianca
+
+@dados-vazados|urgente
+k: invadiram minha conta, hackearam, hackeado, conta invadida, alguem entrou na minha conta, trocaram meu email, trocaram minha senha, nao fui eu
+r: {nome}, já chamei a equipe OPUS com prioridade para proteger a sua conta. 🔒
+r: Enquanto isso, troque a senha do seu e-mail e não passe códigos que chegarem por SMS para ninguém.
+
+## ---------- ACHAR E CONTRATAR ----------
+@achar-profissional|normal
+k: como acho, como encontro, como procuro, achar profissional, encontrar profissional, procurar profissional, como contratar, como contrato, como pedir, como faco um pedido, como chamo, nao sei usar, como funciona o app, como usa, buscar servico, quero contratar, onde procuro
+r: É bem fácil, {nome}! 😊
+r: 1️⃣ Na tela inicial, toque na barra "Fale seu problema ou procure um serviço".
+r: 2️⃣ Escreva ou fale o que aconteceu. Ex.: "a tomada derreteu".
+r: 3️⃣ Eu indico o serviço certo e mostro quem está perto de você.
+r: 4️⃣ Toque em "Ver perfil" para conhecer, ou em "Agendar" para escolher o horário.
+b: Abrir a busca|/busca
+
+@busca-por-voz|normal
+k: buscar falando, falar em vez de digitar, microfone, busca por voz, nao sei escrever, dificil digitar, ditar
+r: Pode falar, {nome}! 🎙️ Na busca, toque no microfone ao lado da barra e conte o problema com as suas palavras. Eu entendo e te mostro os profissionais.
+b: Abrir a busca|/busca
+
+@escolher-profissional|normal
+k: qual escolher, como escolher, qual o melhor, e confiavel, profissional confiavel, como saber se e bom, avaliacao do profissional, nota do profissional, selo azul, verificado
+r: Boa pergunta, {nome}. Para escolher com segurança:
+r: ✅ Selo azul = documento e selfie conferidos pela OPUS.
+r: ⭐ Veja a nota e o que outros clientes escreveram.
+r: 📸 Na aba "Social" do perfil tem trabalhos de verdade, com antes e depois.
+r: 🛡️ E o pagamento só vai para o profissional depois que você confere o serviço.
+b: Abrir a busca|/busca
+
+@comparar-orcamentos|normal
+k: orcamento, orcamentos, comparar preco, comparar profissionais, varios orcamentos, pedir orcamento, quanto custa, preco do servico, valor do servico, ta caro, mais barato
+r: {nome}, você pode pedir orçamento para até 3 profissionais de uma vez e comparar preço, garantia e nota numa tela só. 📊
+r: Na busca, depois de escolher o serviço, toque em "Comparar".
+b: Pedir orçamentos|/pedir-orcamentos
+
+@agendar|normal
+k: agendar, agendamento, marcar horario, escolher horario, escolher dia, marcar para outro dia, horario disponivel, agenda do profissional
+r: Para agendar, {nome}: abra o perfil do profissional e toque em "Agendar". Aparecem os dias e horários livres dele, é só escolher. 📅
+r: Se ele tiver um horário livre hoje, já aparece no botão (ex.: "Agendar 14:00").
+b: Abrir a busca|/busca
+
+@urgente|normal
+k: urgente, agora, pra agora, para agora, emergencia em casa, rapido, o quanto antes, hoje mesmo, imediato
+r: {nome}, para algo urgente use o botão "Urgente" da tela inicial. ⚡ Ele chama os profissionais online mais perto de você, e o primeiro que aceitar vai até aí.
+b: Pedir urgente|/urgente
+
+@nao-acho-servico|normal
+k: nao achei o servico, nao encontrei o servico, nao tem o servico, servico nao aparece, nao aparece ninguem, nenhum profissional, ninguem perto, sem profissionais
+r: Poxa, {nome}! Às vezes ainda não temos esse serviço ou ninguém perto de você. Tente contar o problema de outro jeito na busca, que eu procuro serviços parecidos. 🔎
+r: Se mesmo assim não achar, me diga aqui qual serviço você precisa que eu passo para a equipe OPUS trazer profissionais.
+b: Abrir a busca|/busca
+b: Falar com atendente|humano
+
+@favoritos|normal
+k: favorito, favoritos, salvar profissional, coracao, contratar de novo, mesmo profissional, contratar o mesmo
+r: {nome}, toque no coração ❤️ no perfil do profissional para salvar. Depois ele aparece em "Meus favoritos", no seu perfil.
+r: E quando um serviço termina, aparece o botão "Contratar de novo".
+b: Meus favoritos|/favoritos
+
+## ---------- PAGAMENTO ----------
+@como-pagar|normal
+k: como pago, como pagar, forma de pagamento, formas de pagamento, pix, pagar com pix, cartao, pagar com cartao, boleto, parcelar, parcelado, funciona pagamento, como funciona o pagamento
+r: {nome}, o pagamento é por PIX, na hora de confirmar o pedido. 💳
+r: O dinheiro fica guardado no cofre da OPUS e só vai para o profissional depois que você confere o serviço e mostra o seu código.
+b: Ver meus pedidos|/(tabs)/orders
+
+@cofre|normal
+k: cofre, escrow, dinheiro guardado, quando o profissional recebe, seguranca do pagamento, e seguro pagar, posso confiar no pagamento, dinheiro fica onde
+r: Fica tranquilo(a), {nome}. 🔒 Quando você paga, o dinheiro fica guardado no cofre da OPUS.
+r: Ele só é liberado para o profissional depois que você confere o serviço. Se algo der errado, toque em "Tive um problema" antes de mostrar o código, e o dinheiro fica travado até a equipe analisar.
+b: Ver meus pedidos|/(tabs)/orders
+
+@pix-nao-confirmou|normal
+k: paguei e nao confirmou, pix nao confirmou, pagamento nao aparece, paguei e continua pendente, pix pendente, pagamento pendente, ja paguei, nao caiu o pagamento
+r: {nome}, o PIX costuma confirmar em até 2 minutos. ⏳ Feche e abra o pedido de novo para atualizar.
+r: Se passar de 15 minutos, me mande aqui o comprovante (print) e o pedido, que a equipe confere para você.
+b: Ver meus pedidos|/(tabs)/orders
+b: Falar com atendente|humano
+
+@taxa|normal
+k: taxa, taxa da opus, quanto a opus cobra, porcentagem, comissao, por que o valor aumentou, valor diferente, 5 por cento
+r: {nome}, a OPUS cobra 5% em cima do valor do serviço. Isso paga o cofre que protege o seu dinheiro, a garantia e o suporte. Esse valor já aparece no preço que você vê. 👍
+
+@recibo|normal
+k: recibo, comprovante, nota fiscal, nota, comprovante de pagamento, preciso do recibo
+r: {nome}, o recibo fica dentro do pedido: abra o pedido e toque em "Recibo". Dá para salvar ou compartilhar. 🧾
+b: Ver meus pedidos|/(tabs)/orders
+
+@pagamento-etapas|normal
+k: etapas, pagamento por etapas, pagar por partes, parcela da obra, liberar etapa, aprovar etapa, 30 40 30
+r: Em serviços grandes, {nome}, o profissional divide em etapas (ex.: 30/40/30). 🧱 Você paga tudo no cofre, mas cada parte só é liberada quando você aprova aquela etapa no pedido.
+b: Ver meus pedidos|/(tabs)/orders
+
+@pontos|normal
+k: pontos, cashback, desconto, cupom, ganhar desconto, como ganho pontos, usar pontos, carteira, saldo de pontos
+r: {nome}, cada serviço pago e cada avaliação dão pontos. 🎁 Indicando amigos você ganha mais. Os pontos viram desconto: veja tudo na Carteira.
+b: Minha carteira|/(tabs)/carteira
+b: Indicar amigos|/indique
+
+@indicar|normal
+k: indicar, indicacao, indique e ganhe, convidar amigo, codigo de indicacao, chamar amigo
+r: É só compartilhar o seu link, {nome}! 💌 Quando o seu amigo faz o primeiro serviço, vocês dois ganham pontos.
+b: Indicar amigos|/indique
+
+## ---------- PEDIDO EM ANDAMENTO ----------
+@profissional-nao-veio|humano
+k: profissional nao veio, nao apareceu, nao compareceu, ele nao veio, ela nao veio, me deu bolo, faltou, sumiu, nao responde, profissional nao responde, nao chegou, atrasado, muito atrasado, esta atrasado
+r: Sinto muito, {nome}. 😕 Primeiro: o seu dinheiro está guardado no cofre e NÃO foi para o profissional.
+r: Abra o pedido para ver onde ele está (quando ele sai, aparece no mapa). Se ele não vier, toque em "Tive um problema" e você recebe tudo de volta.
+r: Também já avisei a equipe OPUS para acompanhar o seu caso.
+b: Ver meus pedidos|/(tabs)/orders
+
+@servico-ruim|humano
+k: servico ruim, servico mal feito, mal feito, ficou ruim, nao ficou bom, nao gostei, estragou, quebrou mais, piorou, nao resolveu, nao terminou, deixou pela metade, reclamacao, reclamar, quero reclamar, problema no servico
+r: Que chato, {nome}. Vamos resolver. 💪
+r: Se você ainda não mostrou o código: abra o pedido e toque em "Tive um problema". O dinheiro fica travado e a equipe analisa as provas (fotos, vídeos e conversa) em até 2 horas.
+r: Se já liberou: o serviço tem garantia. Abra o pedido e toque em "Usar garantia".
+r: Já deixei a equipe OPUS avisada.
+b: Ver meus pedidos|/(tabs)/orders
+
+@garantia|normal
+k: garantia, usar garantia, voltou o problema, deu problema de novo, quebrou de novo, vazou de novo, retorno do profissional, refazer
+r: {nome}, o serviço tem garantia! 🛡️ Abra o pedido concluído e toque em "Usar garantia". O profissional é avisado para combinar o retorno com você, sem custo.
+b: Ver meus pedidos|/(tabs)/orders
+
+@codigo-conclusao|normal
+k: codigo, codigo de conclusao, qr code, mostrar codigo, onde esta o codigo, liberar pagamento, como libero, concluir servico, finalizar servico, terminou o servico
+r: Quando o serviço terminar, {nome}: confira se está tudo certo e abra o pedido. Toque em "Conferir e concluir" e mostre o seu código (QR) para o profissional. ✅
+r: Só mostre o código se estiver satisfeito: ele libera o pagamento.
+b: Ver meus pedidos|/(tabs)/orders
+
+@codigo-chegada|normal
+k: codigo de chegada, chegou na minha casa, confirmar chegada, ele chegou, profissional chegou
+r: Quando o profissional chegar, {nome}, ele lê o seu código de chegada no app. Assim fica registrado o horário certinho. 🕐 O código fica no pedido.
+b: Ver meus pedidos|/(tabs)/orders
+
+@acompanhar|normal
+k: onde ele esta, acompanhar, rastrear, mapa do profissional, ja saiu, esta a caminho, quanto tempo falta, previsao de chegada
+r: {nome}, abra o pedido: quando o profissional sai para te atender, você acompanha ele no mapa e vê quanto tempo falta. 🗺️
+b: Ver meus pedidos|/(tabs)/orders
+
+@chat-profissional|normal
+k: falar com o profissional, conversar com o profissional, mandar mensagem para o profissional, chat do pedido, ligar para o profissional, telefone do profissional, whatsapp do profissional
+r: Dá para conversar pelo chat do pedido, {nome}: abra o pedido e toque em "Conversar". 💬 Tem mensagem, áudio e chamada pelo app.
+r: Dica: combine tudo pelo app, assim fica registrado e a OPUS consegue te proteger.
+b: Ver meus pedidos|/(tabs)/orders
+
+@materiais|normal
+k: material, materiais, quem compra o material, comprar material, lista de material, onde comprar
+r: {nome}, no pedido aparece a lista de materiais e quem compra cada um (você ou o profissional). 🧰 Em "Onde comprar" eu mostro lojas perto de você.
+b: Onde comprar|/onde-comprar
+
+## ---------- CANCELAR E REEMBOLSO ----------
+@cancelar|normal
+k: cancelar, cancelamento, quero cancelar, desistir, desisti, nao quero mais, cancelar pedido, cancelar servico, como cancelo
+r: Pode cancelar sim, {nome}. Abra o pedido e toque em "Cancelar".
+r: ✅ Se o profissional ainda não saiu: você recebe tudo de volta.
+r: 🚗 Se ele já estava a caminho: é cobrada só uma taxa de deslocamento, e o app mostra o valor antes de você confirmar.
+b: Ver meus pedidos|/(tabs)/orders
+
+@reembolso|humano
+k: reembolso, devolucao, devolver o dinheiro, quero meu dinheiro de volta, dinheiro de volta, estornar, quando volta o dinheiro, nao recebi o reembolso
+r: {nome}, quando há reembolso, o dinheiro volta pelo PIX para a mesma conta que pagou, normalmente no mesmo dia. 💸
+r: Já passei o seu caso para a equipe conferir. Se puder, diga qual pedido é.
+b: Ver meus pedidos|/(tabs)/orders
+
+@remarcar|normal
+k: remarcar, mudar horario, trocar horario, mudar a data, trocar o dia, adiar, outro horario
+r: {nome}, para remarcar converse com o profissional no chat do pedido e combinem o novo horário. 📅 Se ele não puder, você pode cancelar sem custo enquanto ele não saiu.
+b: Ver meus pedidos|/(tabs)/orders
+
+## ---------- CONTA ----------
+@editar-dados|normal
+k: mudar meu nome, trocar foto, foto de perfil, mudar telefone, trocar telefone, alterar dados, editar perfil, mudar email, trocar email, atualizar cadastro, mudar meus dados, mudar dados, meus dados cadastrais
+r: {nome}, toque em "Perfil" e depois em "Editar perfil". Lá você muda nome, foto e telefone. ✏️
+b: Editar perfil|/editar-perfil
+
+@senha|normal
+k: senha, esqueci a senha, trocar senha, mudar senha, redefinir senha, nao consigo entrar, nao consigo logar, login, codigo nao chega
+r: {nome}, na tela de entrada toque em "Esqueci minha senha" e siga os passos pelo e-mail. 🔑 Se o e-mail não chegar, olhe a caixa de spam.
+b: Falar com atendente|humano
+
+@verificacao|normal
+k: verificacao, verificar identidade, selfie, documento, foto do documento, por que pede documento, verificacao de identidade, rosto
+r: A verificação deixa a OPUS mais segura para todo mundo, {nome}. 🛡️ É rapidinho: foto do documento e uma selfie. Seus dados ficam protegidos.
+b: Fazer verificação|/verificacao
+
+@enderecos|normal
+k: endereco, enderecos, mudar endereco, trocar endereco, adicionar endereco, endereco errado, cep
+r: {nome}, você pode salvar vários endereços (casa, trabalho…) em "Meus endereços". 🏠
+b: Meus endereços|/enderecos
+
+@contato-confianca|normal
+k: contato de confianca, contato de emergencia, familiar, avisar minha familia, quem e avisado
+r: {nome}, o contato de confiança é alguém da família ou um amigo. Se você tocar no SOS durante um atendimento, o app já prepara a mensagem com a sua localização para essa pessoa. 💛
+b: Meu contato de confiança|/contato-confianca
+
+@modo-escuro|normal
+k: modo escuro, tema escuro, modo claro, tela escura, tela preta, letra nao aparece, cores, aparencia
+r: {nome}, no topo da tela inicial tem o botão 🌙/☀️ para trocar entre claro e escuro. Também dá para escolher em "Perfil" → "Aparência".
+b: Aparência|/aparencia
+
+@notificacoes|normal
+k: notificacao, notificacoes, nao recebo aviso, nao chega aviso, desativar notificacao, muitas notificacoes, avisos
+r: {nome}, os avisos chegam pelo celular. Se não estão chegando: abra as Configurações do celular → Aplicativos → OPUS → Notificações e deixe ligado. 🔔
+
+@excluir-conta|humano
+k: excluir conta, apagar conta, deletar conta, encerrar conta, sair da opus, cancelar cadastro, apagar meus dados, lgpd
+r: Que pena, {nome}. 😢 Já passei o seu pedido para a equipe OPUS, que faz a exclusão e confirma com você por aqui.
+r: Se for algo que deu errado, me conta? Talvez a gente consiga resolver.
+
+@privacidade|normal
+k: privacidade, meus dados, o que voces fazem com meus dados, quem ve meu telefone, quem ve meu endereco, termos de uso, politica de privacidade
+r: {nome}, seus dados são usados só para o atendimento. 🔐 O profissional só vê o seu endereço depois de confirmar o pedido, e o seu telefone não aparece no perfil.
+
+## ---------- SEGURANÇA E SOS ----------
+@como-sos|normal
+k: como funciona o sos, botao sos, onde fica o sos, sos serve para que
+r: {nome}, o botão SOS aparece durante um atendimento. 🚨 Ao tocar, a equipe OPUS é avisada na hora, o app manda a sua localização e prepara uma mensagem para o seu contato de confiança.
+b: Meu contato de confiança|/contato-confianca
+
+@seguro|normal
+k: seguro, seguros, seguro residencial, seguro do servico, acidente em casa seguro
+r: {nome}, em "Seguros" você vê os planos que a OPUS indica para a sua casa e para os serviços. 🏡
+b: Ver seguros|/seguros
+
+## ---------- APP ----------
+@app-erro|humano
+k: erro, deu erro, bug, travou, app travando, fecha sozinho, nao abre, nao carrega, tela branca, nao funciona, problema no app, nao consigo
+r: Poxa, {nome}, desculpa por isso. 🛠️ Tente fechar o app e abrir de novo. Se continuar, me diga em qual tela aconteceu (um print ajuda muito).
+r: Já avisei a equipe técnica.
+
+@sugestao|humano
+k: sugestao, ideia, sugerir, elogio, gostei muito, adorei, parabens, melhorar o app, feedback
+r: Que bom ouvir você, {nome}! 💙 Já passei a sua mensagem para a equipe OPUS. Obrigado por ajudar a melhorar o app.
+
+@ser-profissional|normal
+k: quero ser profissional, quero trabalhar, trabalhar na opus, cadastrar como profissional, oferecer servico, sou eletricista e quero, como me cadastro para atender, vagas
+r: Que legal, {nome}! 🙌 Para atender pela OPUS, baixe o app "OPUS Profissional", faça o cadastro e a verificação. Os chamados chegam direto no celular.
+
+@aulas|normal
+k: aula, aulas, aula online, aula ao vivo, sala de aula, aula em video, assistir aula
+r: {nome}, profissionais de dança, treino, idiomas e outros postam aulas em vídeo no perfil (aba "Social"). 🎥 Se gostar, toque em "Quero uma aula particular".
+b: Ver aulas|/aulas
+
+@saude|normal
+k: saude, passos, health connect, batimentos, treino conectado, sincronizar saude
+r: {nome}, em "Saúde" você conecta o app de saúde do celular, e o seu personal acompanha os treinos. 💪
+b: Abrir Saúde|/saude
+
+## ---------- CONVERSA ----------
+@oi|normal
+k: oi, ola, bom dia, boa tarde, boa noite, eai, opa, alo, tudo bem, oie, hello
+r: Oi, {nome}! 😊 Eu sou a Opi, assistente da OPUS. Me conta o que você precisa, com as suas palavras, que eu te ajudo.
+b: Como achar um profissional|send:Como acho um profissional?
+b: Problema com um pedido|send:Problema com um pedido
+b: Pagamento|send:Como funciona o pagamento?
+
+@obrigado|normal
+k: obrigado, obrigada, valeu, brigado, show, perfeito, resolvido, resolveu, era isso, deu certo, ajudou, otimo
+r: Por nada, {nome}! 💙 Se precisar de qualquer coisa, é só chamar aqui.
+
+@atendente|humano
+k: atendente, falar com atendente, falar com uma pessoa, falar com humano, pessoa de verdade, nao quero robo, voce e robo, suporte humano, gerente, responsavel, quero falar com alguem
+r: Claro, {nome}! Já chamei a equipe OPUS. 🙋 Eles respondem aqui mesmo, normalmente em poucas horas. Pode ir contando o que aconteceu.
+
+@pedido-problema-generico|normal
+k: problema com um pedido, problema com pedido, problema no pedido, meu pedido, pedido
+r: Me conta um pouquinho mais, {nome}: o que aconteceu com o pedido? 🙂
+b: Ele não veio|send:O profissional não veio
+b: Ficou mal feito|send:O serviço ficou mal feito
+b: Quero cancelar|send:Quero cancelar
+b: Cobrança errada|send:Cobrança errada
+
+@pagamento-generico|normal
+k: problema com pagamento, problema no pagamento, pagamento
+r: Claro, {nome}. Sobre o pagamento, o que você precisa? 💳
+b: Como pagar|send:Como funciona o pagamento?
+b: Paguei e não confirmou|send:Paguei e não confirmou
+b: Reembolso|send:Quero meu dinheiro de volta
+b: Cobrança errada|send:Cobrança errada
+
+@conta-generico|normal
+k: minha conta, conta, cadastro, perfil
+r: Sobre a sua conta, {nome}, o que você quer fazer? 👤
+b: Editar dados|send:Quero mudar meus dados
+b: Senha|send:Esqueci a senha
+b: Endereços|send:Mudar endereço
+b: Excluir conta|send:Quero excluir minha conta

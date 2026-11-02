@@ -95,8 +95,10 @@ public class AssistantController {
     }
     for (Map<String, Object> v : q("SELECT v.user_id, v.submitted_at, u.name FROM identity_verification_ v JOIN user_ u ON u.id = v.user_id WHERE v.status = 'PENDING' ORDER BY v.submitted_at"))
       items.add(item("VERIFY", "Documento para aprovar", Objects.toString(v.get("name")), v.get("submitted_at"), "verif", null, false));
-    long sup = n("SELECT COUNT(DISTINCT user_id) FROM support_message_ WHERE from_admin = FALSE AND read_by_admin = FALSE");
-    if (sup > 0) items.add(item("SUPPORT", sup + " conversa(s) de suporte sem resposta", "Responda pela Central", null, "suporte", null, false));
+    for (Map<String, Object> p : q("SELECT st.user_id, st.topic, st.updated_at, u.name FROM support_state_ st JOIN user_ u ON u.id = st.user_id WHERE st.priority = TRUE ORDER BY st.updated_at DESC LIMIT 10"))
+      items.add(item("SUPPORT", "Suporte com prioridade: " + Objects.toString(p.get("topic"), "").replace('-', ' '), Objects.toString(p.get("name")) + " · a Opi chamou a equipe", p.get("updated_at"), "suporte", null, true));
+    long sup = n("SELECT COUNT(DISTINCT m.user_id) FROM support_message_ m LEFT JOIN support_state_ st ON st.user_id = m.user_id WHERE m.from_admin = FALSE AND m.read_by_admin = FALSE AND COALESCE(st.priority, FALSE) = FALSE");
+    if (sup > 0) items.add(item("SUPPORT", sup + " conversa(s) esperando a equipe", "A Opi já fez o primeiro atendimento · responda pela Central", null, "suporte", null, false));
     for (Map<String, Object> w : q("SELECT w.amount, w.created_at, u.name FROM wallet_entry_ w JOIN user_ u ON u.id = w.professional_id WHERE w.kind = 'WITHDRAW' AND w.status = 'FAILED' AND w.created_at > ? ORDER BY w.created_at DESC LIMIT 5", ts(now().minusDays(3))))
       items.add(item("WITHDRAW", "Saque PIX falhou", w.get("name") + " · " + brl((BigDecimal) w.get("amount")), w.get("created_at"), "fin", null, false));
     long cert = n("SELECT COUNT(*) FROM pro_certificate_ WHERE status = 'PENDING'");

@@ -1,0 +1,284 @@
+# Opi — primeiro atendimento do APP DO PROFISSIONAL (mesmo formato do opi-cliente.txt)
+
+## ---------- URGENTES ----------
+@golpe|urgente
+k: golpe, golpista, cliente pediu pix por fora, pagar por fora, pagamento por fora, cliente quer pagar fora do app, fraude, comprovante falso, pix falso, me enganou, perfil falso, cliente falso
+r: {nome}, obrigado por avisar. Já chamei a equipe OPUS com prioridade. 🚨
+r: Importante: só comece o serviço com o pedido pago pelo app. Pagamento por fora não tem a proteção do cofre e pode ser golpe.
+b: Meus serviços|/(tabs)/orders
+
+@assedio|urgente
+k: assedio, assediou, assediada, assediado, me tocou, passou a mao, me ameacou, ameaca, ameacando, agressao, me agrediu, violencia, me xingou, ofendeu, racismo, racista, homofobia, preconceito, discriminacao, estou com medo, me sinto inseguro, me sinto insegura, cliente agressivo, cachorro me mordeu
+r: {nome}, sinto muito que isso aconteceu. Já chamei a equipe OPUS com prioridade máxima. 🚨
+r: Se você estiver em perigo agora, saia do local e ligue 190. Durante um atendimento, o botão SOS avisa a equipe e o seu contato de confiança na hora.
+b: Meu contato de confiança|/contato-confianca
+
+@sos|urgente
+k: sos, emergencia, perigo, socorro, acidente, me machuquei, levei choque, cai da escada, me cortei, incendio, fogo, pegou fogo
+r: {nome}, já chamei a equipe OPUS com prioridade máxima. 🚨
+r: Se alguém estiver ferido, ligue agora: 192 (SAMU), 193 (Bombeiros) ou 190 (Polícia).
+
+@conta-invadida|urgente
+k: invadiram minha conta, hackearam, hackeado, conta invadida, trocaram minha chave pix, sacaram meu dinheiro, saque que nao fiz, nao fui eu
+r: {nome}, já chamei a equipe OPUS com prioridade e vamos travar saques até conferir. 🔒
+r: Troque agora a senha do seu e-mail e não passe códigos que chegarem por SMS para ninguém.
+
+## ---------- RECEBER CHAMADOS ----------
+@como-receber-chamados|normal
+k: como recebo chamados, nao recebo chamados, nao chega pedido, nao chega servico, como pegar servico, como conseguir clientes, poucos clientes, nenhum cliente, ficar online, como fico online, online offline, recebo mais chamados, mais chamados, receber mais chamados
+r: {nome}, para receber chamados: 📲
+r: 1️⃣ Na tela "Hoje", deixe o botão em "Online".
+r: 2️⃣ Confira a sua área de atendimento (até onde você vai).
+r: 3️⃣ Complete o perfil: foto, verificação e serviços que você faz.
+r: 4️⃣ Poste trabalhos no seu Social: perfis com fotos recebem bem mais pedidos.
+b: Área de atendimento|/area
+b: Novo post|/novo-post
+
+@area|normal
+k: area de atendimento, raio, distancia, bairros, ate onde vou, regiao, cidade que atendo, atender longe, area, minha area, mudar area
+r: {nome}, em "Área de atendimento" você escolhe até quantos km vai e pode marcar bairros. 🗺️ Só chegam chamados dentro dessa área.
+b: Área de atendimento|/area
+
+@agenda|normal
+k: agenda, horarios, meus horarios, dias que trabalho, folga, bloquear dia, ferias, viagem, nao trabalho domingo, horario de atendimento
+r: {nome}, na aba "Agenda" você define os dias e horários em que atende, marca folgas e viagens. 📅 Os clientes só conseguem agendar nos horários livres.
+b: Minha agenda|/(tabs)/agenda
+
+@aceitar-recusar|normal
+k: aceitar pedido, recusar pedido, como aceito, como recuso, nao quero esse servico, nao posso atender, recusar cliente
+r: Quando chega um chamado, {nome}, você vê o serviço, o endereço aproximado e o valor. Toque em "Aceitar" ou "Recusar". ✅❌
+r: Recusar não te prejudica, mas responder rápido melhora a sua posição na busca.
+b: Meus serviços|/(tabs)/orders
+
+@bloquear-cliente|normal
+k: bloquear cliente, nao quero atender esse cliente, cliente chato, cliente problematico
+r: {nome}, dá para bloquear um cliente pela ficha dele: ele não consegue mais te chamar. 🚫 Se aconteceu algo grave, me conta que eu chamo a equipe.
+b: Meus clientes|/clientes
+b: Falar com atendente|humano
+
+@orcamento|normal
+k: orcamento, mandar orcamento, como fazer orcamento, preco do servico, cobrar quanto, quanto cobrar, valor por hora, valor da hora
+r: {nome}, quando o cliente pede orçamento, você responde pelo pedido com valor, materiais e garantia. 💰 O seu valor por hora fica em "Editar perfil".
+r: Dica: orçamento com fotos e prazo claro fecha muito mais.
+b: Editar perfil|/editar-perfil
+
+@pacotes|normal
+k: pacote, pacotes, combo, plano mensal, pacote de aulas, desconto para cliente, mensalidade
+r: {nome}, em "Pacotes" você cria combos, como 4 aulas por mês ou limpeza quinzenal. 📦 Eles aparecem no seu perfil para o cliente contratar.
+b: Meus pacotes|/pacotes
+
+## ---------- ATENDIMENTO ----------
+@chegada|normal
+k: codigo de chegada, ler codigo, cheguei, como confirmo chegada, qr de chegada, escanear
+r: Ao chegar, {nome}, abra o serviço e toque em "Cheguei". Leia o código de chegada do cliente: assim fica registrado que você chegou no horário. 🕐
+b: Meus serviços|/(tabs)/orders
+
+@a-caminho|normal
+k: sair para o atendimento, estou indo, a caminho, iniciar deslocamento, mapa, rota, gps, waze
+r: Quando sair, {nome}, toque em "Estou a caminho" no serviço. 🚗 O cliente acompanha você no mapa, e você pode abrir a rota no Waze ou no Google Maps.
+b: Meus serviços|/(tabs)/orders
+
+@terminar|normal
+k: terminar servico, finalizar, concluir, como termino, codigo de conclusao, cliente nao quer mostrar o codigo, liberar pagamento, como recebo o pagamento do servico
+r: Ao terminar, {nome}: toque em "Terminar" no serviço e mande fotos do resultado. 📸 O cliente confere e mostra o código. Você lê o código e o pagamento é liberado.
+r: Se o cliente não responder, o pagamento é liberado sozinho depois do prazo que aparece na tela.
+b: Meus serviços|/(tabs)/orders
+
+@etapas|normal
+k: etapas, pagamento por etapas, dividir em partes, obra grande, sinal, adiantamento, entrada
+r: {nome}, em serviços grandes você divide o valor em etapas (ex.: 30/40/30). 🧱 O cliente paga tudo no cofre, e cada etapa é liberada para você quando ele aprova.
+b: Meus serviços|/(tabs)/orders
+
+@materiais|normal
+k: material, materiais, comprar material, quem paga o material, lista de material, reembolso de material
+r: {nome}, no serviço você monta a lista de materiais e marca quem compra cada um (você ou o cliente). 🧰 Se você comprar, o valor entra no total e volta para você.
+b: Meus serviços|/(tabs)/orders
+
+@cliente-nao-aparece|humano
+k: cliente nao estava, cliente nao abriu, cliente sumiu, cliente nao responde, ninguem em casa, perdi a viagem, fui e nao tinha ninguem
+r: Que chato, {nome}. 😕 Toque em "Cheguei" no serviço (isso registra que você foi) e espere 15 minutos.
+r: Se o cliente não aparecer, você recebe a taxa de deslocamento. Já avisei a equipe OPUS para acompanhar.
+b: Meus serviços|/(tabs)/orders
+
+@disputa|humano
+k: cliente reclamou, disputa, cliente abriu problema, tive um problema, cliente nao quer pagar, cliente diz que ficou ruim, contestacao, pagamento travado
+r: {nome}, quando o cliente abre um problema, o pagamento fica travado até a equipe analisar. ⚖️ Mande aqui (ou no serviço) fotos e vídeos do trabalho: isso ajuda muito.
+r: A equipe decide em até 2 horas. Já deixei o seu caso marcado.
+b: Meus serviços|/(tabs)/orders
+
+@garantia|normal
+k: garantia, cliente pediu garantia, retorno, voltar no cliente, refazer, deu problema de novo
+r: {nome}, quando o cliente usa a garantia, você recebe um aviso para combinar o retorno. 🛡️ Combine pelo chat e marque como resolvido depois.
+b: Meus serviços|/(tabs)/orders
+
+@cancelar|normal
+k: cancelar, cancelamento, preciso cancelar, nao vou conseguir ir, imprevisto, desmarcar, cancelar atendimento
+r: {nome}, se tiver um imprevisto, cancele o quanto antes pelo serviço e avise o cliente no chat. 🙏
+r: Cancelamentos em cima da hora diminuem a sua nota na busca.
+b: Meus serviços|/(tabs)/orders
+
+## ---------- DINHEIRO ----------
+@saque|normal
+k: saque, sacar, como saco, transferir, tirar dinheiro, quando posso sacar, pix para minha conta, receber dinheiro, quero meu dinheiro
+r: {nome}, em "Ganhos" toque em "Sacar". 💸 O dinheiro vai por PIX para a sua chave cadastrada, normalmente no mesmo dia.
+r: Só dá para sacar valores já liberados (depois que o cliente confere o serviço).
+b: Sacar|/sacar
+
+@saque-nao-caiu|humano
+k: saque nao caiu, nao recebi o saque, saque pendente, saque falhou, saque recusado, dinheiro nao chegou, pix nao caiu
+r: {nome}, o saque costuma cair em poucas horas. ⏳ Confira se a sua chave PIX está certa em "Sacar".
+r: Já passei para a equipe financeira conferir. Se puder, diga o valor e a data do saque.
+b: Sacar|/sacar
+
+@quando-recebo|normal
+k: quando recebo, quando cai, quanto tempo para receber, dinheiro liberado, saldo bloqueado, a liberar, saldo a receber
+r: {nome}, o dinheiro do serviço fica no cofre e é liberado quando o cliente confere e mostra o código (ou sozinho, depois do prazo). 🔓 Em "Ganhos" você vê o que está a liberar e o que já pode sacar.
+b: Meus ganhos|/(tabs)/carteira
+
+@taxa|normal
+k: taxa, taxa da opus, quanto a opus cobra, porcentagem, comissao, desconto no meu valor
+r: {nome}, a OPUS cobra 5% do cliente em cima do seu valor. 💙 O valor que você cadastrou é o que você recebe. A taxa paga o cofre, a garantia e o suporte.
+
+@chave-pix|normal
+k: chave pix, cadastrar pix, trocar pix, mudar chave pix, conta bancaria, dados bancarios
+r: {nome}, a sua chave PIX fica em "Sacar". Confira com cuidado: o dinheiro vai para ela. 🔑
+b: Sacar|/sacar
+
+@financeiro|normal
+k: financeiro, relatorio, quanto ganhei, ganhos do mes, despesas, gastos, lucro, imposto, mei, nota fiscal
+r: {nome}, em "Financeiro" você vê quanto ganhou por mês, lança despesas (gasolina, material) e vê o lucro de verdade. 📈
+b: Financeiro|/financeiro
+b: Despesas|/despesas
+
+@destaque|normal
+k: destaque, impulsionar, aparecer primeiro, anunciar, patrocinado, ficar no topo, mais visibilidade
+r: {nome}, com o "Destaque" o seu perfil aparece primeiro na busca da sua região. ⭐ Veja os planos em "Destaque".
+b: Destaque|/destaque
+
+## ---------- PERFIL E SOCIAL ----------
+@perfil|normal
+k: editar perfil, mudar foto, foto de perfil, sobre mim, especialidades, anos de experiencia, descricao, bio, valor por hora
+r: {nome}, em "Editar perfil" você muda foto, descrição, especialidades, anos de experiência e valor por hora. ✏️ Perfil completo aparece mais na busca.
+b: Editar perfil|/editar-perfil
+
+@postar|normal
+k: postar, post, publicar, foto do trabalho, antes e depois, social, timeline, portfolio, mostrar meu trabalho, como posto
+r: {nome}, toque em "Novo post" e escolha: 📸 Trabalho feito (com antes e depois, ligado ao cliente, que é avisado para avaliar), 🎥 Aula em vídeo ou 🖼️ Foto/novidade.
+b: Novo post|/novo-post
+b: Meus posts|/meus-posts
+
+@video|normal
+k: video, postar video, aula em video, video grande, video nao sobe, video muito longo, limite de video
+r: {nome}, a aula em vídeo pode ter até 5 minutos e 60 MB. 🎥 Se não subir, grave em 720p (qualidade média) ou um pouco mais curto. Use o Wi-Fi para enviar.
+b: Novo post|/novo-post
+
+@avaliacoes|normal
+k: avaliacao, avaliacoes, nota, minha nota, nota baixa, avaliacao injusta, responder avaliacao, comentario negativo, estrelas
+r: {nome}, em "Avaliações" você vê o que os clientes disseram e pode responder com educação. ⭐ A resposta aparece no seu perfil.
+r: Se achar uma avaliação injusta ou ofensiva, me conta que eu passo para a equipe analisar.
+b: Minhas avaliações|/avaliacoes
+b: Falar com atendente|humano
+
+@certificados|normal
+k: certificado, certificados, diploma, curso, comprovar formacao, cref, crea, registro profissional
+r: {nome}, em "Certificados" você manda fotos dos seus cursos e registros. 🎓 Depois de conferidos, eles aparecem no seu perfil e passam mais confiança.
+b: Certificados|/certificados
+
+@verificacao|normal
+k: verificacao, verificar identidade, selo azul, selfie, documento, antecedentes, por que pede documento
+r: {nome}, a verificação dá o selo azul ✅: documento e selfie conferidos pela OPUS. Perfis verificados recebem bem mais chamados.
+b: Fazer verificação|/verificacao
+
+@aulas|normal
+k: aula, aulas, criar aula, aula ao vivo, sala de aula, turma, aluno, alunos
+r: {nome}, em "Aulas" você cria aulas (ao vivo ou presenciais) e acompanha os alunos. 🧑‍🏫 Também pode postar aulas em vídeo no Social.
+b: Minhas aulas|/aulas
+
+@estatisticas|normal
+k: estatistica, estatisticas, visitas no perfil, quantas pessoas viram, desempenho, taxa de resposta
+r: {nome}, em "Estatísticas" você vê quantas pessoas viram o seu perfil, quantos chamados chegaram e a sua taxa de resposta. 📊
+b: Estatísticas|/estatisticas
+
+## ---------- CONTA ----------
+@senha|normal
+k: senha, esqueci a senha, trocar senha, mudar senha, nao consigo entrar, nao consigo logar, login
+r: {nome}, na tela de entrada toque em "Esqueci minha senha" e siga os passos pelo e-mail. 🔑 Se não chegar, olhe o spam.
+b: Falar com atendente|humano
+
+@contato-confianca|normal
+k: contato de confianca, contato de emergencia, familiar, avisar minha familia
+r: {nome}, o contato de confiança recebe a sua localização se você tocar no SOS durante um atendimento. 💛
+b: Meu contato de confiança|/contato-confianca
+
+@modo-escuro|normal
+k: modo escuro, tema escuro, modo claro, tela escura, letra nao aparece, aparencia
+r: {nome}, no topo da tela "Hoje" tem o botão 🌙/☀️ para trocar entre claro e escuro. Também dá em "Aparência".
+b: Aparência|/aparencia
+
+@notificacoes|normal
+k: notificacao, notificacoes, nao recebo aviso, nao toca, som do chamado, nao chega aviso
+r: {nome}, para não perder chamados: Configurações do celular → Aplicativos → OPUS Profissional → Notificações: deixe tudo ligado e tire a "economia de bateria" do app. 🔔
+
+@excluir-conta|humano
+k: excluir conta, apagar conta, deletar conta, encerrar conta, sair da opus, parar de atender
+r: Que pena, {nome}. 😢 Já passei o seu pedido para a equipe OPUS. Antes, confira se não tem saldo para sacar.
+b: Meus ganhos|/(tabs)/carteira
+
+@indicar|normal
+k: indicar, indicacao, convidar, indique e ganhe, trazer clientes, trazer profissionais
+r: {nome}, compartilhe o seu link em "Indique": quando a pessoa faz o primeiro serviço, você ganha. 💌
+b: Indicar|/indique
+
+@seguro|normal
+k: seguro, seguros, seguro de acidente, seguro de ferramenta
+r: {nome}, em "Seguros" você vê planos para acidentes e ferramentas, pensados para quem trabalha na rua. 🛡️
+b: Ver seguros|/seguros
+
+## ---------- APP ----------
+@app-erro|humano
+k: erro, deu erro, bug, travou, app travando, fecha sozinho, nao abre, nao carrega, tela branca, nao funciona, problema no app, nao consigo
+r: Poxa, {nome}, desculpa. 🛠️ Feche o app e abra de novo. Se continuar, diga em qual tela foi (um print ajuda muito). Já avisei a equipe técnica.
+
+@sugestao|humano
+k: sugestao, ideia, sugerir, elogio, gostei muito, parabens, melhorar o app, feedback
+r: Valeu, {nome}! 💙 Passei a sua mensagem para a equipe OPUS.
+
+## ---------- CONVERSA ----------
+@oi|normal
+k: oi, ola, bom dia, boa tarde, boa noite, eai, opa, alo, tudo bem, oie
+r: Oi, {nome}! 😊 Eu sou a Opi, assistente da OPUS. Me conta o que você precisa que eu te ajudo.
+b: Receber mais chamados|send:Como recebo mais chamados?
+b: Saque|send:Como faço um saque?
+b: Problema com um serviço|send:Problema com um serviço
+
+@obrigado|normal
+k: obrigado, obrigada, valeu, brigado, show, perfeito, resolvido, resolveu, era isso, deu certo, ajudou
+r: Por nada, {nome}! 💙 Bom trabalho e conte comigo.
+
+@atendente|humano
+k: atendente, falar com atendente, falar com uma pessoa, falar com humano, pessoa de verdade, nao quero robo, voce e robo, suporte humano, quero falar com alguem
+r: Claro, {nome}! Já chamei a equipe OPUS. 🙋 Eles respondem aqui mesmo. Pode ir contando.
+
+@servico-generico|normal
+k: problema com um servico, problema com servico, problema no servico, problema com um pedido, meu servico, servico
+r: Me conta mais, {nome}: o que aconteceu? 🙂
+b: Cliente não estava|send:O cliente não estava
+b: Cliente reclamou|send:O cliente reclamou
+b: Preciso cancelar|send:Preciso cancelar
+b: Pagamento travado|send:Pagamento travado
+
+@pagamento-generico|normal
+k: problema com pagamento, problema no pagamento, pagamento, dinheiro
+r: Sobre dinheiro, {nome}, o que você precisa? 💰
+b: Sacar|send:Como faço um saque?
+b: Saque não caiu|send:O saque não caiu
+b: Quando recebo|send:Quando eu recebo?
+b: Taxa|send:Qual a taxa da OPUS?
+
+@conta-generico|normal
+k: minha conta, conta, cadastro
+r: Sobre a sua conta, {nome}, o que você quer fazer? 👤
+b: Editar perfil|send:Editar perfil
+b: Senha|send:Esqueci a senha
+b: Verificação|send:Verificação de identidade
+b: Excluir conta|send:Excluir conta

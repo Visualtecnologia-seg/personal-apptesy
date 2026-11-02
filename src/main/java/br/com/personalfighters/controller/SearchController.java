@@ -64,12 +64,12 @@ public class SearchController {
   }
 
 
-  static String norm(String s) {
+  public static String norm(String s) {
     String t = java.text.Normalizer.normalize(Objects.toString(s, "").toLowerCase(), java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     return " " + t.replaceAll("[^a-z0-9]+", " ").trim() + " ";
   }
 
-  static int lev(String a, String b) {
+  public static int lev(String a, String b) {
     int[] p = new int[b.length() + 1], c = new int[b.length() + 1];
     for (int j = 0; j <= b.length(); j++) p[j] = j;
     for (int i = 1; i <= a.length(); i++) {
@@ -87,8 +87,8 @@ public class SearchController {
   /** Palavras que não ajudam a entender ("o", "da", "meu"...): somem da frase e do dicionário. */
   static final Set<String> STOP = Set.of("o", "a", "os", "as", "de", "do", "da", "dos", "das", "d", "um", "uma", "uns", "umas", "meu", "minha", "meus", "minhas",
       "no", "na", "nos", "nas", "em", "pra", "pro", "para", "por", "com", "que", "e", "ta", "esta", "estao", "ficou", "fica", "muito", "bem", "tambem", "ja", "agora",
-      "preciso", "precisa", "precisando", "quero", "queria", "gostaria", "alguem", "algum", "alguma", "ele", "ela", "isso", "aqui", "la", "sei", "nao sei", "favor", "socorro", "urgente", "hoje", "amanha");
-  static String clean(String s) {
+      "eu", "voce", "vc", "seu", "sua", "me", "mim", "preciso", "precisa", "precisando", "quero", "queria", "gostaria", "alguem", "algum", "alguma", "ele", "ela", "isso", "aqui", "la", "sei", "nao sei", "favor", "socorro", "urgente", "hoje", "amanha");
+  public static String clean(String s) {
     StringBuilder b = new StringBuilder(" ");
     for (String w : s.trim().split(" ")) if (!w.isEmpty() && !STOP.contains(w)) b.append(w).append(' ');
     return b.length() == 1 ? s : b.toString();

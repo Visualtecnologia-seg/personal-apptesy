@@ -60,6 +60,11 @@
   .item.on{border-color:var(--navy);background:#EEF2FF}
   .item b{display:block;font-size:14px}
   .item small{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin:2px 0}
+  .tag.red{background:#FEE2E2;color:#B91C1C}.tag.amb{background:#FEF3C7;color:#92400E}.tag.opi{background:#E0F2FE;color:#075985}
+  .item.prio{border-color:#DC2626;background:#FEF2F2}
+  .bub.opi{background:#E0F2FE!important;color:#0C4A6E!important}
+  .bub .btns{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.bub .btns span{font-size:11px;border:1px solid currentColor;border-radius:999px;padding:1px 8px;opacity:.8}
   .badge{float:right;background:var(--bad);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:700}
   .chat{display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow:auto;padding:6px 2px;margin:10px 0}
   .bub{max-width:78%;padding:10px 12px;border-radius:14px;font-size:14px;white-space:pre-wrap;word-break:break-word}
@@ -122,7 +127,7 @@ async function load(){
   try {
     if (tab === 'sup') {
       const rows = await api('/admin/support/threads');
-      list.innerHTML = rows.length ? rows.map(r => '<div class="item'+(r.userId===currentUser?' on':'')+'" data-u="'+r.userId+'">'+(r.unread>0?'<span class="badge">'+r.unread+'</span>':'')+'<b>'+esc(r.name||r.username)+'</b><small>'+esc(r.lastText)+'</small><small>'+fmt(r.lastAt)+'</small></div>').join('') : '<p class="muted">Nenhuma conversa ainda.</p>';
+      list.innerHTML = rows.length ? rows.map(r => '<div class="item'+(r.userId===currentUser?' on':'')+(r.priority?' prio':'')+'" data-u="'+r.userId+'">'+(r.unread>0?'<span class="badge">'+r.unread+'</span>':'')+'<b>'+esc(r.name||r.username)+'</b>'+(r.priority?'<span class="tag red">🚨 Prioridade</span>':r.needsHuman?'<span class="tag amb">Esperando a equipe</span>':'<span class="tag opi">Opi atendendo</span>')+'<small>'+esc(r.lastText)+'</small><small>'+fmt(r.lastAt)+'</small></div>').join('') : '<p class="muted">Nenhuma conversa ainda.</p>';
       list.querySelectorAll('.item').forEach(el => el.onclick = () => openThread(Number(el.dataset.u)));
     } else {
       const rows = await api('/admin/disputes?status=' + (tab === 'all' ? 'ALL' : 'OPEN'));
@@ -138,10 +143,12 @@ async function openThread(uid){
   const t = await api('/admin/support/' + uid);
   const d = $('detail');
   d.innerHTML = '<div class="row" style="justify-content:space-between"><div><h2>'+esc(t.name)+'</h2><div class="muted">@'+esc(t.username)+' · '+esc(t.email)+' · '+(t.professional?'Profissional':'Cliente')+'</div></div></div>'
-    + '<div class="chat" id="chat">' + t.messages.map(m => '<div class="bub '+(m.fromAdmin?'me':'them')+'">'+esc(m.text)+'<small>'+(m.fromAdmin?esc(m.adminName||'Equipe')+' · ':'')+fmt(m.createdAt)+'</small></div>').join('') + '</div>'
+    + (t.state && t.state.human ? '<div class="row" style="justify-content:space-between;background:#FEF3C7;border-radius:12px;padding:10px 12px;margin:8px 0"><span>'+(t.state.priority?'🚨 <b>Prioridade.</b> ':'')+'A Opi chamou a equipe para esta conversa.</span><button id="release">Encerrar e devolver para a Opi</button></div>' : '<div class="muted" style="margin:8px 0">🤖 A Opi está fazendo o atendimento. Se você responder, a equipe assume a conversa.</div>')
+    + '<div class="chat" id="chat">' + t.messages.map(m => '<div class="bub '+(m.fromAdmin?'me':'them')+(m.bot?' opi':'')+'">'+esc(m.text)+(m.buttons&&m.buttons.length?'<div class="btns">'+m.buttons.map(b=>'<span>'+esc(b.label)+'</span>').join('')+'</div>':'')+'<small>'+(m.fromAdmin?esc(m.adminName||'Equipe')+' · ':'')+fmt(m.createdAt)+'</small></div>').join('') + '</div>'
     + '<div class="row"><textarea id="reply" rows="2" placeholder="Escreva a resposta…" style="flex:1"></textarea><button class="primary" id="send">Enviar</button></div>'
     + (t.orders.length ? '<h3>Pedidos recentes</h3><div class="muted">' + t.orders.map(o => esc(o.status)+' · '+esc(o.date)+' · '+brl(o.totalCost)+(o.disputeStatus?' · disputa '+esc(o.disputeStatus):'')).join('<br>') + '</div>' : '');
   const c = $('chat'); c.scrollTop = c.scrollHeight;
+  if ($('release')) $('release').onclick = async () => { try { await api('/admin/support/' + uid + '/release', {method:'POST'}); await openThread(uid); load(); } catch(e){ alert(e.message); } };
   $('send').onclick = async () => {
     const text = $('reply').value.trim(); if (!text) return;
     $('send').disabled = true;
