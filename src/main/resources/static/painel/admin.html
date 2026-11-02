@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/painel/qrcode.min.js"></script>
 <style>
   :root{--navy:#0B1F4D;--blue:#1D4ED8;--cyan:#0891B2;--bg:#F3F5F9;--text:#0B1530;--muted:#5B6474;--line:#E5E7EB;--ok:#047857;--okbg:#D1FAE5;--bad:#B91C1C;--badbg:#FEE2E2;--warn:#92400E;--warnbg:#FEF3C7}
   *{box-sizing:border-box}
@@ -161,6 +162,7 @@
   <div id="codeBox" class="hidden"><label for="sc">Código de primeiro acesso</label><input id="sc" inputmode="numeric" autocomplete="one-time-code" style="height:46px"></div>
   <div><label for="u">Login do painel</label><input id="u" autocomplete="username" autocapitalize="none" style="height:46px"></div>
   <div><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password" style="height:46px"></div>
+  <div id="otpBox" class="hidden"><label for="otp">Código de 6 dígitos do aplicativo autenticador</label><input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="000000" style="height:52px;font-size:22px;letter-spacing:6px;text-align:center"><div class="muted" style="margin-top:6px;font-size:12.5px">Abra o Google Authenticator (ou Microsoft Authenticator) no celular. Perdeu o celular? Digite um código de emergência (ex.: 1234-5678).</div></div>
   <button id="doLogin" class="primary">Entrar</button>
   <div id="loginMsg" class="msg hidden"></div></div>
 </section>
@@ -199,16 +201,29 @@ async function checkSetup(){ try { const r = await fetch('/panel-auth/status'); 
   $('lgTitle').textContent = setupMode ? 'Criar o acesso do painel' : 'Entrar no painel';
   $('lgSub').textContent = setupMode ? 'Primeira vez: digite o código que aparece no log do servidor (Render) e escolha um login e uma senha só para o painel.' : 'Use o login do painel. Ele é separado da conta do app.';
   $('doLogin').textContent = setupMode ? 'Criar acesso e entrar' : 'Entrar'; }
+let otpTicket = null;
+function otpStep(on){ otpTicket = on || null; $('otpBox').classList.toggle('hidden', !on); ['u','p'].forEach(i => $(i).closest('div').classList.toggle('hidden', !!on));
+  $('lgTitle').textContent = on ? 'Verificação em duas etapas' : 'Entrar no painel'; $('lgSub').textContent = on ? 'Senha certa! Agora digite o código que aparece no aplicativo autenticador do seu celular.' : 'Use o login do painel. Ele é separado da conta do app.';
+  $('doLogin').textContent = on ? 'Confirmar código' : 'Entrar'; if (on) setTimeout(() => $('otp').focus(), 50); }
 $('doLogin').onclick = async () => {
   $('loginMsg').classList.add('hidden');
   try {
-    const body = {login:$('u').value.trim(), password:$('p').value};
-    if (setupMode) { body.code = $('sc').value.trim(); await api('/panel-auth/setup', {method:'POST', body: JSON.stringify(body)}); }
-    const t = await api('/panel-auth/login', {method:'POST', body: JSON.stringify(body)});
+    let t;
+    if (otpTicket) {
+      t = await api('/panel-auth/2fa', {method:'POST', body: JSON.stringify({ticket: otpTicket, code: $('otp').value})});
+    } else {
+      const body = {login:$('u').value.trim(), password:$('p').value};
+      if (setupMode) { body.code = $('sc').value.trim(); await api('/panel-auth/setup', {method:'POST', body: JSON.stringify(body)}); }
+      t = await api('/panel-auth/login', {method:'POST', body: JSON.stringify(body)});
+      if (t.need2fa) { otpStep(t.ticket); $('otp').value = ''; return; }
+    }
     token = t.token || ''; try { sessionStorage.setItem('opus_admin_token', token); } catch(e) {}
+    otpStep(null); $('p').value = '';
     start();
-  } catch(e) { const m=$('loginMsg'); m.textContent=e.message||'Não foi possível entrar.'; m.className='msg p-bad'; }
+  } catch(e) { const m=$('loginMsg'); m.textContent=e.message||'Não foi possível entrar.'; m.className='msg p-bad'; if (/tempo acabou/i.test(e.message||'')) otpStep(null); }
 };
+$('otp').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
+$('otp').addEventListener('input', e => { const d = e.target.value.replace(/\D/g,''); if (d.length === 6 && !/-/.test(e.target.value)) $('doLogin').click(); });
 $('p').addEventListener('keydown', e => { if (e.key === 'Enter') $('doLogin').click(); });
 
 const P = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -351,7 +366,7 @@ const VIEWS = {
      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Lojas parceiras (${d.stores.length})</h2>
       ${d.stores.map(x=>`<div class="row" style="justify-content:space-between;padding:10px;background:#F8FAFC;border-radius:12px"><div><b>${esc(x.name)}</b> <span class="muted">${esc(x.category||'')}</span><div class="muted">${esc(x.address||'')} · WhatsApp ${esc(x.whatsapp||'—')} · cupom ${esc(x.couponCode||'—')}</div></div><button class="danger" onclick="delStore('${x.id}')">Remover</button></div>`).join('')||'<p class="muted">Nenhuma loja ainda.</p>'}
       <h3 style="font-size:15px;margin:8px 0 0">Nova loja</h3>
-      <input id="sn" placeholder="Nome da loja"><input id="sc" placeholder="Categoria (Hidráulica, Elétrica, Construção…)"><input id="sw" placeholder="WhatsApp com DDD"><input id="sa" placeholder="Endereço">
+      <input id="sn" placeholder="Nome da loja"><input id="scat" placeholder="Categoria (Hidráulica, Elétrica, Construção…)"><input id="sw" placeholder="WhatsApp com DDD"><input id="sa" placeholder="Endereço">
       <div class="row"><input id="slat" placeholder="Latitude" style="flex:1"><input id="slng" placeholder="Longitude" style="flex:1"></div>
       <div class="row"><input id="scc" placeholder="Cupom (OPUS10)" style="flex:1"><input id="sct" placeholder="Texto do cupom (10% OFF)" style="flex:2"></div>
       <input id="sh" placeholder="Horário (seg a sáb, 8h–18h)"><button class="ok" onclick="saveStore()">Salvar loja</button><div id="smsg"></div>
@@ -407,9 +422,11 @@ const VIEWS = {
 
   async equipe(){
     let team=[], acts=[]; try { [team, acts] = await Promise.all([api('/admin/team'), api('/admin/actions')]); } catch(e){}
+    setTimeout(render2fa, 0);
     V(head('Equipe','Quem pode entrar no painel e tudo o que cada um fez')+`<div class="grid c11" style="align-items:start"><div class="card" style="padding:6px"><h2 style="font-size:17px;padding:10px 12px">Histórico de ações</h2><div class="wrap"><table><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Detalhe</th></tr></thead><tbody>${acts.map(a=>`<tr><td>${fmt(a.createdAt)}</td><td>${esc(a.adminName)}</td><td>${esc(a.action)} ${esc(a.target||'')}</td><td style="white-space:normal;max-width:320px">${esc(a.detail||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Nada registrado ainda.</td></tr>'}</tbody></table></div></div>
-      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Acessos do painel</h2><div class="muted">Esses logins só entram no painel. Eles são separados das contas do app.</div>${team.filter(t=>t.active).map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9"><div class="row" style="gap:10px"><div class="ini">A</div><div><b>Administrador</b><div class="muted">login: ${esc(t.login)}</div></div></div><button class="danger" onclick="removeAdmin(${t.id})">Tirar acesso</button></div>`).join('')}
+      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:17px">Acessos do painel</h2><div class="muted">Esses logins só entram no painel. Eles são separados das contas do app.</div>${team.filter(t=>t.active).map(t=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9"><div class="row" style="gap:10px"><div class="ini">A</div><div><b>Administrador</b><div class="muted">login: ${esc(t.login)} · ${t.twoFactor?'<span style="color:#047857;font-weight:700">🔒 2 etapas ligada</span>':'<span style="color:#B45309;font-weight:700">⚠️ sem 2 etapas</span>'}</div></div></div><div class="row" style="gap:6px">${t.twoFactor?`<button class="ghost" onclick="resetTeam2fa(${t.id})" title="Para quem perdeu o celular">Zerar 2 etapas</button>`:''}<button class="danger" onclick="removeAdmin(${t.id})">Tirar acesso</button></div></div>`).join('')}
       <h2 style="font-size:15px;margin-top:10px">Criar novo acesso</h2><div><label for="na">Login</label><input id="na" autocapitalize="none" placeholder="ex.: suporte.ana"></div><div><label for="np">Senha (mínimo 8 caracteres)</label><input id="np" type="password" autocomplete="new-password"></div><button class="primary" onclick="addAdmin()">Criar acesso</button><div id="tmsg"></div>
+      <div id="tfaCard" style="margin-top:10px"></div>
       <h2 style="font-size:15px;margin-top:14px">Trocar minha senha</h2><div><label for="cp0">Senha atual</label><input id="cp0" type="password" autocomplete="current-password"></div><div><label for="cp1">Nova senha</label><input id="cp1" type="password" autocomplete="new-password"></div><button class="ghost" onclick="changePw()">Trocar senha</button><div id="pmsg"></div></div></div>`);
   },
 };
@@ -461,7 +478,7 @@ async function certPhoto(id){
   try{ const u = await blob('/admin/certificates/'+id+'/photo'); ov.innerHTML = '<img src="'+u+'" style="max-width:94vw;max-height:90vh;border-radius:12px">'; }
   catch(e){ ov.innerHTML = '<span style="color:#fff">Não foi possível abrir a foto.</span>'; }
 }
-async function saveStore(){ try{ await api('/admin/partners/stores',{method:'POST',body:JSON.stringify({name:$('sn').value,category:$('sc').value,whatsapp:$('sw').value,address:$('sa').value,lat:$('slat').value,lng:$('slng').value,couponCode:$('scc').value,couponText:$('sct').value,hours:$('sh').value})}); VIEWS.parceiros(); }catch(e){ $('smsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function saveStore(){ try{ await api('/admin/partners/stores',{method:'POST',body:JSON.stringify({name:$('sn').value,category:$('scat').value,whatsapp:$('sw').value,address:$('sa').value,lat:$('slat').value,lng:$('slng').value,couponCode:$('scc').value,couponText:$('sct').value,hours:$('sh').value})}); VIEWS.parceiros(); }catch(e){ $('smsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function delStore(id){ if(!confirm('Remover esta loja?')) return; try{ await api('/admin/partners/stores/'+id,{method:'DELETE'}); VIEWS.parceiros(); }catch(e){ alert(e.message); } }
 async function savePlan(){ try{ await api('/admin/partners/plans',{method:'POST',body:JSON.stringify({audience:$('pa').value,title:$('pt').value,kind:$('pk').value,partner:$('pp').value,price:$('pv').value,link:$('pl').value,coverage:$('pc').value})}); VIEWS.parceiros(); }catch(e){ $('pmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function delPlan(id){ if(!confirm('Remover este plano?')) return; try{ await api('/admin/partners/plans/'+id,{method:'DELETE'}); VIEWS.parceiros(); }catch(e){ alert(e.message); } }
@@ -469,12 +486,45 @@ async function createCoupon(){ try{ await api('/admin/coupons',{method:'POST',bo
 async function toggleCoupon(code){ try{ await api('/admin/coupons/'+encodeURIComponent(code)+'/toggle',{method:'PUT'}); VIEWS.cupons(); }catch(e){ alert(e.message); } }
 async function saveSettings(){ const body={}; window._settingKeys.forEach(k=>body[k]=$('s-'+k).value); try{ await api('/admin/settings',{method:'PUT',body:JSON.stringify(body)}); $('smsg').innerHTML='<span class="pill p-ok">Salvo</span>'; }catch(e){ $('smsg').innerHTML='<span class="pill p-bad">'+esc(e.message)+'</span>'; } }
 async function addAdmin(){ try{ await api('/admin/team',{method:'POST',body:JSON.stringify({login:$('na').value,password:$('np').value})}); VIEWS.equipe(); }catch(e){ $('tmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+// ───── verificação em duas etapas ─────
+async function render2fa(){
+  const box=$('tfaCard'); if(!box) return;
+  let st={enabled:false}; try{ st=await api('/admin/me/2fa'); }catch(e){}
+  box.innerHTML = st.enabled
+    ? `<div class="card" style="background:#ECFDF5;border:1px solid #A7F3D0"><h2 style="font-size:16px">🔒 Verificação em duas etapas ligada</h2><div class="muted" style="margin:6px 0 10px">Para entrar no painel é preciso a senha e o código do seu celular. Códigos de emergência restantes: <b>${st.recoveryLeft}</b>.</div>
+       <div class="row" style="gap:8px;flex-wrap:wrap"><input id="tfaCode" inputmode="numeric" placeholder="Código atual" style="max-width:150px"><button class="ghost" onclick="tfaNewCodes()">Gerar novos códigos de emergência</button></div>
+       <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Desligar</summary><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="tfaPw" type="password" placeholder="Sua senha" style="max-width:180px"><button class="danger" onclick="tfaDisable()">Desligar 2 etapas</button></div></details><div id="tfaMsg"></div></div>`
+    : `<div class="card" style="background:#FFFBEB;border:1px solid #FDE68A"><h2 style="font-size:16px">⚠️ Proteja o painel: ligue a verificação em duas etapas</h2><div class="muted" style="margin:6px 0 10px">Mesmo que alguém descubra a sua senha, não entra sem o código do seu celular. Leva 1 minuto.</div><button class="primary" onclick="tfaStart()">Ligar agora</button><div id="tfaMsg"></div></div>`;
+}
+async function tfaStart(){
+  const box=$('tfaCard'); let r; try{ r=await api('/admin/me/2fa/setup',{method:'POST'}); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; return; }
+  box.innerHTML=`<div class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="font-size:16px">Ligar a verificação em duas etapas</h2>
+    <div><b>1.</b> Instale no celular o <b>Google Authenticator</b> ou o <b>Microsoft Authenticator</b> (grátis, na loja de apps).</div>
+    <div><b>2.</b> No aplicativo, toque em <b>+</b> e em <b>Ler código QR</b>. Aponte para este código:</div>
+    <div id="tfaQr" style="background:#fff;padding:12px;border-radius:12px;align-self:flex-start"></div>
+    <div class="muted" style="font-size:12.5px">Está no celular e não consegue ler? No aplicativo escolha "Inserir chave de configuração" e digite: <b style="font-family:monospace;letter-spacing:1px">${esc(r.secret)}</b></div>
+    <div><b>3.</b> Digite o código de 6 dígitos que apareceu no aplicativo:</div>
+    <div class="row" style="gap:8px"><input id="tfaFirst" inputmode="numeric" maxlength="6" placeholder="000000" style="max-width:150px;font-size:20px;letter-spacing:4px;text-align:center"><button class="primary" onclick="tfaEnable()">Confirmar e ligar</button></div><div id="tfaMsg"></div></div>`;
+  try{ new QRCode($('tfaQr'), {text:r.uri, width:180, height:180}); }catch(e){ $('tfaQr').innerHTML='<div class="muted">Use a chave escrita abaixo.</div>'; }
+}
+function showRecovery(codes, title){
+  $('tfaCard').innerHTML=`<div class="card" style="background:#EFF6FF;border:1px solid #BFDBFE;display:flex;flex-direction:column;gap:10px"><h2 style="font-size:16px">${title}</h2>
+    <div><b>Guarde estes códigos de emergência</b> num lugar seguro (anote em papel ou tire um print e guarde fora do celular). Cada um funciona <b>uma vez só</b>, se você perder o celular.</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-family:monospace;font-size:17px;background:#fff;padding:12px;border-radius:10px">${codes.map(c=>'<span>'+esc(c)+'</span>').join('')}</div>
+    <div class="muted">Eles não vão aparecer de novo.</div><button class="ghost" onclick="render2fa()">Já guardei</button></div>`;
+}
+async function tfaEnable(){ try{ const r=await api('/admin/me/2fa/enable',{method:'POST',body:JSON.stringify({code:$('tfaFirst').value})}); showRecovery(r.recoveryCodes,'🔒 Pronto! Verificação em duas etapas ligada'); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function tfaNewCodes(){ try{ const r=await api('/admin/me/2fa/recovery',{method:'POST',body:JSON.stringify({code:$('tfaCode').value})}); showRecovery(r.recoveryCodes,'Novos códigos de emergência'); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function tfaDisable(){ if(!confirm('Desligar a verificação em duas etapas deixa o painel menos protegido. Continuar?')) return; try{ await api('/admin/me/2fa/disable',{method:'POST',body:JSON.stringify({code:$('tfaCode').value,password:$('tfaPw').value})}); render2fa(); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function resetTeam2fa(id){ const code=prompt('Para zerar a verificação dessa pessoa, digite o SEU código de 6 dígitos:'); if(!code) return; try{ await api('/admin/team/'+id+'/2fa-reset',{method:'POST',body:JSON.stringify({code})}); go('equipe'); }catch(e){ alert(e.message); } }
+async function nag2fa(){ try{ const st=await api('/admin/me/2fa'); if(st.enabled||$('tfaNag')) return; const v=document.querySelector('main'); v.insertAdjacentHTML('afterbegin',`<div id="tfaNag" class="msg" style="background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;margin:10px 16px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>🔒 <b>Proteja o painel:</b> ligue a verificação em duas etapas.</span><button class="primary" style="margin-left:auto" onclick="this.parentNode.remove();go('equipe')">Ligar agora</button></div>`); }catch(e){} }
+
 async function changePw(){ try{ await api('/admin/me/password',{method:'POST',body:JSON.stringify({current:$('cp0').value,password:$('cp1').value})}); $('pmsg').innerHTML='<div class="msg p-ok">Senha trocada.</div>'; $('cp0').value=$('cp1').value=''; }catch(e){ $('pmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function removeAdmin(id){ if(!confirm('Tirar o acesso desta pessoa ao painel?')) return; try{ await api('/admin/team/'+id,{method:'DELETE'}); VIEWS.equipe(); }catch(e){ alert(e.message); } }
 
 function adminName(){ return 'Administrador'; }
 document.addEventListener('keydown', e => { if (e.key==='Enter' && e.target && e.target.id==='gsearch') { const q=e.target.value.trim(); if(!q) return; cur='pedidos'; location.hash='pedidos'; navHtml(); VIEWS.pedidos('ALL', q); } });
-function start(){  $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
+function start(){  setTimeout(nag2fa, 1500); $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
 window.__boot = () => { if (token) start(); else { $('loginBox').classList.remove('hidden'); checkSetup(); } };
 </script>
 <script src="/painel/admin-v2.js?v=3"></script>
