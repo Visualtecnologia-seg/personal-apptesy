@@ -127,8 +127,9 @@ try { token = sessionStorage.getItem('opus_admin_token'); } catch(e) {}
 
 async function api(path, opts={}) {
   const r = await fetch(path, {...opts, headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}), ...(opts.headers||{})}});
-  if (r.status === 401 || r.status === 403) { if (path !== '/auth') { logout(); throw new Error('Sessão expirada ou sem permissão de administrador.'); } }
   const txt = await r.text(); let data; try { data = JSON.parse(txt); } catch(e) { data = txt; }
+  if (r.status === 403 && data && data.message) throw new Error(data.message); // sem permissão para documentos
+  if (r.status === 401 || r.status === 403) { if (path !== '/auth') { logout(); throw new Error('Sessão expirada ou sem permissão de administrador.'); } }
   if (!r.ok) throw new Error((data && data.message) || 'Erro '+r.status);
   return data;
 }

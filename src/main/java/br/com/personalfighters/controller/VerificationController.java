@@ -36,6 +36,7 @@ public class VerificationController {
   private final UserRepository userRepository;
   private final UserService userService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.SecurityService securityService;
 
   // ───────────────────────────── App (o próprio usuário) ─────────────────────────────
 
@@ -177,7 +178,11 @@ public class VerificationController {
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   @GetMapping("/{id}")
   public ResponseEntity<?> detail(@PathVariable UUID id) {
+    User viewer = userService.findAuthUser();
+    if (!securityService.canViewDocs(viewer.getId()))
+      return ResponseEntity.status(403).body(Map.of("message", "Você não tem permissão para ver documentos e selfies. Peça para quem cuida do painel liberar em Equipe."));
     return repo.findById(id).map(v -> {
+      securityService.logDocAccess(viewer, v.getUserId(), "Documentos e selfies da verificação");
       Map<String, Object> m = summary(v);
       m.put("docFront", v.getDocFront());
       m.put("docBack", v.getDocBack());

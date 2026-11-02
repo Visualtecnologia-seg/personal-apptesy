@@ -37,6 +37,7 @@ public class ProGrowthController {
   private final AsaasService asaasService;
   private final NotificationService notificationService;
   private final JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.SecurityService securityService;
 
   private static Timestamp now() { return Timestamp.valueOf(LocalDateTime.now(Z)); }
 
@@ -213,7 +214,10 @@ public class ProGrowthController {
   @GetMapping("/admin/certificates/{id}/photo")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public ResponseEntity<byte[]> certPhoto(@PathVariable UUID id) {
-    List<Map<String, Object>> r = jdbc.queryForList("SELECT photo, photo_type FROM pro_certificate_ WHERE id = ?", id);
+    User viewer = userService.findAuthUser();
+    if (!securityService.canViewDocs(viewer.getId())) return ResponseEntity.status(403).build();
+    List<Map<String, Object>> r = jdbc.queryForList("SELECT photo, photo_type, professional_id FROM pro_certificate_ WHERE id = ?", id);
+    if (!r.isEmpty()) securityService.logDocAccess(viewer, r.get(0).get("professional_id") == null ? null : ((Number) r.get(0).get("professional_id")).longValue(), "Foto de certificado");
     if (r.isEmpty() || r.get(0).get("photo") == null) return ResponseEntity.notFound().build();
     return ResponseEntity.ok().contentType(MediaType.parseMediaType(Objects.toString(r.get(0).get("photo_type"), "image/jpeg"))).body((byte[]) r.get(0).get("photo"));
   }

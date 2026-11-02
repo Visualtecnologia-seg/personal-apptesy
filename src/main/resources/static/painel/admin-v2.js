@@ -109,7 +109,7 @@
 
   // ───────── avisos (sino) + SOS ─────────
   let notifs = { items: [], count: 0, sosActive: 0 };
-  const NK = { SOS: ['alert', '#FEE2E2', '#B91C1C'], DISPUTE: ['clock', '#FEE2E2', '#B91C1C'], VERIFY: ['shield', '#FEF3C7', '#B45309'], SUPPORT: ['chat', '#E0F2FE', '#075985'], WITHDRAW: ['card', '#EFF6FF', '#1D4ED8'], CERT: ['award', '#EDE9FE', '#5B21B6'] };
+  const NK = { SOS: ['alert', '#FEE2E2', '#B91C1C'], DISPUTE: ['clock', '#FEE2E2', '#B91C1C'], VERIFY: ['shield', '#FEF3C7', '#B45309'], SUPPORT: ['chat', '#E0F2FE', '#075985'], WITHDRAW: ['card', '#EFF6FF', '#1D4ED8'], CERT: ['award', '#EDE9FE', '#5B21B6'], SECURITY: ['shield', '#FEE2E2', '#B91C1C'] };
   function paintNotifs() {
     const n = notifs.count || 0;
     ['bcount', 'bcount2'].forEach(id => { const el = $(id); if (el) { el.textContent = n; el.style.display = n ? 'inline-flex' : 'none'; } });

@@ -24,6 +24,7 @@ public class WalletController {
   private final UserService userService;
   private final WalletService walletService;
   private final JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.SecurityService securityService;
 
   @GetMapping("/wallet")
   public ResponseEntity<?> wallet() {
@@ -69,6 +70,8 @@ public class WalletController {
     pix.put("type", me.getPixKeyType());
     pix.put("name", me.getName());
     out.put("pix", pix);
+    java.time.LocalDateTime hold = securityService.withdrawHoldUntil(me.getId());
+    out.put("withdrawHoldUntil", hold == null ? null : hold.toString());
     return ResponseEntity.ok(out);
   }
 

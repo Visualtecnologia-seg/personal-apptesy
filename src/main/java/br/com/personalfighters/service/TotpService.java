@@ -14,7 +14,7 @@ import java.security.SecureRandom;
 import java.util.*;
 
 /**
- * Verificação em duas etapas (TOTP, o mesmo padrão do Google Authenticator / Microsoft Authenticator).
+ * Verificação em duas etapas (TOTP, padrão do Google Authenticator).
  * O segredo fica guardado criptografado no banco (AES-GCM com chave derivada do JWT_SECRET).
  */
 @Service

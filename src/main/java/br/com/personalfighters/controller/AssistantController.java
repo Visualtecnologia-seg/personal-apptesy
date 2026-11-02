@@ -95,6 +95,18 @@ public class AssistantController {
     }
     for (Map<String, Object> v : q("SELECT v.user_id, v.submitted_at, u.name FROM identity_verification_ v JOIN user_ u ON u.id = v.user_id WHERE v.status = 'PENDING' ORDER BY v.submitted_at"))
       items.add(item("VERIFY", "Documento para aprovar", Objects.toString(v.get("name")), v.get("submitted_at"), "verif", null, false));
+    // ── Segurança: comportamento estranho ──
+    for (Map<String, Object> e : q("SELECT e.kind, e.detail, e.created_at, u.name, u.id FROM security_event_ e JOIN user_ u ON u.id = e.user_id WHERE e.kind IN ('NOT_ME','WITHDRAW_HELD') AND e.created_at > ? ORDER BY e.id DESC LIMIT 10", ts(now().minusDays(3))))
+      items.add(item("SECURITY", "NOT_ME".equals(e.get("kind")) ? "🚨 \"Não fui eu\": possível conta invadida" : "🚨 Saque tentado logo após trocar a chave PIX",
+          e.get("name") + " · conta desconectada e saques segurados por 24 h", e.get("created_at"), "user", e.get("id"), true));
+    for (Map<String, Object> e : q("SELECT c.changed_at, u.name, u.id, c.old_key_end, c.new_key_end FROM pix_key_change_ c JOIN user_ u ON u.id = c.user_id WHERE COALESCE(c.old_key_end, '') <> '' AND c.changed_at > ? ORDER BY c.id DESC LIMIT 10", ts(now().minusDays(2))))
+      items.add(item("SECURITY", "Chave PIX trocada", e.get("name") + " · ••••" + e.get("old_key_end") + " → ••••" + e.get("new_key_end") + " · saque liberado só depois de 24 h", e.get("changed_at"), "user", e.get("id"), false));
+    for (Map<String, Object> e : q("SELECT d.device_id, COUNT(DISTINCT d.user_id) AS n, STRING_AGG(DISTINCT u.name, ', ') AS names, MAX(d.last_seen) AS last FROM user_device_ d JOIN user_ u ON u.id = d.user_id " +
+        "WHERE d.first_seen > ? GROUP BY d.device_id HAVING COUNT(DISTINCT d.user_id) >= 3 ORDER BY last DESC LIMIT 5", ts(now().minusDays(30))))
+      items.add(item("SECURITY", e.get("n") + " contas no mesmo celular", Objects.toString(e.get("names")), e.get("last"), "usuarios", null, false));
+    for (Map<String, Object> e : q("SELECT o.customer_id AS id, u.name, COUNT(*) AS n, MAX(o.cancelled_at) AS last FROM order_ o JOIN user_ u ON u.id = o.customer_id " +
+        "WHERE o.status = 'CANCELLED' AND o.cancelled_by = 'CLIENT' AND o.cancelled_at > ? GROUP BY o.customer_id, u.name HAVING COUNT(*) >= 3 ORDER BY last DESC LIMIT 5", ts(now().minusDays(7))))
+      items.add(item("SECURITY", "Cliente cancelou " + e.get("n") + " pedidos em 7 dias", Objects.toString(e.get("name")), e.get("last"), "user", e.get("id"), false));
     for (Map<String, Object> p : q("SELECT st.user_id, st.topic, st.updated_at, u.name FROM support_state_ st JOIN user_ u ON u.id = st.user_id WHERE st.priority = TRUE ORDER BY st.updated_at DESC LIMIT 10"))
       items.add(item("SUPPORT", "Suporte com prioridade: " + Objects.toString(p.get("topic"), "").replace('-', ' '), Objects.toString(p.get("name")) + " · a Opi chamou a equipe", p.get("updated_at"), "suporte", null, true));
     long sup = n("SELECT COUNT(DISTINCT m.user_id) FROM support_message_ m LEFT JOIN support_state_ st ON st.user_id = m.user_id WHERE m.from_admin = FALSE AND m.read_by_admin = FALSE AND COALESCE(st.priority, FALSE) = FALSE");

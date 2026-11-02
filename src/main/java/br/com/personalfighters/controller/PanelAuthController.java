@@ -89,6 +89,7 @@ public class PanelAuthController implements ApplicationRunner {
     ResponseEntity<?> r = create(clean(b.get("login")), Objects.toString(b.get("password"), ""));
     if (r.getStatusCode().is2xxSuccessful()) {
       setupCode = null;
+      jdbc.update("INSERT INTO panel_permission_ (user_id, can_view_docs) SELECT id, TRUE FROM user_ WHERE username = ? ON CONFLICT (user_id) DO UPDATE SET can_view_docs = TRUE", PREFIX + clean(b.get("login")));
       jdbc.update("DELETE FROM user_role WHERE role = 'ADMIN' AND user_id IN (SELECT id FROM user_ WHERE username NOT LIKE 'painel:%')");
     }
     return r;
@@ -116,7 +117,7 @@ public class PanelAuthController implements ApplicationRunner {
     return ResponseEntity.ok(Map.of("token", authenticationService.addAuthentication(u), "login", login, "twoFactor", false));
   }
 
-  /** Segunda etapa: código do aplicativo autenticador (ou um código de emergência). */
+  /** Segunda etapa: código do Google Authenticator (ou um código de emergência). */
   @PostMapping("/panel-auth/2fa")
   @Transactional
   public ResponseEntity<?> secondStep(@RequestBody Map<String, Object> b) {
@@ -130,7 +131,7 @@ public class PanelAuthController implements ApplicationRunner {
       loginAttemptService.loginFailed(key);
       if (++t.tries >= 5) tickets.remove(Objects.toString(b.get("ticket"), ""));
       log.warn("Painel: código de 2 etapas errado para {}", t.login);
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Código incorreto. Confira no aplicativo autenticador."));
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Código incorreto. Confira no Google Authenticator."));
     }
     tickets.remove(Objects.toString(b.get("ticket"), ""));
     loginAttemptService.loginSucceeded(key);
@@ -252,8 +253,25 @@ public class PanelAuthController implements ApplicationRunner {
   @GetMapping("/admin/team")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public List<Map<String, Object>> team() {
-    return jdbc.queryForList("SELECT u.id, SUBSTRING(u.username FROM 8) AS login, COALESCE(u.active, TRUE) AS active, COALESCE(f.enabled, FALSE) AS \"twoFactor\" " +
-        "FROM user_ u LEFT JOIN panel_2fa_ f ON f.user_id = u.id WHERE u.username LIKE 'painel:%' ORDER BY u.username");
+    return jdbc.queryForList("SELECT u.id, SUBSTRING(u.username FROM 8) AS login, COALESCE(u.active, TRUE) AS active, COALESCE(f.enabled, FALSE) AS \"twoFactor\", COALESCE(pp.can_view_docs, FALSE) AS \"canViewDocs\", " +
+        "(SELECT MAX(created_at) FROM doc_access_log_ d WHERE d.admin_id = u.id) AS \"lastDocView\" " +
+        "FROM user_ u LEFT JOIN panel_2fa_ f ON f.user_id = u.id LEFT JOIN panel_permission_ pp ON pp.user_id = u.id WHERE u.username LIKE 'painel:%' ORDER BY u.username");
+  }
+
+  /** Libera ou tira a permissão de ver documentos e selfies (só quem já tem a permissão pode mudar). */
+  @PutMapping("/admin/team/{id}/docs")
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
+  @Transactional
+  public ResponseEntity<?> docsPermission(@PathVariable Long id, @RequestBody Map<String, Object> b) {
+    User me = userService.findAuthUser();
+    Boolean mine = jdbc.query("SELECT can_view_docs FROM panel_permission_ WHERE user_id = ?", rs -> rs.next() ? rs.getBoolean(1) : Boolean.FALSE, me.getId());
+    if (!Boolean.TRUE.equals(mine)) return bad("Só quem já pode ver documentos consegue liberar para outra pessoa.");
+    if (me.getId().equals(id)) return bad("Você não pode mudar a sua própria permissão.");
+    boolean allow = Boolean.TRUE.equals(b.get("allow"));
+    jdbc.update("INSERT INTO panel_permission_ (user_id, can_view_docs) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET can_view_docs = EXCLUDED.can_view_docs", id, allow);
+    jdbc.update("INSERT INTO admin_action_ (admin_id, admin_name, action, target, detail, created_at) VALUES (?, 'Administrador', ?, ?, '', ?)",
+        me.getId(), allow ? "Liberou ver documentos" : "Tirou permissão de documentos", jdbc.query("SELECT SUBSTRING(username FROM 8) FROM user_ WHERE id = ?", rs -> rs.next() ? rs.getString(1) : "", id), new java.sql.Timestamp(System.currentTimeMillis()));
+    return ResponseEntity.ok(team());
   }
 
   @PostMapping("/admin/team")

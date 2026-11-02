@@ -27,6 +27,7 @@ public class WalletService {
   private final JdbcTemplate jdbc;
   private final TransactionRepository transactionRepository;
   private final AsaasService asaasService;
+  private final SecurityService securityService;
 
   public static LocalDateTime now() { return LocalDateTime.now(ZoneId.of("America/Sao_Paulo")); }
 
@@ -77,6 +78,12 @@ public class WalletService {
   public synchronized String withdraw(User pro, BigDecimal amount) {
     if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) throw new IllegalArgumentException("O saque mínimo é R$ 1,00.");
     if (pro.getPixKey() == null || pro.getPixKey().isBlank()) throw new IllegalArgumentException("Cadastre a sua chave PIX antes de sacar.");
+    java.time.LocalDateTime hold = securityService.withdrawHoldUntil(pro.getId());
+    if (hold != null) {
+      securityService.event(pro.getId(), "WITHDRAW_HELD", "Tentou sacar R$ " + amount + " durante a espera de segurança");
+      throw new IllegalArgumentException("Por segurança, como a chave PIX foi trocada há pouco, o saque fica liberado em " +
+          hold.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")) + ". O seu dinheiro continua guardado.");
+    }
     if (amount.compareTo(available(pro.getId())) > 0) throw new IllegalArgumentException("Saldo insuficiente.");
     UUID id = UUID.randomUUID();
     jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', 'Saque PIX', ?, ?)",

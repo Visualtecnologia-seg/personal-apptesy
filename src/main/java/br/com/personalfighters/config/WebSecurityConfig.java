@@ -31,8 +31,8 @@ import java.util.Collections;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
-  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/panel-auth/status"};
-  private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/setup"};
+  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status"};
+  private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
   private static final String[] WHITELIST = {
       // -- swagger ui
       "/swagger-resources/**",

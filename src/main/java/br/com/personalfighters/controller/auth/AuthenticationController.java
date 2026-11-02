@@ -10,6 +10,7 @@ import br.com.personalfighters.model.NewPasswordData;
 import br.com.personalfighters.repository.LoginHistoryRepository;
 import br.com.personalfighters.service.EmailService;
 import br.com.personalfighters.service.LoginAttemptService;
+import br.com.personalfighters.service.SecurityService;
 import br.com.personalfighters.service.UserService;
 import br.com.personalfighters.service.impl.AuthenticationService;
 import br.com.personalfighters.utils.PasswordGenerator;
@@ -51,6 +52,7 @@ public class AuthenticationController {
   private final EmailService emailService;
   private final LoginAttemptService loginAttemptService;
   private final LoginHistoryRepository loginHistoryRepository;
+  private final SecurityService securityService;
 
   @PostMapping
   @ApiOperation(value = "Autentica o user e retorna o token")
@@ -109,6 +111,9 @@ public class AuthenticationController {
     loginAttemptService.loginSucceeded(email);
     final User user = (User) userDetailsService.loadUserByUsername(email);
     saveHistory(user, ip, ua, true);
+    if (user.getActive() != null && !user.getActive()) throw new Exception("Credenciais inválidas.");
+    try { securityService.registerDevice(user, request.getHeader("X-Device-Id"), request.getHeader("X-Device-Name"), ip); }
+    catch (Exception e) { log.warn("Aparelho do login não registrado: {}", e.getMessage()); }
     final String token = authenticationService.addAuthentication(user);
     return ResponseEntity.ok(token);
   }
