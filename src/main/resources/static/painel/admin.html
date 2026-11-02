@@ -453,7 +453,14 @@ async function exportCsv(){ try{ const u=await blob('/admin/finance/export.csv')
 async function delPost(id){ const reason=prompt('Motivo (o profissional é avisado):','Conteúdo impróprio'); if(reason===null) return; try{ await api('/admin/posts/'+id+'?reason='+encodeURIComponent(reason),{method:'DELETE'}); VIEWS.social(); }catch(e){ alert(e.message); } }
 async function sendBroadcast(){ const text=$('btxt').value.trim(), audience=$('aud').value; if(!text) return; if(!confirm('Enviar para '+$('aud').selectedOptions[0].text.toLowerCase()+'?')) return; try{ const r=await api('/admin/broadcast',{method:'POST',body:JSON.stringify({text,audience})}); alert('Aviso enviado para '+r.sent+' pessoas.'); VIEWS.avisos(); }catch(e){ $('bmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function reviewCert(id,ok){ const note= ok?'':prompt('Motivo da recusa:')||''; try{ await api('/admin/certificates/'+id+'/review',{method:'POST',body:JSON.stringify({approve:ok,note})}); VIEWS.certs(); }catch(e){ alert(e.message); } }
-async function certPhoto(id){ try{ window.open(await blob('/admin/certificates/'+id+'/photo')); }catch(e){ alert('Não foi possível abrir.'); } }
+async function certPhoto(id){
+  // mostra a foto aqui mesmo (abrir em nova aba é bloqueado no celular)
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out';
+  ov.innerHTML = '<span style="color:#fff">Carregando…</span>'; ov.onclick = () => ov.remove(); document.body.appendChild(ov);
+  try{ const u = await blob('/admin/certificates/'+id+'/photo'); ov.innerHTML = '<img src="'+u+'" style="max-width:94vw;max-height:90vh;border-radius:12px">'; }
+  catch(e){ ov.innerHTML = '<span style="color:#fff">Não foi possível abrir a foto.</span>'; }
+}
 async function saveStore(){ try{ await api('/admin/partners/stores',{method:'POST',body:JSON.stringify({name:$('sn').value,category:$('sc').value,whatsapp:$('sw').value,address:$('sa').value,lat:$('slat').value,lng:$('slng').value,couponCode:$('scc').value,couponText:$('sct').value,hours:$('sh').value})}); VIEWS.parceiros(); }catch(e){ $('smsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function delStore(id){ if(!confirm('Remover esta loja?')) return; try{ await api('/admin/partners/stores/'+id,{method:'DELETE'}); VIEWS.parceiros(); }catch(e){ alert(e.message); } }
 async function savePlan(){ try{ await api('/admin/partners/plans',{method:'POST',body:JSON.stringify({audience:$('pa').value,title:$('pt').value,kind:$('pk').value,partner:$('pp').value,price:$('pv').value,link:$('pl').value,coverage:$('pc').value})}); VIEWS.parceiros(); }catch(e){ $('pmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
@@ -470,6 +477,6 @@ document.addEventListener('keydown', e => { if (e.key==='Enter' && e.target && e
 function start(){  $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
 window.__boot = () => { if (token) start(); else { $('loginBox').classList.remove('hidden'); checkSetup(); } };
 </script>
-<script src="/painel/admin-v2.js?v=2"></script>
+<script src="/painel/admin-v2.js?v=3"></script>
 </body>
 </html>

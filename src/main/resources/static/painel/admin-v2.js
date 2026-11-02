@@ -29,10 +29,28 @@
   window.toggleTheme = () => { theme = theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('opus_admin_theme', theme); } catch (e) { } applyTheme(theme); };
 
   // ───────── barra do topo ─────────
+  // Celular: o menu lateral vira uma gaveta que abre no botão ☰
+  window.toggleMenu = function (open) {
+    const a = document.querySelector('aside'); if (!a) return;
+    const on = open === undefined ? !a.classList.contains('open') : open;
+    a.classList.toggle('open', on);
+    let sh = $('menuShade');
+    if (!sh) { document.body.insertAdjacentHTML('beforeend', '<div id="menuShade" class="menushade" onclick="toggleMenu(false)"></div>'); sh = $('menuShade'); }
+    sh.classList.toggle('on', on);
+  };
+  const st = document.createElement('style');
+  st.textContent = `.menubtn{display:none}
+  @media(max-width:1000px){.menubtn{display:flex}aside{display:flex!important;position:fixed!important;left:0;top:0;bottom:0;z-index:60;transform:translateX(-105%);transition:transform .22s ease;box-shadow:none}aside.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.35)}
+  .menushade{position:fixed;inset:0;background:rgba(2,6,23,.45);z-index:55;display:none}.menushade.on{display:block}
+  .topbar .ask{min-width:0;flex:1}.topbar .ask input{min-width:0}.topbar .kbd{display:none}.topbar .tbtn.wide span{display:none}.topbar>div[style*="flex:1"]{display:none}.topbar{gap:8px}}`;
+  document.head.appendChild(st);
+  if (typeof go === 'function') { const g = go; window.go = function (k) { toggleMenu(false); return g(k); }; }
+
   function topbar() {
     if ($('topbar')) return;
     const main = document.querySelector('main');
     main.insertAdjacentHTML('afterbegin', `<div id="topbar" class="topbar">
+      <button class="tbtn menubtn" id="menuBtn" aria-label="Abrir o menu" onclick="toggleMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <div class="ask"><span class="askic">${I('spark', 18, '#1D4ED8')}</span><input id="askq" aria-label="Pergunte ao assistente" placeholder='Pergunte ou busque: "disputas vencendo", "pedido A3F1C2", "quanto ganhei hoje"' autocomplete="off"><span class="kbd">Ctrl K</span></div>
       <div style="flex:1"></div>
       <button class="tbtn" id="themeBtn" onclick="toggleTheme()"></button>
