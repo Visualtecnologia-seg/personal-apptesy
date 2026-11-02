@@ -31,6 +31,7 @@ public class NotificationServiceImpl implements NotificationService {
 
   private final OrderRepository orderRepository;
   private final UserRecordsService userRecordsService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @Override
   public void sendNotificationToNonNotifiedProfessionals() {
@@ -251,6 +252,12 @@ public class NotificationServiceImpl implements NotificationService {
   /** Aviso simples para uma pessoa (cliente ou profissional). */
   @Override
   public void sendToUser(User user, boolean toProfessionalApp, String text) {
+    // Sempre guarda na caixa de avisos do app (aparece mesmo sem notificação do celular)
+    try {
+      if (user != null && user.getId() != null && text != null)
+        jdbc.update("INSERT INTO user_notice_ (user_id, app, text, created_at) VALUES (?, ?, ?, ?)", user.getId(), toProfessionalApp ? "pro" : "cliente",
+            text.length() > 500 ? text.substring(0, 500) : text, java.sql.Timestamp.valueOf(java.time.LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo"))));
+    } catch (Exception e) { log.warn("Aviso não guardado na caixa do app: {}", e.getMessage()); }
     try {
       if (user == null) return;
       UserRecords records = userRecordsService.findByUser(user);

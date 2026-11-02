@@ -79,6 +79,24 @@ public class MeSecurityController {
     return Map.of("ok", true);
   }
 
+  // ───────────── Caixa de avisos do app ─────────────
+
+  @GetMapping("/me/notices")
+  public Map<String, Object> notices(@RequestParam(defaultValue = "cliente") String app) {
+    User me = userService.findAuthUser();
+    String a = "pro".equals(app) ? "pro" : "cliente";
+    Long unread = jdbc.queryForObject("SELECT COUNT(*) FROM user_notice_ WHERE user_id = ? AND app = ? AND read_at IS NULL", Long.class, me.getId(), a);
+    return Map.of("unread", unread == null ? 0 : unread,
+        "items", jdbc.queryForList("SELECT id, text, created_at AS \"createdAt\", read_at IS NOT NULL AS read FROM user_notice_ WHERE user_id = ? AND app = ? ORDER BY id DESC LIMIT 60", me.getId(), a));
+  }
+
+  @PostMapping("/me/notices/read")
+  public Map<String, Object> readNotices(@RequestParam(defaultValue = "cliente") String app) {
+    User me = userService.findAuthUser();
+    jdbc.update("UPDATE user_notice_ SET read_at = ? WHERE user_id = ? AND app = ? AND read_at IS NULL", now(), me.getId(), "pro".equals(app) ? "pro" : "cliente");
+    return Map.of("ok", true);
+  }
+
   // ───────────── LGPD: baixar meus dados ─────────────
 
   /** Cria um link de uso único (10 minutos) para baixar os dados pelo navegador. */
