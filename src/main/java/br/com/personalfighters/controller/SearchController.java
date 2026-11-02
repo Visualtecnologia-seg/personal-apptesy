@@ -165,8 +165,15 @@ public class SearchController {
     return sc;
   }
 
+  private static final String NAME_N = "LOWER(TRANSLATE(name, 'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ', 'aaaaeeiooouc' || 'aaaaeeiooouc'))";
+
+  /** Serviços do catálogo com esse nome (aceita acento e variações: Eletricista / Elétrica). */
   private List<Long> productIds(String productName) {
-    return jdbc.queryForList("SELECT id FROM product_ WHERE COALESCE(active, TRUE) = TRUE AND (LOWER(name) = LOWER(?) OR LOWER(name) LIKE LOWER(?))", Long.class, productName, productName + "%");
+    String n = norm(productName).trim();
+    List<Long> ids = jdbc.queryForList("SELECT id FROM product_ WHERE COALESCE(active, TRUE) = TRUE AND " + NAME_N + " LIKE ?", Long.class, n + "%");
+    if (ids.isEmpty() && n.length() >= 6)
+      ids = jdbc.queryForList("SELECT id FROM product_ WHERE COALESCE(active, TRUE) = TRUE AND " + NAME_N + " LIKE ?", Long.class, "%" + n.substring(0, 6) + "%");
+    return ids;
   }
 
   /** Entende o que a pessoa escreveu e indica o serviço. */
@@ -222,7 +229,7 @@ public class SearchController {
     String in = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
     List<Map<String, Object>> pros = jdbc.queryForList(
         "SELECT DISTINCT u.id, u.name, u.latitude AS lat, u.longitude AS lng, COALESCE(p.is_online, FALSE) AS online, COALESCE(p.hourly_rate, p.price) AS rate " +
-            "FROM product__professional pp JOIN professional_ p ON p.id = pp.professional_id JOIN user_ u ON u.professional_id = p.id " +
+            "FROM product__professional pp JOIN user_ u ON u.id = pp.professional_id JOIN professional_ p ON p.id = u.professional_id " +
             "WHERE pp.product_id IN (" + in + ") AND COALESCE(u.active, TRUE) = TRUE AND COALESCE(u.blocked, FALSE) = FALSE");
     List<Map<String, Object>> near = new ArrayList<>();
     for (Map<String, Object> p : pros) {
@@ -272,7 +279,7 @@ public class SearchController {
             "(SELECT COUNT(*) FROM review_ r WHERE r.professional_id = u.id AND r.rating IS NOT NULL) AS reviews, " +
             "(SELECT COUNT(*) FROM order_ o WHERE o.professional_id = u.id AND o.status IN ('DONE','REVIEWED')) AS done, " +
             "(SELECT MAX(warranty_days) FROM order_ o WHERE o.professional_id = u.id) AS warranty " +
-            "FROM product__professional pp JOIN professional_ p ON p.id = pp.professional_id JOIN user_ u ON u.professional_id = p.id " +
+            "FROM product__professional pp JOIN user_ u ON u.id = pp.professional_id JOIN professional_ p ON p.id = u.professional_id " +
             "WHERE pp.product_id IN (" + in + ") AND COALESCE(u.active, TRUE) = TRUE AND COALESCE(u.blocked, FALSE) = FALSE AND u.id <> ? " +
             "AND NOT EXISTS (SELECT 1 FROM pro_blocked_client_ b WHERE b.professional_id = u.id AND b.client_id = ?)", me.getId(), me.getId());
     Set<Long> boosted = new HashSet<>(growth.boostedIds());

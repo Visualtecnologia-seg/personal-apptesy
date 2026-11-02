@@ -53,7 +53,7 @@ public class ProfileController {
     List<String> tags = new ArrayList<>();
     for (String t : Objects.toString(r.get("specialties"), "").split("[,;\\n]")) if (!t.isBlank()) tags.add(t.trim());
     out.put("specialties", tags);
-    out.put("services", q("SELECT p.id, p.name FROM product__professional pp JOIN product_ p ON p.id = pp.product_id JOIN user_ u ON u.professional_id = pp.professional_id WHERE u.id = ? ORDER BY p.name", id));
+    out.put("services", q("SELECT p.id, p.name FROM product__professional pp JOIN product_ p ON p.id = pp.product_id WHERE pp.professional_id = ? ORDER BY p.name", id));
     out.put("price", Math.round(((Number) r.get("rate")).doubleValue() * 1.05));
     long done = n("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND status IN ('DONE','REVIEWED')", id);
     out.put("done", done);
