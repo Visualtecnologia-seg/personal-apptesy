@@ -85,6 +85,13 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         .antMatchers(WHITELIST).permitAll()
         .antMatchers(HttpMethod.POST, PUBLIC_MATCHERS_POST).permitAll()
         .antMatchers(HttpMethod.GET, PUBLIC_MATCHERS_GET).permitAll()
+        .antMatchers("/system/**").hasRole("ADMIN") // geração de dados de teste: só administrador
+        // Endpoints antigos que os apps não usam e que não conferiam o dono dos dados: só administrador
+        .antMatchers("/bank/**", "/credit-cards/**", "/finances/**", "/professionalfinance/**", "/addresses/**", "/infos/**",
+            "/customers/**", "/payments/**", "/auth/history/**", "/favorites/users/**", "/points/users/**", "/agendas/**").hasRole("ADMIN")
+        .antMatchers(HttpMethod.DELETE, "/professionals/*", "/reviews/*", "/photos/*").hasRole("ADMIN")
+        .antMatchers(HttpMethod.POST, "/specialty-history/**", "/products/users/**", "/photos/avatar/users/*", "/photos/photo/users/*").hasRole("ADMIN")
+        .antMatchers(HttpMethod.PUT, "/products/*").hasRole("ADMIN")
         .anyRequest().authenticated()
         .and()
         .logout()

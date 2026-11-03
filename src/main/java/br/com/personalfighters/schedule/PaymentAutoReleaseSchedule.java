@@ -4,6 +4,7 @@ import br.com.personalfighters.entity.Order;
 import br.com.personalfighters.model.Status;
 import br.com.personalfighters.repository.OrderRepository;
 import br.com.personalfighters.service.AsaasService;
+import br.com.personalfighters.service.CompletionService;
 import br.com.personalfighters.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class PaymentAutoReleaseSchedule {
   private final OrderRepository orderRepository;
   private final AsaasService asaasService;
   private final NotificationService notificationService;
+  private final CompletionService completionService;
 
   @Scheduled(cron = "0 0 * * * *")
   @Transactional
@@ -48,11 +50,9 @@ public class PaymentAutoReleaseSchedule {
 
     for (Order order : orders) {
       try {
-        asaasService.releasePaymentToProfessional(order);
-        order.setPixReleased(true);
-        order.setStatus(Status.REVIEWED);
-        orderRepository.save(order);
-        notificationService.sendPaymentReleasedToProfessional(order);
+        // Mesmo caminho da liberação normal: o valor entra na carteira do profissional
+        // (com as proteções de saque), em vez de um PIX direto que pulava a carteira.
+        completionService.finalizeAndRelease(order, "rede de segurança após 48h");
         log.info("Escrow liberado automaticamente para pedido {} após 48h", order.getId());
       } catch (Exception e) {
         log.error("Falha na liberação automática do pedido {}: {}", order.getId(), e.getMessage());

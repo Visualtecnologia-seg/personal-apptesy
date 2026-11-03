@@ -68,6 +68,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     return ResponseEntity.status(err.getStatus()).body(err);
   }
 
+  // Erros com código próprio (acesso negado, função desligada...) mantêm o código e a mensagem amigável
+  @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+  public ResponseEntity<ErrorDetails> handleStatus(org.springframework.web.server.ResponseStatusException exception, HttpServletRequest request) {
+    ErrorDetails err = new ErrorDetails(exception.getStatus(), LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),
+        exception.getReason() != null ? exception.getReason() : exception.getStatus().getReasonPhrase(), request.getRequestURI());
+    return ResponseEntity.status(exception.getStatus()).body(err);
+  }
+
+  @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+  public ResponseEntity<ErrorDetails> handleDenied(Exception exception, HttpServletRequest request) {
+    ErrorDetails err = new ErrorDetails(HttpStatus.FORBIDDEN, LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),
+        "Acesso não permitido.", request.getRequestURI());
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(err);
+  }
+
   //handle global exceptions
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorDetails> handleGlobalException(Exception exception, HttpServletRequest request) {

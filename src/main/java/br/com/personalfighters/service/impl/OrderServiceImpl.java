@@ -83,6 +83,20 @@ public class OrderServiceImpl implements OrderService {
   @Override
   @Transactional
   public Order save(Order order) {
+    // O app manda só o id do cliente e do profissional: carrega as contas de verdade
+    // (antes o pedido feito em "Agendar" quebrava no servidor ao procurar o perfil profissional).
+    if (order.getProfessional() != null && order.getProfessional().getId() != null && order.getProfessional().getProfessional() == null) {
+      order.setProfessional(userService.findById(order.getProfessional().getId()));
+    }
+    if (order.getCustomer() != null && order.getCustomer().getId() != null && order.getCustomer().getUsername() == null) {
+      order.setCustomer(userService.findById(order.getCustomer().getId()));
+    }
+    if (order.getProduct() != null && order.getProduct().getId() != null) {
+      productRepository.findById(order.getProduct().getId()).ifPresent(order::setProduct);
+    }
+    // Agendamento direto (sem orçamento) é de 1 hora quando o app não informa: assim o pedido já tem preço para pagar.
+    boolean quote = order.getProduct() != null && Boolean.TRUE.equals(order.getProduct().getRequiresQuote());
+    if (order.getHours() == null && !quote) order.setHours(1);
     if (order.getDate() != null && order.getDate().isBefore(LocalDate.now(zoneId))) {
       throw new RuntimeException("Não é possível criar pedidos para datas passadas");
     }
@@ -313,26 +327,19 @@ public class OrderServiceImpl implements OrderService {
     var orders =
         orderRepository.findOrdersByDateIsLessThanEqualAndStartTimeIsLessThanEqualAndStatus(
             date, time, Status.CONFIRMED);
-    orders.forEach(
-        order -> {
-          order.setStatus(Status.DONE);
-          if (order.getDoneAt() == null) order.setDoneAt(java.time.LocalDateTime.now());
-          var transactionOpt = transactionService.findByOrderId(order.getId());
-          if (transactionOpt.isPresent()) {
-            var transaction = transactionOpt.get();
-            var finance = financeRepository.findByUser(order.getProfessional());
-            var professionalValue =
-                finance.getProfessionalBalance().add(transaction.getProfessionalValue());
-            finance.setProfessionalBalance(professionalValue.setScale(2, RoundingMode.HALF_UP));
-            transaction.setOrderIsDone(true);
-            update(order);
-            financeRepository.save(finance);
-            transactionService.update(transaction);
-          } else {
-            log.error(
-                String.format("Order: %s - Não foi possível achar a transação", order.getId()));
-          }
-        });
+    // Antes: pedido aceito e NÃO pago virava "Concluído" sozinho depois do horário (sem serviço e sem pagamento).
+    // Agora: se o horário passou e o cliente não pagou, o pedido é cancelado e os dois são avisados.
+    orders.forEach(order -> {
+      if (Boolean.TRUE.equals(order.getPixPaid())) return;
+      try {
+        order.setCancelledBy("SYSTEM");
+        order.setCancelReason("O horário passou e o pagamento não foi feito");
+        orderRepository.save(order);
+        cancelOrder(order, Role.ADMIN);
+      } catch (Exception e) {
+        log.warn("Não foi possível cancelar o pedido {} sem pagamento: {}", order.getId(), e.getMessage());
+      }
+    });
   }
 
   @Override
@@ -363,7 +370,7 @@ public class OrderServiceImpl implements OrderService {
       list = Collections.singletonList(order.getProfessional());
     }
 
-    list = list.stream().filter(user -> user.getProfessional().getActive()).collect(Collectors.toList());
+    list = list.stream().filter(user -> user != null && user.getProfessional() != null && !Boolean.FALSE.equals(user.getProfessional().getActive())).collect(Collectors.toList());
 
     List<User> professionals = new ArrayList<>();
     list.forEach(professional -> {

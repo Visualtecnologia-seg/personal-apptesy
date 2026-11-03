@@ -49,6 +49,7 @@ public class AuthenticationController {
   private final UserDetailsService userDetailsService;
   private final AuthenticationService authenticationService;
   private final UserService userService;
+  private final br.com.personalfighters.util.Redactor redactor;
   private final EmailService emailService;
   private final LoginAttemptService loginAttemptService;
   private final LoginHistoryRepository loginHistoryRepository;
@@ -131,7 +132,8 @@ public class AuthenticationController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna o usuário autenticado nos aplicativos.")
   public Object authUserMobile() {
-    return userService.findAuthUser();
+    var u = userService.findAuthUser();
+    return redactor.strip(u, u.getId());
   }
 
   @PutMapping("/new-password")

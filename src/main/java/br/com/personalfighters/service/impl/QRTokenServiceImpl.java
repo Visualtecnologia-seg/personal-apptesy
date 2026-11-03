@@ -83,16 +83,8 @@ public class QRTokenServiceImpl implements QRTokenService {
   @Scheduled(fixedRate = 3_600_000)
   @Transactional
   public void autoConfirmCompletions() {
-    LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
-    List<Order> pending = orderRepository.findByStatus(Status.PENDING_CLIENT_CONFIRMATION);
-    for (Order o : pending) {
-      if (o.getRequestedCompletionAt() != null && o.getRequestedCompletionAt().isBefore(cutoff)) {
-        o.setStatus(Status.DONE);
-        if (o.getDoneAt() == null) o.setDoneAt(java.time.LocalDateTime.now());
-        orderRepository.save(o);
-        log.info("Auto-confirmação de conclusão do pedido {} após 24h sem resposta", o.getId());
-      }
-    }
+    // A liberação automática agora é só a do CompletionService (2h, respeitando disputa e SOS).
+    // Este job antigo marcava "Concluído" depois de 24h mesmo com problema relatado — removido.
     qrTokenRepository.deleteExpired(LocalDateTime.now());
   }
 }

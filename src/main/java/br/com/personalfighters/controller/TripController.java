@@ -52,6 +52,7 @@ public class TripController {
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isPro(o, me)) return bad("Pedido não encontrado.");
     if (o.getStatus() != Status.AWAITING_PAYMENT && o.getStatus() != Status.CONFIRMED) return bad("Este pedido não está aguardando o atendimento.");
+    if (!Boolean.TRUE.equals(o.getPixPaid())) return bad("O cliente ainda não pagou. Saia só depois que o pagamento estiver no cofre.");
     Double lat = dbl(body.get("lat")), lng = dbl(body.get("lng"));
     if (lat == null || lng == null) return bad("Não conseguimos a sua localização. Ligue o GPS e tente de novo.");
     boolean first = jdbc.queryForObject("SELECT departed_at IS NULL FROM order_ WHERE id = ?", Boolean.class, id);

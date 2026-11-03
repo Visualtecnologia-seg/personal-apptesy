@@ -22,6 +22,15 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
   private final UserService userService;
+  private final br.com.personalfighters.util.Redactor redactor;
+
+  private User me() { return userService.findAuthUser(); }
+  private static org.springframework.web.server.ResponseStatusException denied() {
+    return new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso não permitido.");
+  }
+  private void selfOrAdmin(Long id) {
+    if (!br.com.personalfighters.util.Redactor.isAdmin() && (id == null || !id.equals(me().getId()))) throw denied();
+  }
   private final br.com.personalfighters.service.AreaService areaService;
   private final UserRecordsService userRecordsService;
   private final ProGrowthController proGrowthController;
@@ -30,20 +39,20 @@ public class UserController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a lista paginada dos usuários.")
   public Object findAll(User user, Pageable pageRequest) {
-    return userService.findAll(user, pageRequest);
+    return redactor.strip(userService.findAll(user, pageRequest), me().getId());
   }
 
   @GetMapping("/{id}")
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna o usuário pelo ID.")
   public Object findById(@PathVariable Long id) {
-    return userService.findById(id);
+    return redactor.strip(userService.findById(id), me().getId());
   }
 
   @GetMapping("/professionals/{ref}")
   @ResponseStatus(HttpStatus.OK)
   public Object findByProfessionalReference(@PathVariable String ref) {
-    return userService.findByReference(ref);
+    return redactor.strip(userService.findByReference(ref), me().getId());
   }
 
   @PostMapping
@@ -56,8 +65,34 @@ public class UserController {
   @PutMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Atualiza um usuário.")
-  public User update(@RequestBody User user) {
-    return userService.update(user);
+  public Object update(@RequestBody User user) {
+    if (!br.com.personalfighters.util.Redactor.isAdmin()) {
+      // Cada um só altera a própria conta, e nunca o próprio cargo, verificação ou documentos.
+      User cur = me();
+      user.setId(cur.getId());
+      user.setRole(cur.getRole());
+      user.setVerified(cur.getVerified());
+      user.setVerificationStatus(cur.getVerificationStatus());
+      user.setVerificationReason(cur.getVerificationReason());
+      user.setActive(cur.getActive());
+      user.setAsaasCustomerId(cur.getAsaasCustomerId());
+      user.setDocumentUrl(cur.getDocumentUrl());
+      user.setDocFrontUrl(cur.getDocFrontUrl());
+      user.setDocBackUrl(cur.getDocBackUrl());
+      user.setDocSelfieUrl(cur.getDocSelfieUrl());
+      // Sem esses blocos no envio, mantém os atuais (antes um envio incompleto apagava o perfil profissional)
+      if (user.getProfessional() == null || cur.getProfessional() == null) user.setProfessional(cur.getProfessional());
+      else user.getProfessional().setId(cur.getProfessional().getId());
+      if (user.getCustomer() == null || cur.getCustomer() == null) user.setCustomer(cur.getCustomer());
+      else user.getCustomer().setId(cur.getCustomer().getId());
+      if (user.getAvatarUrl() == null) user.setAvatarUrl(cur.getAvatarUrl());
+      if (user.getPixKey() == null) { user.setPixKey(cur.getPixKey()); user.setPixKeyType(cur.getPixKeyType()); }
+      if (user.getLatitude() == null) { user.setLatitude(cur.getLatitude()); user.setLongitude(cur.getLongitude()); }
+      if (user.getPhoneNumber() == null) user.setPhoneNumber(cur.getPhoneNumber());
+      if (user.getFullAddress() == null) user.setFullAddress(cur.getFullAddress());
+    }
+    User saved = userService.update(user);
+    return redactor.strip(saved, saved.getId());
   }
 
   @PostMapping("/records")
@@ -71,6 +106,7 @@ public class UserController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Inativa o usuário pelo ID")
   public void setActive(@PathVariable Long id) {
+    selfOrAdmin(id);
     userService.delete(id);
   }
 
@@ -79,6 +115,7 @@ public class UserController {
   @ApiOperation(value = "Retorna o usuário pelo e-mail.")
   @JsonView(Views.FirstLevel.class)
   public Object findByEmail(@PathVariable String email) {
+    if (!br.com.personalfighters.util.Redactor.isAdmin() && !email.equalsIgnoreCase(String.valueOf(me().getEmail()))) throw denied();
     return userService.findByEmail(email);
   }
 
@@ -87,7 +124,8 @@ public class UserController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Dá o acesso de ADMIN para um usuário.")
   public Object setUserToAdmin(@RequestBody User user) {
-    return userService.update(user);
+    User saved = userService.update(user);
+    return redactor.strip(saved, saved.getId());
   }
 
   @PutMapping("/{id}/request-verification")
@@ -141,6 +179,7 @@ public class UserController {
   public Object updateLocation(@PathVariable Long id,
                                @RequestParam double lat,
                                @RequestParam double lng) {
+    selfOrAdmin(id);
     return userService.updateLocation(id, lat, lng);
   }
 

@@ -50,6 +50,9 @@ public class CompletionController {
     if (o.getStatus() != Status.IN_PROGRESS && o.getStatus() != Status.CONFIRMED && o.getStatus() != Status.PENDING_CLIENT_CONFIRMATION) {
       return bad("Este pedido não está em andamento.");
     }
+    if (o.getStatus() == Status.CONFIRMED && !Boolean.TRUE.equals(o.getPixPaid())) {
+      return bad("O cliente ainda não pagou. Espere o pagamento cair no cofre antes de fazer o serviço.");
+    }
     int saved = 0;
     Object photos = body == null ? null : body.get("photos");
     if (photos instanceof List) {

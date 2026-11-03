@@ -28,11 +28,37 @@ public class OrderController {
   private final OrderService orderService;
   private final AsaasService asaasService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.UserService userService;
+  private final br.com.personalfighters.util.Redactor redactor;
+
+  // ── Quem pode mexer em cada pedido (antes qualquer conta logada podia) ──
+  private boolean admin() {
+    var a = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    return a != null && a.getAuthorities().stream().anyMatch(x -> "ROLE_ADMIN".equals(x.getAuthority()));
+  }
+  private br.com.personalfighters.entity.User me() { return userService.findAuthUser(); }
+  private static org.springframework.web.server.ResponseStatusException denied() {
+    return new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso não permitido.");
+  }
+  private void self(Long id) { if (!admin() && (id == null || !id.equals(me().getId()))) throw denied(); }
+  private static boolean is(br.com.personalfighters.entity.User u, Long id) { return u != null && u.getId() != null && u.getId().equals(id); }
+  private Order customerOf(UUID id) {
+    Order o = orderService.findById(id);
+    if (!admin() && !is(o.getCustomer(), me().getId())) throw denied();
+    return o;
+  }
+  private Order proOf(UUID id, Long proId) {
+    self(proId);
+    Order o = orderService.findById(id);
+    if (!admin() && o.getProfessional() != null && !is(o.getProfessional(), proId)) throw denied();
+    return o;
+  }
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a lista paginada das orders.")
   public Object findAll(Order order, Pageable pageable) {
+    if (!admin()) throw denied();
     return orderService.findAll(order, pageable);
   }
 
@@ -40,13 +66,19 @@ public class OrderController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a order pelo ID.")
   public Object findById(@PathVariable UUID id) {
-    return orderService.findById(id);
+    Order o = orderService.findById(id);
+    if (admin()) return o;
+    Long uid = me().getId();
+    boolean openForPros = o.getStatus() == Status.OPEN && o.getProfessional() == null;
+    if (!is(o.getCustomer(), uid) && !is(o.getProfessional(), uid) && !openForPros) throw denied();
+    return redactor.strip(o, uid);
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva uma nova order")
   public Map<String, Object> save(@RequestBody Order order, @RequestParam(value = "mode", required = false) String mode) {
+    if (!admin()) order.setCustomer(me()); // o pedido é sempre de quem está logado
     if (order.getProfessional() != null && order.getProfessional().getId() != null && order.getCustomer() != null && order.getCustomer().getId() != null) {
       Long blocked = jdbc.queryForObject("SELECT COUNT(*) FROM pro_blocked_client_ WHERE professional_id = ? AND client_id = ?", Long.class,
           order.getProfessional().getId(), order.getCustomer().getId());
@@ -69,18 +101,21 @@ public class OrderController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a lista paginada das orders pelo ID do Customer e uma lista de Status.")
   public Object findByCustomerAndStatus(@PathVariable Long id, @PathVariable List<Status> status, Pageable pageable) {
-    return orderService.findByCustomerAndStatus(id, status, pageable);
+    self(id);
+    return redactor.strip(orderService.findByCustomerAndStatus(id, status, pageable), id);
   }
 
   @PutMapping("/customers/confirmation/professionals/{id}")
   @ResponseStatus(HttpStatus.OK)
   public void confirmByCustomer(@PathVariable Long id, @RequestBody Order order) {
+    customerOf(order.getId());
     orderService.confirmByCustomer(order.getId(), id);
   }
 
   @PutMapping("/customers/cancellation")
   @ResponseStatus(HttpStatus.OK)
   public void cancelByCustomer(@RequestBody Order order) {
+    customerOf(order.getId());
     orderService.cancelOrder(order, Role.CUSTOMER);
   }
 
@@ -91,44 +126,51 @@ public class OrderController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a lista paginada das orders pelo ID do Professional")
   public Object findByProfessional(@PathVariable Long id, Pageable pageable) {
-    return orderService.findByProfessional(id, pageable);
+    self(id);
+    return redactor.strip(orderService.findByProfessional(id, pageable), id);
   }
 
   @GetMapping("/professionals/{id}/{status}")
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a lista paginada das orders pelo ID do Professional e uma lista de Status.")
   public Object findByProfessionalAndStatus(@PathVariable Long id, @PathVariable List<Status> status, Pageable pageable) {
-    return orderService.findByProfessionalAndStatus(id, status, pageable);
+    self(id);
+    return redactor.strip(orderService.findByProfessionalAndStatus(id, status, pageable), id);
   }
 
   @PutMapping("/professionals/{id}/confirmation")
   @ResponseStatus(HttpStatus.OK)
   public void confirmByProfessional(@PathVariable Long id, @RequestBody Order order) {
+    proOf(order.getId(), id);
     orderService.confirmByProfessional(order.getId(), id);
   }
 
   @PutMapping("/professionals/{id}/cancellation")
   @ResponseStatus(HttpStatus.OK)
   public void cancelByProfessional(@PathVariable Long id, @RequestBody Order order) {
+    proOf(order.getId(), id);
     orderService.cancelOrder(order, Role.PROFESSIONAL);
   }
 
   @PutMapping("/professionals/{id}/rejection")
   @ResponseStatus(HttpStatus.OK)
   public void rejectByProfessional(@PathVariable Long id, @RequestBody Order order) {
+    proOf(order.getId(), id);
     orderService.rejectByProfessional(order.getId(), id);
   }
 
   @PutMapping("/professionals/{id}/start")
   @ResponseStatus(HttpStatus.OK)
   public void startByProfessional(@PathVariable Long id, @RequestBody Order order) {
-    orderService.startOrder(order.getId(), id);
+    // Atalho antigo: começava o atendimento sem a confirmação de chegada. O app usa o fluxo de chegada.
+    throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE, "Use \"Cheguei\" no pedido para começar o atendimento.");
   }
 
   @PutMapping("/professionals/{id}/complete")
   @ResponseStatus(HttpStatus.OK)
   public void completeByProfessional(@PathVariable Long id, @RequestBody Order order) {
-    orderService.completeOrder(order.getId(), id);
+    // Atalho antigo: o profissional marcava "Concluído" sozinho, pulando a conferência do cliente.
+    throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE, "Use \"Terminei\" no pedido: o cliente confere e libera o pagamento.");
   }
 
   @GetMapping("/nearby")
@@ -137,14 +179,14 @@ public class OrderController {
                              @RequestParam double lng,
                              @RequestParam(defaultValue = "20") double radiusKm,
                              @RequestParam(required = false, defaultValue = "") String specialties) {
-    return orderService.nearbyOrders(lat, lng, radiusKm, specialties);
+    return redactor.strip(orderService.nearbyOrders(lat, lng, radiusKm, specialties), me().getId());
   }
 
   @PostMapping("/{orderId}/pix")
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Cria cobrança PIX para o pedido via Asaas")
   public Transaction createPixCharge(@PathVariable UUID orderId) {
-    Order order = orderService.findById(orderId);
+    Order order = customerOf(orderId);
     return asaasService.createPixCharge(order);
   }
 
@@ -154,6 +196,7 @@ public class OrderController {
   public Map<String, Object> openDispute(@PathVariable UUID orderId,
                                           @RequestBody Map<String, String> body) {
     Order order = orderService.findById(orderId);
+    if (!admin() && !is(order.getCustomer(), me().getId()) && !is(order.getProfessional(), me().getId())) throw denied();
 
     if (order.getDisputeStatus() != null && !order.getDisputeStatus().isBlank()) {
       return Map.of("error", "Já existe uma disputa aberta para este pedido.");

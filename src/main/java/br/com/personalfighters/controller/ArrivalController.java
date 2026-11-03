@@ -31,6 +31,20 @@ public class ArrivalController {
   private final AsaasService asaasService;
   private final QRTokenService qrTokenService;
   private final br.com.personalfighters.service.TripService tripService;
+  private final br.com.personalfighters.service.UserService userService;
+  private final br.com.personalfighters.service.CompletionService completionService;
+
+  // Quem pode fazer cada passo: antes qualquer conta logada podia (até confirmar a chegada pelos dois lados).
+  private boolean admin() {
+    var a = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    return a != null && a.getAuthorities().stream().anyMatch(x -> "ROLE_ADMIN".equals(x.getAuthority()));
+  }
+  private boolean isPro(Order o) { var u = userService.findAuthUser(); return o.getProfessional() != null && o.getProfessional().getId().equals(u.getId()); }
+  private boolean isClient(Order o) { var u = userService.findAuthUser(); return o.getCustomer() != null && o.getCustomer().getId().equals(u.getId()); }
+  private static ResponseEntity<Map<String, Object>> forbidden() {
+    Map<String, Object> r = new HashMap<>(); r.put("error", "Acesso não permitido para este pedido.");
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(r);
+  }
 
   // ── GPS Proximity ─────────────────────────────────────────────────────────
 
@@ -43,6 +57,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isPro(order)) return forbidden();
 
     User client = order.getCustomer();
     if (client == null || client.getLatitude() == null || client.getLongitude() == null) {
@@ -75,6 +90,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isPro(order)) return forbidden();
     if (!Status.AWAITING_PAYMENT.equals(order.getStatus())) {
       result.put("error", "Pedido não está no estado correto para gerar QR de chegada.");
       return ResponseEntity.badRequest().body(result);
@@ -97,6 +113,11 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isClient(order)) return forbidden();
+    if (order.getStatus() != Status.AWAITING_PAYMENT) {
+      result.put("error", "A chegada só é confirmada depois que o pagamento está no cofre.");
+      return ResponseEntity.badRequest().body(result);
+    }
 
     boolean valid = qrTokenService.validateAndUse(code, orderId, "ARRIVAL");
     if (!valid) {
@@ -125,7 +146,13 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isPro(order) && !isClient(order)) return forbidden();
 
+    if (order.getStatus() != Status.AWAITING_PAYMENT) {
+      result.put("error", "A chegada só é confirmada depois que o pagamento está no cofre.");
+      return ResponseEntity.badRequest().body(result);
+    }
+    role = isPro(order) ? "PROFESSIONAL" : isClient(order) ? "CLIENT" : role; // o papel vem de quem está logado, não do pedido
     if ("PROFESSIONAL".equalsIgnoreCase(role)) order.setProConfirmedArrival(true);
     else if ("CLIENT".equalsIgnoreCase(role)) order.setClientConfirmedArrival(true);
 
@@ -155,6 +182,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isPro(order)) return forbidden();
     if (!Status.IN_PROGRESS.equals(order.getStatus())) {
       result.put("error", "Pedido não está em andamento.");
       return ResponseEntity.badRequest().body(result);
@@ -173,6 +201,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isClient(order)) return forbidden();
     if (!Status.PENDING_CLIENT_CONFIRMATION.equals(order.getStatus())) {
       result.put("error", "Pedido não aguarda confirmação de conclusão.");
       return ResponseEntity.badRequest().body(result);
@@ -195,6 +224,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isPro(order)) return forbidden();
 
     boolean valid = qrTokenService.validateAndUse(code, orderId, "COMPLETION");
     if (!valid) {
@@ -202,9 +232,7 @@ public class ArrivalController {
       return ResponseEntity.badRequest().body(result);
     }
 
-    order.setStatus(Status.DONE);
-    if (order.getDoneAt() == null) order.setDoneAt(java.time.LocalDateTime.now());
-    orderRepository.save(order);
+    completionService.finalizeAndRelease(order, "código de conclusão lido pelo profissional");
     result.put("status", "DONE");
     result.put("message", "Serviço concluído! Aguardando avaliação.");
     return ResponseEntity.ok(result);
@@ -220,6 +248,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin() && !isClient(order)) return forbidden();
     if (!Status.PENDING_CLIENT_CONFIRMATION.equals(order.getStatus())) {
       result.put("error", "Pedido não aguarda confirmação de conclusão.");
       return ResponseEntity.badRequest().body(result);
@@ -257,6 +286,7 @@ public class ArrivalController {
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
+    if (!admin()) return forbidden();
 
     if (userId != null) {
       boolean isCustomer = order.getCustomer() != null && order.getCustomer().getId().equals(userId);
