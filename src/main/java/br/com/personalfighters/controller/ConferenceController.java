@@ -56,6 +56,7 @@ public class ConferenceController {
     out.put("checkItems", row.get("check_items"));
     out.put("proChecklist", row.get("pro_checklist"));
     out.put("clientChecked", row.get("client_checked_at") != null);
+    out.put("professionalId", o.getProfessional() == null ? null : o.getProfessional().getId());
     out.put("requestedCompletionAt", o.getRequestedCompletionAt());
     out.put("autoReleaseAt", o.getRequestedCompletionAt() == null ? null : o.getRequestedCompletionAt().plusHours(CompletionService.AUTO_RELEASE_HOURS));
     out.put("released", Boolean.TRUE.equals(o.getPixReleased()));
