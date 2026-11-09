@@ -163,6 +163,7 @@ public class UserController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna o estado de verificação do utilizador.")
   public Object getVerificationStatus(@PathVariable Long id) {
+    selfOrAdmin(id);
     User user = userService.findById(id);
     return java.util.Map.of(
         "id", user.getId(),

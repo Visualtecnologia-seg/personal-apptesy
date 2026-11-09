@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewController {
 
   private final ReviewService reviewService;
+  private final br.com.personalfighters.service.UserService userService;
+  private final br.com.personalfighters.repository.OrderRepository orderRepository;
 
   @GetMapping("/{id}")
   @ApiOperation(value = "Retorna review pelo ID.")
@@ -41,6 +43,26 @@ public class ReviewController {
   @ResponseStatus(HttpStatus.OK)
   @JsonView(Views.FirstLevel.class)
   public Object save(@RequestBody Review review) {
+    // Só quem participou do pedido avalia, uma vez, e no próprio nome (antes dava para criar avaliação falsa).
+    if (review.getOrder() == null || review.getOrder().getId() == null)
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Pedido não informado.");
+    var o = orderRepository.findById(review.getOrder().getId()).orElseThrow(() ->
+        new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado."));
+    var me = userService.findAuthUser();
+    boolean client = o.getCustomer() != null && me.getId().equals(o.getCustomer().getId());
+    boolean pro = o.getProfessional() != null && me.getId().equals(o.getProfessional().getId());
+    if (!client && !pro) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso não permitido.");
+    String st = o.getStatus() == null ? "" : o.getStatus().name();
+    if (!st.equals("DONE") && !st.equals("REVIEWED"))
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Só dá para avaliar depois que o serviço termina.");
+    if ((client && Boolean.TRUE.equals(o.getClientReviewed())) || (pro && Boolean.TRUE.equals(o.getProReviewed())))
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você já avaliou este pedido.");
+    review.setOrder(o);
+    review.setReviewer(me);
+    review.setCustomer(o.getCustomer());
+    review.setProfessional(o.getProfessional());
+    review.setType(client ? "CLIENT_TO_PRO" : "PRO_TO_CLIENT");
+    review.setReviewerRole(client ? "CUSTOMER" : "PROFESSIONAL");
     return reviewService.save(review);
   }
 

@@ -27,11 +27,19 @@ public class ProtectionController {
   private final BlockedAttemptRepository blockedRepo;
   private final OrderRepository orderRepo;
   private final UserRepository userRepo;
+  private final br.com.personalfighters.service.UserService userService;
+
+  private Long meId() { return userService.findAuthUser().getId(); }
+  private boolean mine(ProtectionSession s) { return br.com.personalfighters.util.Redactor.isAdmin() || meId().equals(s.getUserId()); }
 
   @PostMapping("/start")
   public ResponseEntity<ProtectionSession> start(@RequestBody Map<String, Object> body) {
     UUID orderId = UUID.fromString(body.get("orderId").toString());
-    Long userId = Long.parseLong(body.get("userId").toString());
+    Long userId = meId(); // a proteção é sempre de quem está logado
+    var order = orderRepo.findById(orderId).orElse(null);
+    if (order == null || !((order.getCustomer() != null && userId.equals(order.getCustomer().getId()))
+        || (order.getProfessional() != null && userId.equals(order.getProfessional().getId()))))
+      return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
     int level = body.containsKey("level") ? Integer.parseInt(body.get("level").toString()) : 1;
 
     Optional<ProtectionSession> existing = protectionRepo.findByOrderIdAndUserIdAndActiveTrue(orderId, userId);
@@ -50,7 +58,7 @@ public class ProtectionController {
   public ResponseEntity<ProtectionSession> escalate(
       @PathVariable UUID sessionId,
       @RequestBody Map<String, Object> body) {
-    return protectionRepo.findById(sessionId).map(session -> {
+    return protectionRepo.findById(sessionId).filter(this::mine).map(session -> {
       int level = Integer.parseInt(body.getOrDefault("level", "2").toString());
       session.setLevel(level);
       session.setEscalatedAt(LocalDateTime.now());
@@ -60,7 +68,7 @@ public class ProtectionController {
 
   @PostMapping("/{sessionId}/stop")
   public ResponseEntity<Void> stop(@PathVariable UUID sessionId) {
-    protectionRepo.findById(sessionId).ifPresent(session -> {
+    protectionRepo.findById(sessionId).filter(this::mine).ifPresent(session -> {
       session.setActive(false);
       session.setStoppedAt(LocalDateTime.now());
       protectionRepo.save(session);

@@ -41,12 +41,15 @@ public class AsaasWebhookController {
   @PostMapping("/webhook")
   public ResponseEntity<Void> handleWebhook(@RequestBody Map<String, Object> payload,
                                              HttpServletRequest request) {
-    if (webhookToken != null && !webhookToken.isBlank()) {
-      String incoming = request.getHeader("asaas-access-token");
-      if (!webhookToken.equals(incoming)) {
-        log.warn("Asaas webhook rejeitado: token inválido (IP={})", request.getRemoteAddr());
-        return ResponseEntity.status(401).build();
-      }
+    // Sem o token configurado, qualquer um poderia avisar "pago" sem pagar: recusa sempre.
+    if (webhookToken == null || webhookToken.isBlank()) {
+      log.warn("Asaas webhook recusado: configure ASAAS_WEBHOOK_TOKEN no servidor e no painel do Asaas");
+      return ResponseEntity.status(401).build();
+    }
+    String incoming = request.getHeader("asaas-access-token");
+    if (!webhookToken.equals(incoming)) {
+      log.warn("Asaas webhook rejeitado: token inválido (IP={})", request.getRemoteAddr());
+      return ResponseEntity.status(401).build();
     }
     try {
       String event = (String) payload.get("event");

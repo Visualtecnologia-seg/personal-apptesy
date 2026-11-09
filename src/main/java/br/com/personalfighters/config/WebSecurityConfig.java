@@ -31,19 +31,11 @@ import java.util.Collections;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
-  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/verification-status", "/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status"};
-  private static final String[] PUBLIC_MATCHERS_POST = {"/auth", "/auth/forgot-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
+  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status"};
+  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
   private static final String[] WHITELIST = {
-      // -- swagger ui
-      "/swagger-resources/**",
-      "/configuration/ui",
-      "/configuration/security",
-      "/webjars/**",
-      "/v3/api-docs/**",
-      "/swagger-ui/**",
-
-      // -- actuators
-      "/actuator/**",
+      // Documentação da API (swagger) e /actuator saíram daqui: agora só administrador.
+      "/actuator/health",
 
       "/auth/check/*",
 
@@ -91,7 +83,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
             "/customers/**", "/payments/**", "/auth/history/**", "/favorites/users/**", "/points/users/**", "/agendas/**").hasRole("ADMIN")
         .antMatchers(HttpMethod.DELETE, "/professionals/*", "/reviews/*", "/photos/*").hasRole("ADMIN")
         .antMatchers(HttpMethod.POST, "/specialty-history/**", "/products/users/**", "/photos/avatar/users/*", "/photos/photo/users/*").hasRole("ADMIN")
-        .antMatchers(HttpMethod.PUT, "/products/*").hasRole("ADMIN")
+        .antMatchers(HttpMethod.PUT, "/products/*", "/products", "/categories").hasRole("ADMIN")
+        .antMatchers(HttpMethod.POST, "/products", "/categories", "/notifications", "/photos/upload").hasRole("ADMIN")
+        .antMatchers("/favorites/**", "/favorites").hasRole("ADMIN")
+        .antMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs/**").hasRole("ADMIN")
+        .antMatchers("/actuator/**", "/webjars/**", "/configuration/**").hasRole("ADMIN")
         .anyRequest().authenticated()
         .and()
         .logout()
