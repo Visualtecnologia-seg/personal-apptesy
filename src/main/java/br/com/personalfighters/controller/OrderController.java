@@ -111,6 +111,10 @@ public class OrderController {
     if (order.getProfessional() != null && order.getCustomer() != null && java.util.Objects.equals(order.getProfessional().getId(), order.getCustomer().getId())) {
       throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você não pode contratar a si mesmo.");
     }
+    if (!admin() && order.getProfessional() != null && order.getProfessional().getId() != null) {
+      Boolean v = jdbc.queryForObject("SELECT COALESCE(verified, FALSE) FROM user_ WHERE id = ?", Boolean.class, order.getProfessional().getId());
+      if (!Boolean.TRUE.equals(v)) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Este profissional ainda está verificando a identidade. Escolha outro profissional.");
+    }
     if (order.getProfessional() != null && order.getProfessional().getId() != null && order.getCustomer() != null && order.getCustomer().getId() != null) {
       Long blocked = jdbc.queryForObject("SELECT COUNT(*) FROM pro_blocked_client_ WHERE professional_id = ? AND client_id = ?", Long.class,
           order.getProfessional().getId(), order.getCustomer().getId());

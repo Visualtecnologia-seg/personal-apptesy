@@ -38,6 +38,53 @@ public class AltLoginController {
   @Value("${GOOGLE_CLIENT_IDS:}")
   private String googleClientIds;
 
+  /** IDs do app na Apple (bundle id do iPhone), separados por vírgula. Vazio = login com Apple desligado. */
+  @Value("${APPLE_CLIENT_IDS:}")
+  private String appleClientIds;
+
+  /** Entrar com Apple (iPhone): confere a assinatura do token com as chaves públicas da Apple. */
+  @PostMapping("/apple")
+  public ResponseEntity<?> apple(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+    List<String> allowed = new ArrayList<>();
+    for (String c : appleClientIds.split(",")) if (!c.isBlank()) allowed.add(c.trim());
+    if (allowed.isEmpty()) return PhoneVerificationController.bad("Entrar com Apple ainda não está ligado.");
+    io.jsonwebtoken.Claims claims;
+    try {
+      String token = Objects.toString(body.get("identityToken"), "");
+      String header = new String(Base64.getUrlDecoder().decode(token.split("\\.")[0]), java.nio.charset.StandardCharsets.UTF_8);
+      String kid = String.valueOf(new com.fasterxml.jackson.databind.ObjectMapper().readValue(header, Map.class).get("kid"));
+      Map<?, ?> jwks = WebClient.create("https://appleid.apple.com").get().uri("/auth/keys").retrieve().bodyToMono(Map.class).block();
+      java.security.PublicKey key = null;
+      for (Object o : (List<?>) jwks.get("keys")) {
+        Map<?, ?> k = (Map<?, ?>) o;
+        if (!kid.equals(String.valueOf(k.get("kid")))) continue;
+        java.math.BigInteger n = new java.math.BigInteger(1, Base64.getUrlDecoder().decode(String.valueOf(k.get("n"))));
+        java.math.BigInteger e = new java.math.BigInteger(1, Base64.getUrlDecoder().decode(String.valueOf(k.get("e"))));
+        key = java.security.KeyFactory.getInstance("RSA").generatePublic(new java.security.spec.RSAPublicKeySpec(n, e));
+      }
+      if (key == null) return PhoneVerificationController.bad("Conta Apple não confirmada.");
+      claims = io.jsonwebtoken.Jwts.parser().setSigningKey(key).requireIssuer("https://appleid.apple.com").parseClaimsJws(token).getBody();
+    } catch (Exception e) {
+      return PhoneVerificationController.bad("Conta Apple não confirmada.");
+    }
+    if (!allowed.contains(String.valueOf(claims.getAudience()))) return PhoneVerificationController.bad("Conta Apple não confirmada.");
+    String sub = claims.getSubject();
+    String email = Objects.toString(claims.get("email"), "").toLowerCase();
+    List<String> found = jdbc.queryForList("SELECT username FROM user_ WHERE (apple_sub = ? OR (? <> '' AND LOWER(email) = ?)) AND username NOT LIKE 'painel:%' ORDER BY (apple_sub = ?) DESC LIMIT 1",
+        String.class, sub, email, email, sub);
+    if (!found.isEmpty()) {
+      jdbc.update("UPDATE user_ SET apple_sub = COALESCE(apple_sub, ?) WHERE username = ?", sub, found.get(0));
+      return issue(found.get(0), req);
+    }
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("needsSignup", true);
+    out.put("email", email);
+    out.put("name", Objects.toString(body.get("fullName"), ""));
+    // e-mail da Apple já é confirmado; se a pessoa esconder o e-mail, ela confirma outro por código no cadastro
+    out.put("appleToken", codes.proof("apple", email + "|" + sub));
+    return ResponseEntity.ok(out);
+  }
+
   @PostMapping("/phone/login")
   public ResponseEntity<?> phoneLogin(@RequestBody Map<String, Object> body, HttpServletRequest req) {
     String phone = PhoneVerificationController.normalize(Objects.toString(body.get("phone"), ""));

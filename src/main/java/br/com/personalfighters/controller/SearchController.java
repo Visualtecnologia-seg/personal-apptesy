@@ -241,7 +241,7 @@ public class SearchController {
             "(SELECT CAST(ph.id AS VARCHAR) FROM post_ po JOIN post_photo_ ph ON ph.post_id = po.id WHERE po.professional_id = u.id " +
             " ORDER BY CASE WHEN po.kind = 'WORK' THEN 0 ELSE 1 END, po.created_at DESC, ph.position LIMIT 1) AS \"workPhoto\" " +
             "FROM product__professional pp JOIN user_ u ON u.id = pp.professional_id JOIN professional_ p ON p.id = u.professional_id " +
-            "WHERE pp.product_id IN (" + in + ") AND COALESCE(u.active, TRUE) = TRUE AND COALESCE(u.blocked, FALSE) = FALSE AND u.id <> ? " +
+            "WHERE pp.product_id IN (" + in + ") AND COALESCE(u.active, TRUE) = TRUE AND COALESCE(u.blocked, FALSE) = FALSE AND COALESCE(u.verified, FALSE) = TRUE AND u.id <> ? " +
             "AND NOT EXISTS (SELECT 1 FROM pro_blocked_client_ b WHERE b.professional_id = u.id AND b.client_id = ?)", me.getId(), me.getId());
     Set<Long> boosted = new HashSet<>(growth.boostedIds());
     LocalDate d0 = LocalDate.now(Z);

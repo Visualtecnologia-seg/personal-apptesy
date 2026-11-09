@@ -141,6 +141,9 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public void confirmByProfessional(UUID id, Long professionalId) {
     User professional = userService.findById(professionalId);
+    if (!Boolean.TRUE.equals(professional.getVerified()) && !br.com.personalfighters.util.Redactor.isAdmin()) {
+      throw new IllegalStateException("Verifique sua identidade (documento e selfie) para começar a receber chamados.");
+    }
     Order order = orderRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Pedido não encontrado"));
 
     if (order.getCustomer() != null && order.getCustomer().getId().equals(professional.getId())) {

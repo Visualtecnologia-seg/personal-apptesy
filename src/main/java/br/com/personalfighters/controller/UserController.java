@@ -37,6 +37,7 @@ public class UserController {
   private final br.com.personalfighters.controller.auth.PhoneVerificationController phoneVerification;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
   private final br.com.personalfighters.service.CodeStore codes;
+  private final br.com.personalfighters.service.SecurityService securityService;
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
@@ -65,11 +66,13 @@ public class UserController {
                      @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken,
                      @RequestHeader(value = "X-Email-Token", required = false) String emailToken,
                      @RequestHeader(value = "X-Google-Token", required = false) String googleToken,
+                     @RequestHeader(value = "X-Apple-Token", required = false) String appleToken,
+                     @RequestHeader(value = "X-Referral-Code", required = false) String referralCode,
                      @RequestHeader(value = "X-Terms-Version", required = false) String termsVersion) {
     boolean admin = br.com.personalfighters.util.Redactor.isAdmin();
     String phone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(in.getPhoneNumber());
     String email = br.com.personalfighters.controller.auth.EmailVerificationController.normalize(in.getEmail());
-    String googleSub = null;
+    String googleSub = null, appleSub = null;
     if (!admin) {
       // 1) termos de uso e privacidade aceitos
       if (termsVersion == null || termsVersion.isBlank()) throw badReq("Aceite os Termos de Uso e a Política de Privacidade para continuar.");
@@ -86,8 +89,11 @@ public class UserController {
       if (samePhone != null && samePhone > 0) throw badReq("Este celular já tem uma conta. Entre com ele ou use \"Esqueci minha senha\".");
       // 4) e-mail confirmado (por código ou pela conta Google)
       if (email == null) throw badReq("Digite um e-mail válido.");
+      if (br.com.personalfighters.util.DisposableEmail.is(email)) throw badReq("Use um e-mail pessoal. E-mails temporários não são aceitos.");
       String g = codes.fromProof("google", googleToken);
+      String ap = codes.fromProof("apple", appleToken);
       if (g != null && g.startsWith(email + "|")) googleSub = g.substring(email.length() + 1);
+      else if (ap != null && ap.startsWith(email + "|")) appleSub = ap.substring(email.length() + 1);
       else if (!email.equals(codes.fromProof("email", emailToken))) throw badReq("Confirme o seu e-mail com o código que enviamos.");
     }
     // Cadastro novo: copia SÓ os campos que a pessoa pode escolher.
@@ -110,6 +116,13 @@ public class UserController {
     if (!admin) {
       jdbc.update("UPDATE user_ SET phone_verified = TRUE, email_verified = TRUE, terms_version = ?, terms_accepted_at = NOW(), google_sub = ? WHERE id = ?",
           termsVersion.length() > 20 ? termsVersion.substring(0, 20) : termsVersion, googleSub, saved.getId());
+      if (appleSub != null) jdbc.update("UPDATE user_ SET apple_sub = ? WHERE id = ?", appleSub, saved.getId());
+      // Código de quem indicou (opcional): os dois ganham pontos no primeiro serviço
+      if (referralCode != null && !referralCode.isBlank()) {
+        java.util.List<Long> ref = jdbc.queryForList("SELECT id FROM user_ WHERE referral_code = ?", Long.class, referralCode.trim().toUpperCase());
+        if (!ref.isEmpty() && !ref.get(0).equals(saved.getId()))
+          jdbc.update("INSERT INTO referral_ (referred_id, referrer_id, created_at) VALUES (?, ?, NOW())", saved.getId(), ref.get(0));
+      }
     }
     return redactor.strip(saved, saved.getId()); // nunca devolve a senha (nem criptografada)
   }
@@ -117,7 +130,8 @@ public class UserController {
   @PutMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Atualiza um usuário.")
-  public Object update(@RequestBody User user) {
+  public Object update(@RequestBody User user, @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken) {
+    String[] phoneChange = null;
     if (!br.com.personalfighters.util.Redactor.isAdmin()) {
       // Cada um só altera a própria conta, e nunca o próprio cargo, verificação ou documentos.
       User cur = me();
@@ -154,13 +168,37 @@ public class UserController {
       if (user.getPixKey() == null) { user.setPixKey(cur.getPixKey()); user.setPixKeyType(cur.getPixKeyType()); }
       if (user.getLatitude() == null) { user.setLatitude(cur.getLatitude()); user.setLongitude(cur.getLongitude()); }
       if (user.getPhoneNumber() == null) user.setPhoneNumber(cur.getPhoneNumber());
+      // Trocar o celular exige o código por SMS no número NOVO; o número antigo é avisado e o saque fica segurado 24 h
+      String oldPhone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(cur.getPhoneNumber());
+      String newPhone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(user.getPhoneNumber());
+      String rawNew = user.getPhoneNumber() == null ? "" : user.getPhoneNumber().replaceAll("\\D", "");
+      String rawOld = cur.getPhoneNumber() == null ? "" : cur.getPhoneNumber().replaceAll("\\D", "");
+      if (!rawNew.equals(rawOld)) {
+        if (newPhone == null) throw badReq("Digite um celular válido com DDD.");
+        if (!newPhone.equals(oldPhone)) {
+          if (!newPhone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o novo celular com o código enviado por SMS.");
+          Integer taken = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE id <> ? AND phone_verified = TRUE AND regexp_replace(COALESCE(phone_number, ''), '[^0-9]', '', 'g') = ?", Integer.class, cur.getId(), newPhone);
+          if (taken != null && taken > 0) throw badReq("Este celular já está em outra conta.");
+          phoneChange = new String[]{oldPhone, newPhone};
+        }
+        user.setPhoneNumber(newPhone);
+      }
       if (user.getFullAddress() == null) user.setFullAddress(cur.getFullAddress());
+      // campos que a tela de editar perfil não manda continuam como estão
+      if (user.getBirthday() == null) user.setBirthday(cur.getBirthday());
+      if (user.getGender() == null) user.setGender(cur.getGender());
     }
     String oldEmail = br.com.personalfighters.util.Redactor.isAdmin() ? null : me().getEmail();
+    if (oldEmail != null && user.getEmail() != null && !oldEmail.equalsIgnoreCase(user.getEmail()) && br.com.personalfighters.util.DisposableEmail.is(user.getEmail()))
+      throw badReq("Use um e-mail pessoal. E-mails temporários não são aceitos.");
     User saved = userService.update(user);
     // trocou o e-mail: precisa confirmar de novo
     if (oldEmail != null && saved.getEmail() != null && !oldEmail.equalsIgnoreCase(saved.getEmail()))
       jdbc.update("UPDATE user_ SET email_verified = FALSE WHERE id = ?", saved.getId());
+    if (phoneChange != null) {
+      jdbc.update("UPDATE user_ SET phone_verified = TRUE WHERE id = ?", saved.getId());
+      securityService.phoneChanged(saved, phoneChange[0], phoneChange[1]);
+    }
     return redactor.strip(saved, saved.getId());
   }
 

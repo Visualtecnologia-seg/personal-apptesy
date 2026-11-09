@@ -28,6 +28,7 @@ public class EmailVerificationController {
   public ResponseEntity<?> send(@RequestBody Map<String, Object> body) {
     String e = normalize(Objects.toString(body.get("email"), ""));
     if (e == null) return PhoneVerificationController.bad("Digite um e-mail válido.");
+    if (br.com.personalfighters.util.DisposableEmail.is(e)) return PhoneVerificationController.bad("Use um e-mail pessoal. E-mails temporários não são aceitos.");
     String code = codes.issue("EMAIL", e, !email.isConfigured());
     if (code == null) return PhoneVerificationController.bad("Espere um pouco para pedir outro código (máximo de 5 por dia).");
     email.sendText(e, "Seu código OPUS: " + code,

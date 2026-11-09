@@ -64,10 +64,21 @@ public class SecurityService {
     return true;
   }
 
+  /** Celular trocado: avisa o número ANTIGO (SMS), o e-mail e o app, e segura o saque por 24 h. */
+  public void phoneChanged(User u, String oldPhone, String newPhone) {
+    event(u.getId(), "PHONE_CHANGED", "(" + newPhone.substring(0, 2) + ") *****-" + newPhone.substring(7));
+    String when = LocalDateTime.now(Z).format(DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm"));
+    String text = "O celular da sua conta OPUS foi trocado para (" + newPhone.substring(0, 2) + ") *****-" + newPhone.substring(7) + " em " + when +
+        ". Saques ficam segurados por 24 h. Não foi você? Fale com o suporte do OPUS agora.";
+    try { if (oldPhone != null) smsService.send("+55" + oldPhone, "OPUS: " + text); } catch (Exception ignored) { }
+    try { if (u.getEmail() != null) emailService.sendText(u.getEmail(), "Celular da sua conta OPUS trocado", "Olá " + Objects.toString(u.getName(), "") + ",\n\n" + text + "\n\nEquipe OPUS"); } catch (Exception ignored) { }
+    try { notificationService.sendToUser(u, false, text); } catch (Exception ignored) { }
+  }
+
   /** Até quando o saque fica segurado (troca de chave PIX ou "não fui eu" nas últimas 24 h). */
   public LocalDateTime withdrawHoldUntil(Long userId) {
     Timestamp t = jdbc.query("SELECT GREATEST(COALESCE(u.pix_key_changed_at, 'epoch'::timestamp), " +
-            "COALESCE((SELECT MAX(created_at) FROM security_event_ e WHERE e.user_id = u.id AND e.kind = 'NOT_ME'), 'epoch'::timestamp)) FROM user_ u WHERE u.id = ?",
+            "COALESCE((SELECT MAX(created_at) FROM security_event_ e WHERE e.user_id = u.id AND e.kind IN ('NOT_ME', 'PHONE_CHANGED')), 'epoch'::timestamp)) FROM user_ u WHERE u.id = ?",
         rs -> rs.next() ? rs.getTimestamp(1) : null, userId);
     if (t == null) return null;
     LocalDateTime until = t.toLocalDateTime().plusHours(PIX_HOLD_HOURS);
