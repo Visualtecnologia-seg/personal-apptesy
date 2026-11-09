@@ -107,6 +107,9 @@ public class Order {
   private LocalDateTime disputedAt;
 
   private String cancelledBy;
+
+  /** HOUR (por hora, padrão) ou SERVICE (valor fechado combinado no chat). */
+  private String pricingMode;
   private String cancelReason;
 
   /** Desconto aplicado com pontos (sai da parte da plataforma). */

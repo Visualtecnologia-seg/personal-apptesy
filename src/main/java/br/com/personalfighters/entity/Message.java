@@ -48,6 +48,10 @@ public class Message {
   private BigDecimal quoteMaterialsCost;
   private BigDecimal quoteTotalCost;
 
+  /** HOUR = por hora (valor/hora × horas) · SERVICE = valor fechado pelo serviço todo */
+  private String quotePricing;
+  private BigDecimal quoteRate;
+
   // Counter offer (1 round)
   private BigDecimal counterOfferAmount;
   @Column(columnDefinition = "TEXT")

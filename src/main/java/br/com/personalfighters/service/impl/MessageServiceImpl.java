@@ -142,6 +142,9 @@ public class MessageServiceImpl implements MessageService {
         asaasService.cancelOpenCharges(order);
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
+        // por hora ou valor fechado: o pedido passa a seguir o que foi combinado
+        order.setPricingMode("SERVICE".equals(msg.getQuotePricing()) ? "SERVICE" : "HOUR");
+        if (!"SERVICE".equals(msg.getQuotePricing()) && msg.getQuoteHours() != null && msg.getQuoteHours() > 0) order.setHours(msg.getQuoteHours());
         orderRepository.save(order);
         try {
           notificationService.sendPaymentConfirmedToProfessional(order);
@@ -195,6 +198,9 @@ public class MessageServiceImpl implements MessageService {
         asaasService.cancelOpenCharges(order);
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
+        // por hora ou valor fechado: o pedido passa a seguir o que foi combinado
+        order.setPricingMode("SERVICE".equals(msg.getQuotePricing()) ? "SERVICE" : "HOUR");
+        if (!"SERVICE".equals(msg.getQuotePricing()) && msg.getQuoteHours() != null && msg.getQuoteHours() > 0) order.setHours(msg.getQuoteHours());
         orderRepository.save(order);
         try {
           notificationService.sendPaymentLockedToCustomer(order);

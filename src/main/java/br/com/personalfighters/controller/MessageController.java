@@ -61,6 +61,7 @@ public class MessageController {
       message.setSenderRole(role);
       if ("QUOTE".equals(message.getMessageType()) && !"PROFESSIONAL".equals(role)) throw denied(); // orçamento só o profissional manda
     }
+    if ("QUOTE".equals(message.getMessageType())) normalizeQuote(message);
     try {
       return ResponseEntity.ok(messageService.send(message));
     } catch (MessageBlockedException e) {
@@ -71,6 +72,38 @@ public class MessageController {
           "errorMessage", e.getMessage()
       ));
     }
+  }
+
+  /**
+   * Orçamento sempre nasce "aguardando o cliente" e com a conta feita pelo servidor:
+   * por hora = valor/hora × horas; pelo serviço = valor fechado. Total = mão de obra + materiais.
+   */
+  private void normalizeQuote(Message m) {
+    m.setQuoteStatus("PENDING");
+    m.setCounterOfferAmount(null);
+    m.setCounterOfferNote(null);
+    m.setCounterOfferStatus(null);
+    String mode = "SERVICE".equalsIgnoreCase(String.valueOf(m.getQuotePricing())) ? "SERVICE" : "HOUR";
+    m.setQuotePricing(mode);
+    BigDecimal max = new BigDecimal("100000");
+    BigDecimal service;
+    if ("HOUR".equals(mode) && m.getQuoteRate() != null && m.getQuoteHours() != null) {
+      int h = Math.max(1, Math.min(m.getQuoteHours(), 24));
+      m.setQuoteHours(h);
+      service = m.getQuoteRate().multiply(BigDecimal.valueOf(h));
+    } else {
+      if ("SERVICE".equals(mode)) m.setQuoteRate(null);
+      service = m.getQuoteServiceCost() != null ? m.getQuoteServiceCost() : m.getQuoteAmount();
+    }
+    if (service == null || service.signum() <= 0 || service.compareTo(max) > 0) {
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um valor válido para o serviço.");
+    }
+    BigDecimal materials = m.getQuoteMaterialsCost() == null ? BigDecimal.ZERO : m.getQuoteMaterialsCost().max(BigDecimal.ZERO).min(max);
+    service = service.setScale(2, java.math.RoundingMode.HALF_UP);
+    m.setQuoteServiceCost(service);
+    m.setQuoteMaterialsCost(materials);
+    m.setQuoteAmount(service);
+    m.setQuoteTotalCost(service.add(materials));
   }
 
   @PutMapping("/{id}/quote-response")
