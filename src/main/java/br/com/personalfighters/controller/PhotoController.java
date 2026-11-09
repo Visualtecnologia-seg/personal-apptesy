@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.entity.Photo;
 import br.com.personalfighters.service.PhotoService;
 import io.swagger.annotations.Api;
@@ -27,6 +28,7 @@ public class PhotoController {
     return photoService.findAllByUser(id);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping("/upload")
   @ApiOperation(value = "Retorna a URL da imagem")
   @ResponseStatus(HttpStatus.OK)
@@ -34,12 +36,14 @@ public class PhotoController {
     return photoService.upload(file);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping("/avatar/users/{id}")
   @ResponseStatus(HttpStatus.OK)
   public void saveAvatar(@RequestParam("file") MultipartFile file, @PathVariable Long id) {
     photoService.saveAvatar(file, id);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping("/photo/users/{id}")
   @ApiOperation(value = "Retorna a URL da imagem")
   @ResponseStatus(HttpStatus.OK)
@@ -47,6 +51,7 @@ public class PhotoController {
     photoService.savePhoto(file, id);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @DeleteMapping("/{id}")
   @ApiOperation(value = "Retorna a URL da imagem")
   @ResponseStatus(HttpStatus.OK)

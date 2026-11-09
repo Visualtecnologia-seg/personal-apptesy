@@ -33,6 +33,7 @@ public class MessageServiceImpl implements MessageService {
   private final ObjectMapper objectMapper;
   private final BlockedAttemptRepository blockedAttemptRepository;
   private final br.com.personalfighters.service.ExtrasService extrasService;
+  private final br.com.personalfighters.service.AsaasService asaasService;
 
   // ── Contact-sharing filter ──────────────────────────────────────────────────
 
@@ -136,6 +137,9 @@ public class MessageServiceImpl implements MessageService {
           extrasService.createFromQuote(order, msg, total);
           return;
         }
+        if (Boolean.TRUE.equals(order.getPixPaid())) throw new IllegalStateException("Este pedido já foi pago. Combine o valor extra como um adicional.");
+        // valor mudou: cobranças PIX antigas (com o valor velho) são canceladas
+        asaasService.cancelOpenCharges(order);
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
         orderRepository.save(order);
@@ -186,6 +190,9 @@ public class MessageServiceImpl implements MessageService {
           extrasService.createFromQuote(order, msg, total);
           return;
         }
+        if (Boolean.TRUE.equals(order.getPixPaid())) throw new IllegalStateException("Este pedido já foi pago. Combine o valor extra como um adicional.");
+        // valor mudou: cobranças PIX antigas (com o valor velho) são canceladas
+        asaasService.cancelOpenCharges(order);
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
         orderRepository.save(order);

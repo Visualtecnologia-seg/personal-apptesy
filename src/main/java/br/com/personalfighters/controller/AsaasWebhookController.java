@@ -85,6 +85,19 @@ public class AsaasWebhookController {
       if ("PAYMENT_RECEIVED".equals(event) || "PAYMENT_CONFIRMED".equals(event)
           || "CONFIRMED".equals(status) || "RECEIVED".equals(status)) {
 
+        if (transaction.getPaymentStatus() == PaymentStatus.PAID || transaction.getPaymentStatus() == PaymentStatus.REFUNDED) {
+          return ResponseEntity.ok().build(); // aviso repetido
+        }
+        boolean waiting = order.getStatus() == Status.OPEN || order.getStatus() == Status.CONFIRMED;
+        if (!waiting || Boolean.TRUE.equals(order.getPixPaid())) {
+          // Pago depois do cancelamento (ou pagou duas cobranças): devolve na hora e NÃO reabre o pedido
+          String err = asaasService.refundPix(asaasPaymentId, null);
+          transaction.setPaymentStatus(err == null ? PaymentStatus.REFUNDED : PaymentStatus.PENDING_REFUND);
+          transactionRepository.save(transaction);
+          log.warn("Pagamento {} chegou com o pedido {} em {} (já pago={}): estorno {}", asaasPaymentId, order.getId(), order.getStatus(),
+              order.getPixPaid(), err == null ? "feito" : "PENDENTE: " + err);
+          return ResponseEntity.ok().build();
+        }
         transaction.setPaymentStatus(PaymentStatus.PAID);
         transactionRepository.save(transaction);
 

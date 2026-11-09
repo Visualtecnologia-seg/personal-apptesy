@@ -110,6 +110,10 @@ public class UserServiceImpl implements UserService {
     }
     String invalidPassword = br.com.personalfighters.util.PasswordRules.check(user.getPassword());
     if (invalidPassword != null) throw new br.com.personalfighters.service.impl.exceptions.DataIntegrityException(invalidPassword);
+    if (user.getUsername() == null || user.getUsername().isBlank() || user.getUsername().length() > 40
+        || user.getUsername().contains(":") || user.getUsername().toLowerCase().startsWith("painel")) {
+      throw new br.com.personalfighters.service.impl.exceptions.DataIntegrityException("Nome de usuário inválido. Use letras, números, ponto ou traço.");
+    }
     if (userRepository.existsByUsername(user.getUsername())) {
       throw new RuntimeException("Este nome de usuário já está em uso. Escolha outro.");
     }

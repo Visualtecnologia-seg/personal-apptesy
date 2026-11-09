@@ -143,6 +143,9 @@ public class OrderServiceImpl implements OrderService {
     User professional = userService.findById(professionalId);
     Order order = orderRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Pedido não encontrado"));
 
+    if (order.getCustomer() != null && order.getCustomer().getId().equals(professional.getId())) {
+      throw new IllegalStateException("Você não pode atender um pedido feito por você mesmo.");
+    }
     if (!professional.getActive()) {
       throw new RuntimeException("Profissional está inativo");
     } else if (order.getStatus().equals(Status.BLOCKED)) {
@@ -199,6 +202,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     Order order = orderRepository.findById(uuid).orElseThrow();
+    if (order.getCustomer() != null && order.getCustomer().getId().equals(professional.getId())) {
+      throw new IllegalStateException("Você não pode atender um pedido feito por você mesmo.");
+    }
 
     order.setAvailable(new ArrayList<>());
     order.setResponse(new ArrayList<>());
@@ -223,8 +229,17 @@ public class OrderServiceImpl implements OrderService {
   @Transactional
   public void cancelOrder(Order o, Role role) {
     Order order = orderRepository.findById(o.getId()).orElseThrow();
+    Status st0 = order.getStatus();
+    if (st0 == Status.CANCELLED) return;
+    // Cliente e profissional só cancelam ANTES do atendimento começar. Depois disso, é pelo "Tive um problema" (a equipe decide).
+    if (!role.equals(Role.ADMIN) && !(st0 == Status.OPEN || st0 == Status.BLOCKED
+        || st0 == Status.CONFIRMED || st0 == Status.AWAITING_PAYMENT)) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+          "O atendimento já começou e não pode mais ser cancelado. Se houve algum problema, use \"Tive um problema\" no pedido.");
+    }
     order.setAvailable(new ArrayList<>());
     order.setResponse(new ArrayList<>());
+    BigDecimal keep = BigDecimal.ZERO;
 
     if (role.equals(Role.CUSTOMER) && order.getProfessional() != null
         && (order.getStatus().equals(Status.CONFIRMED) || order.getStatus().equals(Status.AWAITING_PAYMENT))) {
@@ -232,7 +247,8 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal fee = tripService.applyCancelFee(order);
         if (fee.signum() > 0) {
           if (Boolean.TRUE.equals(order.getPixPaid())) {
-            asaasService.transferToProfessional(order.getProfessional(), fee, "Taxa de deslocamento #" + order.getId().toString().substring(0, 8));
+            // a taxa sai do valor pago pelo cliente (o resto é devolvido)
+            if (asaasService.transferToProfessional(order.getProfessional(), fee, "Taxa de deslocamento #" + order.getId().toString().substring(0, 8))) keep = fee;
           }
           notificationService.sendToUser(order.getProfessional(), true,
               "O cliente cancelou depois que você saiu. Você recebe R$ " + fee.setScale(2) + " pelo deslocamento.");
@@ -241,9 +257,10 @@ public class OrderServiceImpl implements OrderService {
         log.warn("Taxa de cancelamento não aplicada: {}", e.getMessage());
       }
     }
-    if (order.getStatus().equals(Status.CONFIRMED) || order.getStatus().equals(Status.AWAITING_PAYMENT)) {
+    boolean paidNotReleased = Boolean.TRUE.equals(order.getPixPaid()) && !Boolean.TRUE.equals(order.getPixReleased());
+    if (order.getStatus().equals(Status.CONFIRMED) || order.getStatus().equals(Status.AWAITING_PAYMENT) || order.getStatus().equals(Status.OPEN) || paidNotReleased) {
       try {
-        transactionService.refundPayment(order);
+        transactionService.refundPayment(order, keep);
         if (role.equals(Role.PROFESSIONAL)) {
           Finance finance = financeRepository.findByUser(order.getProfessional());
           finance.setProfessionalBalance(finance.getProfessionalBalance().add(new BigDecimal("-3.8")));

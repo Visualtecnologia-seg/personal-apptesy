@@ -10,7 +10,14 @@ import java.util.UUID;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
-  Optional<Transaction> findTransactionByOrderId(UUID orderId);
+  /** Pode haver mais de uma cobrança no mesmo pedido: vale a paga; se nenhuma, a mais recente. */
+  default Optional<Transaction> findTransactionByOrderId(UUID orderId) {
+    java.util.List<Transaction> all = findAllByOrderId(orderId);
+    return all.stream().filter(t -> t.getPaymentStatus() == br.com.personalfighters.model.PaymentStatus.PAID).findFirst()
+        .or(() -> all.stream().max(java.util.Comparator.comparing(Transaction::getId)));
+  }
+
+  java.util.List<Transaction> findAllByOrderId(UUID orderId);
 
   Optional<Transaction> findByAsaasPaymentId(String asaasPaymentId);
 //

@@ -58,8 +58,24 @@ public class UserController {
   @PostMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva um usuário novo.")
-  public Object save(@RequestBody User user) {
-    return userService.save(user);
+  public Object save(@RequestBody User in) {
+    // Cadastro novo: copia SÓ os campos que a pessoa pode escolher.
+    // (Antes, mandar o "id" de outra pessoa sobrescrevia a conta dela.)
+    User user = new User();
+    user.setUsername(in.getUsername() == null ? null : in.getUsername().trim());
+    user.setPassword(in.getPassword());
+    user.setName(in.getName());
+    user.setSurname(in.getSurname());
+    user.setBirthday(in.getBirthday());
+    user.setCpf(in.getCpf());
+    user.setGender(in.getGender());
+    user.setPhoneNumber(in.getPhoneNumber());
+    user.setEmail(in.getEmail() == null ? null : in.getEmail().trim());
+    user.setLatitude(in.getLatitude());
+    user.setLongitude(in.getLongitude());
+    user.setFullAddress(in.getFullAddress());
+    User saved = userService.save(user);
+    return redactor.strip(saved, saved.getId()); // nunca devolve a senha (nem criptografada)
   }
 
   @PutMapping
@@ -82,9 +98,19 @@ public class UserController {
       user.setDocSelfieUrl(cur.getDocSelfieUrl());
       // Sem esses blocos no envio, mantém os atuais (antes um envio incompleto apagava o perfil profissional)
       if (user.getProfessional() == null || cur.getProfessional() == null) user.setProfessional(cur.getProfessional());
-      else user.getProfessional().setId(cur.getProfessional().getId());
+      else {
+        // Nota, nº de avaliações, destaque (pago) e selo de resposta rápida são do sistema: o profissional não muda
+        br.com.personalfighters.entity.Professional np = user.getProfessional(), cp = cur.getProfessional();
+        np.setId(cp.getId());
+        np.setRating(cp.getRating());
+        np.setCount(cp.getCount());
+        np.setFeatured(cp.getFeatured());
+        np.setFastResponder(cp.getFastResponder());
+        np.setActive(cp.getActive());
+        np.setReference(cp.getReference());
+      }
       if (user.getCustomer() == null || cur.getCustomer() == null) user.setCustomer(cur.getCustomer());
-      else user.getCustomer().setId(cur.getCustomer().getId());
+      else { user.getCustomer().setId(cur.getCustomer().getId()); user.getCustomer().setActive(cur.getCustomer().getActive()); }
       // Foto só pode apontar para o próprio servidor (enviada pela tela de foto); nada de link externo
       String av = user.getAvatarUrl();
       if (av == null || !(av.isEmpty() || av.startsWith("/users/" + cur.getId() + "/avatar"))) user.setAvatarUrl(cur.getAvatarUrl());
@@ -101,6 +127,9 @@ public class UserController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva um usuário novo.")
   public void saveRecords(@RequestBody UserRecords userRecords) {
+    // Sempre da própria conta (antes dava para cadastrar o celular de outra pessoa e receber os avisos dela)
+    userRecords.setUser(me());
+    userRecords.setId(null);
     userRecordsService.save(userRecords);
   }
 

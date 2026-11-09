@@ -108,6 +108,9 @@ public class OrderController {
   @ApiOperation(value = "Salva uma nova order")
   public Map<String, Object> save(@RequestBody Order order, @RequestParam(value = "mode", required = false) String mode) {
     if (!admin()) order = cleanNewOrder(order); // só os campos que o cliente pode escolher
+    if (order.getProfessional() != null && order.getCustomer() != null && java.util.Objects.equals(order.getProfessional().getId(), order.getCustomer().getId())) {
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você não pode contratar a si mesmo.");
+    }
     if (order.getProfessional() != null && order.getProfessional().getId() != null && order.getCustomer() != null && order.getCustomer().getId() != null) {
       Long blocked = jdbc.queryForObject("SELECT COUNT(*) FROM pro_blocked_client_ WHERE professional_id = ? AND client_id = ?", Long.class,
           order.getProfessional().getId(), order.getCustomer().getId());
@@ -177,7 +180,9 @@ public class OrderController {
   @PutMapping("/professionals/{id}/cancellation")
   @ResponseStatus(HttpStatus.OK)
   public void cancelByProfessional(@PathVariable Long id, @RequestBody Order order) {
-    proOf(order.getId(), id);
+    Order cur = proOf(order.getId(), id);
+    // pedido aberto (sem profissional) não é seu para cancelar: use "Recusar"
+    if (!admin() && cur.getProfessional() == null) throw denied();
     orderService.cancelOrder(order, Role.PROFESSIONAL);
   }
 

@@ -35,6 +35,13 @@ public class ProtectionFilter extends OncePerRequestFilter {
     String m = req.getMethod();
     String ip = clientIp(req);
 
+    // Endereço da API com barra no fim ("/x/") ou caracteres de desvio: recusa (evita furar travas por variação do caminho)
+    if (path.length() > 1 && path.endsWith("/") && !(path.startsWith("/painel/") || path.startsWith("/app/") || path.startsWith("/static/"))
+        || path.contains("//") || path.contains("\\") || path.contains("%2f") || path.contains("%2F") || path.contains("%5c") || path.contains("%5C")) {
+      res.sendError(404);
+      return;
+    }
+
     if (!allow(ip, "all", 600, MIN)
         || ("POST".equals(m) && path.equals("/users") && !allow(ip, "signup", 5, HOUR))
         || ("POST".equals(m) && path.equals("/auth/forgot-password") && !allow(ip, "forgot", 5, HOUR))

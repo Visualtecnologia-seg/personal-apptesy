@@ -126,6 +126,49 @@ public class AsaasServiceImpl implements AsaasService {
   }
 
   @Override
+  public String refundPix(String asaasPaymentId, BigDecimal value) {
+    if (asaasPaymentId == null || asaasPaymentId.isBlank()) return "Cobrança sem identificação no Asaas.";
+    if (isTestMode() || asaasPaymentId.startsWith("TESTE-") || asaasPaymentId.startsWith("PKG-")) {
+      log.info("Modo de teste: estorno de {} apenas registrado", asaasPaymentId);
+      return null;
+    }
+    Map<String, Object> body = new HashMap<>();
+    if (value != null) body.put("value", value.setScale(2, java.math.RoundingMode.HALF_UP).doubleValue());
+    body.put("description", "Estorno OPUS (pedido cancelado)");
+    try {
+      buildClient().post().uri("/payments/" + asaasPaymentId + "/refund").bodyValue(body).retrieve().bodyToMono(Map.class).block();
+      return null;
+    } catch (Exception e) {
+      log.error("Erro ao estornar PIX {} no Asaas: {}", asaasPaymentId, e.getMessage());
+      String m = e.getMessage() == null ? "erro" : e.getMessage();
+      return m.length() > 280 ? m.substring(0, 280) : m;
+    }
+  }
+
+  @Override
+  public void cancelOpenCharges(Order order) {
+    for (Transaction t : transactionRepository.findAllByOrderId(order.getId())) {
+      if (t.getPaymentStatus() == PaymentStatus.AUTHORIZED && cancelCharge(t.getAsaasPaymentId())) {
+        t.setPaymentStatus(PaymentStatus.REFUSED);
+        transactionRepository.save(t);
+      }
+    }
+  }
+
+  @Override
+  public boolean cancelCharge(String asaasPaymentId) {
+    if (asaasPaymentId == null || asaasPaymentId.isBlank()) return true;
+    if (isTestMode() || asaasPaymentId.startsWith("TESTE-") || asaasPaymentId.startsWith("PKG-")) return true;
+    try {
+      buildClient().delete().uri("/payments/" + asaasPaymentId).retrieve().bodyToMono(Map.class).block();
+      return true;
+    } catch (Exception e) {
+      log.error("Erro ao cancelar cobrança {} no Asaas: {}", asaasPaymentId, e.getMessage());
+      return false;
+    }
+  }
+
+  @Override
   public boolean transferToProfessional(User professional, BigDecimal value, String description) {
     if (professional == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
     if (isTestMode()) {
@@ -149,7 +192,26 @@ public class AsaasServiceImpl implements AsaasService {
 
   @Override
   public Transaction createPixCharge(Order order) {
+    // Só cobra pedido com profissional, ainda não pago e não encerrado
+    if (Boolean.TRUE.equals(order.getPixPaid())) throw new IllegalStateException("Este pedido já foi pago.");
+    if (order.getProfessional() == null || !(order.getStatus() == br.com.personalfighters.model.Status.OPEN
+        || order.getStatus() == br.com.personalfighters.model.Status.CONFIRMED)) {
+      throw new IllegalStateException("Este pedido não está aguardando pagamento.");
+    }
+    if (order.getTotalCost() == null || order.getTotalCost().signum() <= 0) throw new IllegalStateException("O valor deste pedido ainda não foi definido.");
     if (isTestMode()) return createTestCharge(order);
+    // Reaproveita a cobrança aberta se o valor é o mesmo; se mudou, cancela a antiga antes de criar outra
+    BigDecimal disc0 = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+    BigDecimal want = order.getTotalCost().subtract(disc0).max(BigDecimal.ONE);
+    for (Transaction old : transactionRepository.findAllByOrderId(order.getId())) {
+      if (old.getPaymentStatus() != PaymentStatus.AUTHORIZED) continue;
+      boolean same = old.getTotalPaid() != null && old.getTotalPaid().compareTo(want) == 0
+          && old.getPixExpiresAt() != null && old.getPixExpiresAt().isAfter(LocalDateTime.now().plusMinutes(30));
+      if (same) return old;
+      if (!cancelCharge(old.getAsaasPaymentId())) throw new IllegalStateException("Não foi possível atualizar a cobrança agora. Tente de novo.");
+      old.setPaymentStatus(PaymentStatus.REFUSED);
+      transactionRepository.save(old);
+    }
     WebClient client = buildClient();
     User customer = order.getCustomer();
     String asaasCustomerId = createOrGetCustomer(customer);

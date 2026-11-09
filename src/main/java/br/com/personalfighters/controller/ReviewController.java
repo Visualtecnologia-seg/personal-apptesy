@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.entity.Review;
 import br.com.personalfighters.service.ReviewService;
 import br.com.personalfighters.utils.Views;
@@ -82,6 +83,7 @@ public class ReviewController {
         reviewService.hasReviewed(java.util.UUID.fromString(orderId), reviewerId));
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @DeleteMapping("/{id}")
   @ApiOperation(value = "Deleta review pelo ID.")
   @ResponseStatus(HttpStatus.OK)

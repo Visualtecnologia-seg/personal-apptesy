@@ -24,4 +24,7 @@ public interface TransactionService {
 
   void refundPayment(Order order);
 
+  /** Estorna de verdade no Asaas, segurando 'keep' (taxa de deslocamento já paga ao profissional). */
+  void refundPayment(Order order, java.math.BigDecimal keep);
+
 }

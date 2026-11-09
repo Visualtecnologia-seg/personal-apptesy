@@ -64,6 +64,21 @@ public class QRTokenServiceImpl implements QRTokenService {
   @Override
   @Transactional
   public boolean validateAndUse(String code, UUID orderId, String type) {
+    // 5 códigos errados no mesmo pedido: o código atual é descartado (impede adivinhar)
+    String key = orderId + ":" + type;
+    if (FAILS.getOrDefault(key, 0) >= 5) {
+      qrTokenRepository.findByOrderIdAndTypeAndUsedFalse(orderId, type).ifPresent(t -> { t.setUsed(true); qrTokenRepository.save(t); });
+      FAILS.remove(key);
+      return false;
+    }
+    boolean ok = check(code == null ? "" : code, orderId, type);
+    if (ok) FAILS.remove(key); else FAILS.merge(key, 1, Integer::sum);
+    return ok;
+  }
+
+  private static final java.util.Map<String, Integer> FAILS = new java.util.concurrent.ConcurrentHashMap<>();
+
+  private boolean check(String code, UUID orderId, String type) {
     return qrTokenRepository.findByCode(code.toUpperCase().trim())
         .filter(t -> !t.isUsed())
         .filter(t -> t.getOrderId().equals(orderId))
@@ -74,7 +89,7 @@ public class QRTokenServiceImpl implements QRTokenService {
   }
 
   private String randomCode() {
-    Random rnd = new Random();
+    java.security.SecureRandom rnd = new java.security.SecureRandom();
     StringBuilder sb = new StringBuilder(CODE_LENGTH);
     for (int i = 0; i < CODE_LENGTH; i++) sb.append(CHARS.charAt(rnd.nextInt(CHARS.length())));
     return sb.toString();

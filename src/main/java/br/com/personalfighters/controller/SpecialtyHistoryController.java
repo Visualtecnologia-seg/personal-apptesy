@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.entity.SpecialtyHistory;
 import br.com.personalfighters.entity.User;
 import br.com.personalfighters.repository.SpecialtyHistoryRepository;
@@ -31,6 +32,7 @@ public class SpecialtyHistoryController {
     return specialtyHistoryRepository.findByUserOrderByChangedAtDesc(user);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping("/users/{id}")
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Regista uma alteração de especialidades.")

@@ -28,6 +28,7 @@ public class TransactionServiceImpl implements TransactionService {
   private final TransactionRepository transactionRepository;
   private final FinanceService financeService;
   private final AsaasService asaasService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @Override
   public Optional<Transaction> find(Long id) {
@@ -36,7 +37,10 @@ public class TransactionServiceImpl implements TransactionService {
 
   @Override
   public Optional<Transaction> findByOrderId(UUID id) {
-    return transactionRepository.findTransactionByOrderId(id);
+    // Pode haver mais de uma cobrança no mesmo pedido: vale a paga; se nenhuma, a mais recente
+    java.util.List<Transaction> all = transactionRepository.findAllByOrderId(id);
+    return all.stream().filter(t -> t.getPaymentStatus() == PaymentStatus.PAID).findFirst()
+        .or(() -> all.stream().max(java.util.Comparator.comparing(Transaction::getId)));
   }
 
   @Override
@@ -102,18 +106,44 @@ public class TransactionServiceImpl implements TransactionService {
 
   @Override
   public void refundPayment(Order order) {
-    Optional<Transaction> txOpt = findByOrderId(order.getId());
-    if (txOpt.isEmpty()) {
-      log.warn("refundPayment: no transaction found for order {}", order.getId());
-      return;
-    }
-    Transaction tx = txOpt.get();
-    if (tx.getAsaasPaymentId() != null && !tx.getAsaasPaymentId().isBlank()) {
-      log.info("refundPayment: Asaas refund for payment {}", tx.getAsaasPaymentId());
-      tx.setPaymentStatus(PaymentStatus.REFUNDED);
-      transactionRepository.save(tx);
-    } else {
-      log.info("refundPayment: no Asaas paymentId, skipping refund for order {}", order.getId());
+    refundPayment(order, BigDecimal.ZERO);
+  }
+
+  @Override
+  public void refundPayment(Order order, BigDecimal keep) {
+    BigDecimal hold = keep == null ? BigDecimal.ZERO : keep.max(BigDecimal.ZERO);
+    for (Transaction tx : transactionRepository.findAllByOrderId(order.getId())) {
+      String pid = tx.getAsaasPaymentId();
+      if (tx.getPaymentStatus() == PaymentStatus.PAID) {
+        if (pid != null && pid.startsWith("PKG-")) {
+          // Pago com aula de pacote: devolve a aula ao pacote
+          jdbc.update("UPDATE package_purchase_ SET sessions_used = GREATEST(sessions_used - 1, 0) WHERE id = (SELECT package_purchase_id FROM order_ WHERE id = ?)", order.getId());
+          tx.setPaymentStatus(PaymentStatus.REFUNDED);
+          transactionRepository.save(tx);
+          continue;
+        }
+        BigDecimal paid = tx.getTotalPaid() == null ? BigDecimal.ZERO : tx.getTotalPaid();
+        BigDecimal back = paid.subtract(hold).max(BigDecimal.ZERO);
+        hold = hold.subtract(paid).max(BigDecimal.ZERO);
+        String err = back.signum() > 0 ? asaasService.refundPix(pid, back) : null;
+        if (err == null) {
+          tx.setPaymentStatus(PaymentStatus.REFUNDED);
+          transactionRepository.save(tx);
+          jdbc.update("UPDATE transaction_ SET refund_status = 'DONE', refunded_at = NOW(), refund_error = NULL WHERE id = ?", tx.getId());
+          log.info("Estorno de R$ {} feito para o pedido {}", back, order.getId());
+        } else {
+          // Não conseguiu devolver: fica pendente para o administrador resolver no painel
+          tx.setPaymentStatus(PaymentStatus.PENDING_REFUND);
+          transactionRepository.save(tx);
+          jdbc.update("UPDATE transaction_ SET refund_status = 'FAILED', refund_error = ? WHERE id = ?", err, tx.getId());
+          log.error("ESTORNO PENDENTE pedido {} cobrança {}: {}", order.getId(), pid, err);
+        }
+      } else if (tx.getPaymentStatus() == PaymentStatus.AUTHORIZED || tx.getPaymentStatus() == PaymentStatus.WAITING_PAYMENT) {
+        // Cobrança ainda não paga: cancela no Asaas para ninguém pagar depois
+        asaasService.cancelCharge(pid);
+        tx.setPaymentStatus(PaymentStatus.REFUSED);
+        transactionRepository.save(tx);
+      }
     }
   }
 

@@ -132,7 +132,7 @@ public class SystemController {
       }
 
       if (order.getDate().isAfter(LocalDate.now().minusDays(15)) && order.getDate().isBefore(LocalDate.now().minusDays(0))) {
-        orderService.cancelOrder(order, Role.CUSTOMER);
+        orderService.cancelOrder(order, Role.ADMIN);
       }
 
       if (order.getDate().isAfter(LocalDate.now().minusDays(30)) && order.getDate().isBefore(LocalDate.now().minusDays(15))) {

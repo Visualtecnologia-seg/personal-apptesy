@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.entity.Product;
 import br.com.personalfighters.service.ProductService;
 import br.com.personalfighters.utils.Views;
@@ -45,6 +46,7 @@ public class ProductController {
     return productService.findById(id);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping
   @ApiOperation(value = "Salva produto")
   @ResponseStatus(HttpStatus.OK)
@@ -53,6 +55,7 @@ public class ProductController {
     return productService.save(product);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping("/users/{id}")
   @ApiOperation(value = "Salva produto")
   @ResponseStatus(HttpStatus.OK)
@@ -61,6 +64,7 @@ public class ProductController {
     productService.saveUserOnProducts(products, id);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PutMapping
   @ApiOperation(value = "Atualiza produto")
   @ResponseStatus(HttpStatus.OK)
@@ -69,6 +73,7 @@ public class ProductController {
     return productService.save(product);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PutMapping("/{id}")
   @ApiOperation(value = "Ativa ou inativa produto pelo ID")
   @ResponseStatus(HttpStatus.OK)

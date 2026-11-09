@@ -154,7 +154,14 @@ public class ConferenceController {
       raw = parts[2];
     }
     String code = raw.replaceAll("[^0-9]", "");
-    if (o.getFinishCode() == null || !o.getFinishCode().equals(code)) return bad("Código incorreto. Peça ao cliente para mostrar a tela de novo.");
+    Integer total = jdbc.queryForObject("SELECT code_attempts_total FROM order_ WHERE id = ?", Integer.class, id);
+    if (total != null && total >= 30) return bad("Muitos códigos errados neste pedido. Fale com o suporte da OPUS para liberar.");
+    if (o.getFinishCode() == null || !o.getFinishCode().equals(code)) {
+      // 5 erros seguidos: o código atual é descartado e o cliente recebe um novo na tela
+      jdbc.update("UPDATE order_ SET code_attempts = code_attempts + 1, code_attempts_total = code_attempts_total + 1 WHERE id = ?", id);
+      jdbc.update("UPDATE order_ SET finish_code = NULL, code_rotated_at = NULL, code_attempts = 0 WHERE id = ? AND code_attempts >= 5", id);
+      return bad("Código incorreto. Peça ao cliente para mostrar a tela de novo.");
+    }
     if (o.getFinishCodeExpiresAt() != null && o.getFinishCodeExpiresAt().isBefore(completionService.now())) {
       return bad("O código mudou. Leia o código novo na tela do cliente.");
     }
@@ -206,7 +213,7 @@ public class ConferenceController {
       o.setFinishCodeExpiresAt(now.plusMinutes(CODE_MINUTES + 1));
       orderRepository.save(o);
       rotated = now;
-      jdbc.update("UPDATE order_ SET code_rotated_at = ? WHERE id = ?", Timestamp.valueOf(now), o.getId());
+      jdbc.update("UPDATE order_ SET code_rotated_at = ?, code_attempts = 0 WHERE id = ?", Timestamp.valueOf(now), o.getId());
     }
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("code", o.getFinishCode());

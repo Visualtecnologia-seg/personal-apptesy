@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.entity.Category;
 import br.com.personalfighters.service.CategoryService;
 import io.swagger.annotations.Api;
@@ -25,6 +26,7 @@ public class CategoryController {
     return categoryService.findAll(category, pageable);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping
   @ApiOperation(value = "Salva categoria")
   @ResponseStatus(HttpStatus.OK)
@@ -32,6 +34,7 @@ public class CategoryController {
     return categoryService.save(category);
   }
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PutMapping
   @ApiOperation(value = "Atualiza categoria")
   @ResponseStatus(HttpStatus.OK)

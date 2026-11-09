@@ -116,6 +116,7 @@ public class TripController {
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isCustomer(o, me)) return bad("Pedido não encontrado.");
     if (Boolean.TRUE.equals(o.getPixPaid())) return ResponseEntity.ok(Map.of("status", o.getStatus()));
+    if (o.getProfessional() == null || !(o.getStatus() == Status.OPEN || o.getStatus() == Status.CONFIRMED)) return bad("Este pedido não está aguardando pagamento.");
     Transaction tx = transactionRepository.findTransactionByOrderId(id).orElseGet(() -> asaasService.createPixCharge(o));
     tx.setPaymentStatus(PaymentStatus.PAID);
     transactionRepository.save(tx);

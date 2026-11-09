@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.model.Notification;
 import br.com.personalfighters.repository.UserRepository;
 import br.com.personalfighters.service.NotificationService;
@@ -22,6 +23,7 @@ public class NotificationController {
   /* Services */
   private final NotificationService notificationService;
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PostMapping
   public void sendNotification(@RequestBody Notification notification) {
     notificationService.sendChatNotification(notification);

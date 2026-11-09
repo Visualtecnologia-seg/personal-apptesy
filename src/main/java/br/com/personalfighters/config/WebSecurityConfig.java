@@ -76,17 +76,17 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         .antMatchers(WHITELIST).permitAll()
         .antMatchers(HttpMethod.POST, PUBLIC_MATCHERS_POST).permitAll()
         .antMatchers(HttpMethod.GET, PUBLIC_MATCHERS_GET).permitAll()
-        .antMatchers("/system/**").hasRole("ADMIN") // geração de dados de teste: só administrador
+        .mvcMatchers("/system/**").hasRole("ADMIN") // geração de dados de teste: só administrador
         // Endpoints antigos que os apps não usam e que não conferiam o dono dos dados: só administrador
-        .antMatchers("/bank/**", "/credit-cards/**", "/finances/**", "/professionalfinance/**", "/addresses/**", "/infos/**",
+        .mvcMatchers("/bank/**", "/credit-cards/**", "/finances/**", "/professionalfinance/**", "/addresses/**", "/infos/**",
             "/customers/**", "/payments/**", "/auth/history/**", "/favorites/users/**", "/points/users/**", "/agendas/**").hasRole("ADMIN")
-        .antMatchers(HttpMethod.DELETE, "/professionals/*", "/reviews/*", "/photos/*").hasRole("ADMIN")
-        .antMatchers(HttpMethod.POST, "/specialty-history/**", "/products/users/**", "/photos/avatar/users/*", "/photos/photo/users/*").hasRole("ADMIN")
-        .antMatchers(HttpMethod.PUT, "/products/*", "/products", "/categories").hasRole("ADMIN")
-        .antMatchers(HttpMethod.POST, "/products", "/categories", "/notifications", "/photos/upload").hasRole("ADMIN")
-        .antMatchers("/favorites/**", "/favorites").hasRole("ADMIN")
-        .antMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs/**").hasRole("ADMIN")
-        .antMatchers("/actuator/**", "/webjars/**", "/configuration/**").hasRole("ADMIN")
+        .mvcMatchers(HttpMethod.DELETE, "/professionals/*", "/reviews/*", "/photos/*").hasRole("ADMIN")
+        .mvcMatchers(HttpMethod.POST, "/specialty-history/**", "/products/users/**", "/photos/avatar/users/*", "/photos/photo/users/*").hasRole("ADMIN")
+        .mvcMatchers(HttpMethod.PUT, "/products/*", "/products", "/categories").hasRole("ADMIN")
+        .mvcMatchers(HttpMethod.POST, "/products", "/categories", "/notifications", "/photos/upload").hasRole("ADMIN")
+        .mvcMatchers("/favorites/**", "/favorites").hasRole("ADMIN")
+        .mvcMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs/**").hasRole("ADMIN")
+        .mvcMatchers("/actuator/**", "/webjars/**", "/configuration/**").hasRole("ADMIN")
         .anyRequest().authenticated()
         .and()
         .logout()

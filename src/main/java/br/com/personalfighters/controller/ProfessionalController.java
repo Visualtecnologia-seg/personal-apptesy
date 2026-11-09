@@ -1,5 +1,6 @@
 package br.com.personalfighters.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import br.com.personalfighters.service.ProfessionalService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -16,6 +17,7 @@ public class ProfessionalController {
 
   private final ProfessionalService professionalService;
 
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
   @DeleteMapping("/{id}")
   @ApiOperation(value = "Inativa um profissional pelo ID")
   @ResponseStatus(HttpStatus.OK)
