@@ -44,6 +44,7 @@ public class UserServiceImpl implements UserService {
   private final PagarmeService pagarmeService;
   private final EmailService emailService;
   private final SpecialtyHistoryRepository specialtyHistoryRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @Override
   public User findById(Long id) {
@@ -99,9 +100,14 @@ public class UserServiceImpl implements UserService {
       throw new RuntimeException("CPF é obrigatório para o cadastro");
     }
     String cpfDigits = user.getCpf().replaceAll("[^0-9]", "");
-    if (cpfDigits.length() != 11) {
-      throw new RuntimeException("CPF inválido. Use o formato 000.000.000-00");
+    if (!br.com.personalfighters.util.CpfValidator.isValid(cpfDigits)) {
+      throw new br.com.personalfighters.service.impl.exceptions.DataIntegrityException("CPF inválido. Confira os números digitados.");
     }
+    Integer sameCpf = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE regexp_replace(COALESCE(cpf, ''), '[^0-9]', '', 'g') = ?", Integer.class, cpfDigits);
+    if (sameCpf != null && sameCpf > 0) {
+      throw new br.com.personalfighters.service.impl.exceptions.DataIntegrityException("Este CPF já tem uma conta. Entre com ela ou use \"Esqueci minha senha\".");
+    }
+    user.setCpf(cpfDigits);
     if (user.getEmail() == null || user.getEmail().isBlank()) {
       throw new RuntimeException("E-mail é obrigatório para o cadastro");
     }

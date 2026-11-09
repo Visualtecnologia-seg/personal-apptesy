@@ -34,6 +34,8 @@ public class UserController {
   private final br.com.personalfighters.service.AreaService areaService;
   private final UserRecordsService userRecordsService;
   private final ProGrowthController proGrowthController;
+  private final br.com.personalfighters.controller.auth.PhoneVerificationController phoneVerification;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
@@ -58,7 +60,15 @@ public class UserController {
   @PostMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva um usuário novo.")
-  public Object save(@RequestBody User in) {
+  public Object save(@RequestBody User in, @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken) {
+    // Telefone confirmado por SMS é obrigatório no cadastro (o administrador pode cadastrar sem)
+    String phone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(in.getPhoneNumber());
+    boolean admin = br.com.personalfighters.util.Redactor.isAdmin();
+    if (!admin) {
+      if (phone == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Digite um celular válido com DDD.");
+      if (!phone.equals(phoneVerification.phoneFromToken(phoneToken)))
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme o seu celular com o código enviado por SMS.");
+    }
     // Cadastro novo: copia SÓ os campos que a pessoa pode escolher.
     // (Antes, mandar o "id" de outra pessoa sobrescrevia a conta dela.)
     User user = new User();
@@ -69,12 +79,13 @@ public class UserController {
     user.setBirthday(in.getBirthday());
     user.setCpf(in.getCpf());
     user.setGender(in.getGender());
-    user.setPhoneNumber(in.getPhoneNumber());
+    user.setPhoneNumber(phone != null ? phone : in.getPhoneNumber());
     user.setEmail(in.getEmail() == null ? null : in.getEmail().trim());
     user.setLatitude(in.getLatitude());
     user.setLongitude(in.getLongitude());
     user.setFullAddress(in.getFullAddress());
     User saved = userService.save(user);
+    if (!admin) jdbc.update("UPDATE user_ SET phone_verified = TRUE WHERE id = ?", saved.getId());
     return redactor.strip(saved, saved.getId()); // nunca devolve a senha (nem criptografada)
   }
 
@@ -87,6 +98,7 @@ public class UserController {
       User cur = me();
       user.setId(cur.getId());
       user.setRole(cur.getRole());
+      user.setCpf(cur.getCpf()); // CPF é fixo depois do cadastro
       user.setVerified(cur.getVerified());
       user.setVerificationStatus(cur.getVerificationStatus());
       user.setVerificationReason(cur.getVerificationReason());

@@ -46,6 +46,8 @@ public class ProtectionFilter extends OncePerRequestFilter {
         || ("POST".equals(m) && path.equals("/users") && !allow(ip, "signup", 5, HOUR))
         || ("POST".equals(m) && path.equals("/auth/forgot-password") && !allow(ip, "forgot", 5, HOUR))
         || ("POST".equals(m) && path.equals("/auth/reset-password") && !allow(ip, "reset", 15, HOUR))
+        || ("POST".equals(m) && path.equals("/auth/phone/send") && !allow(ip, "sms", 8, HOUR))
+        || ("POST".equals(m) && path.equals("/auth/phone/verify") && !allow(ip, "smsv", 30, HOUR))
         || ("POST".equals(m) && (path.equals("/auth") || path.equals("/panel-auth/login") || path.equals("/panel-auth/2fa")) && !allow(ip, "login", 30, 10 * MIN))
         || (path.startsWith("/search") && !allow(ip, "search", 120, MIN))
         || ("POST".equals(m) && path.equals("/messages") && !allow(ip, "msg", 60, MIN))

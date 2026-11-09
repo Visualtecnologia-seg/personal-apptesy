@@ -32,7 +32,7 @@ import java.util.Collections;
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
   private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status"};
-  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/auth/reset-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
+  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/auth/reset-password", "/auth/phone/send", "/auth/phone/verify", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
   private static final String[] WHITELIST = {
       // Documentação da API (swagger) e /actuator saíram daqui: agora só administrador.
       "/actuator/health",
