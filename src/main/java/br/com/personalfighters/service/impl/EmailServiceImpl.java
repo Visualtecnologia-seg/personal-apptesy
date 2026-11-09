@@ -76,6 +76,10 @@ public class EmailServiceImpl implements EmailService {
 
   private void send(String to, String subject, String text) {
     SimpleMailMessage message = new SimpleMailMessage();
+    // Remetente: MAIL_FROM (outro provedor de e-mail) ou a própria conta (Gmail)
+    String from = System.getenv("MAIL_FROM");
+    if (from == null || from.isBlank()) from = System.getenv("MAIL_USERNAME");
+    if (from != null && from.contains("@")) message.setFrom("OPUS <" + from.trim() + ">");
     message.setTo(to);
     message.setSubject(subject);
     message.setText(text);
