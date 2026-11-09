@@ -200,9 +200,19 @@ public class VerificationController {
 
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   @PutMapping("/{id}/approve")
-  public ResponseEntity<?> approve(@PathVariable UUID id) {
+  public ResponseEntity<?> approve(@PathVariable UUID id, @RequestBody(required = false) Map<String, Object> body) {
+    // O administrador precisa confirmar que nome, CPF, nascimento e rosto batem com o documento
+    Object ck = body == null ? null : body.get("checks");
+    Map<?, ?> checks = ck instanceof Map ? (Map<?, ?>) ck : Map.of();
+    for (String k : new String[]{"name", "cpf", "birth", "face"}) {
+      if (!Boolean.TRUE.equals(checks.get(k))) return bad("Confira nome, CPF, nascimento e rosto com o documento e marque os quatro antes de aprovar.");
+    }
     return repo.findById(id).map(v -> {
       User admin = userService.findAuthUser();
+      try {
+        jdbc.update("INSERT INTO admin_action_ (admin_id, admin_name, action, target, detail, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+            admin.getId(), java.util.Objects.toString(admin.getName(), "Painel"), "Aprovou verificação", String.valueOf(v.getUserId()), "Conferiu nome, CPF, nascimento e rosto com o documento");
+      } catch (Exception ignored) { }
       v.setStatus("APPROVED");
       v.setReviewedAt(LocalDateTime.now());
       v.setReviewedBy(admin.getUsername());

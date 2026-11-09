@@ -69,6 +69,9 @@ public class WalletController {
     pix.put("key", WalletService.mask(me.getPixKey()));
     pix.put("type", me.getPixKeyType());
     pix.put("name", me.getName());
+    String cpfD = me.getCpf() == null ? "" : me.getCpf().replaceAll("\\D", "");
+    pix.put("cpf", cpfD.length() == 11 ? "***." + cpfD.substring(3, 6) + "." + cpfD.substring(6, 9) + "-**" : null);
+    pix.put("isCpf", cpfD.length() == 11 && me.getPixKey() != null && me.getPixKey().replaceAll("\\D", "").equals(cpfD));
     out.put("pix", pix);
     java.time.LocalDateTime hold = securityService.withdrawHoldUntil(me.getId());
     out.put("withdrawHoldUntil", hold == null ? null : hold.toString());

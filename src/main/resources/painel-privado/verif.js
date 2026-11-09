@@ -90,11 +90,24 @@ async function openDetail(id){
     addInfo('Checagem automática das fotos', parts.join(' · '));
   }
   $('actions').classList.toggle('hidden', v.status!=='PENDING');
+  // Conferência lado a lado: o que foi digitado no cadastro x o que está no documento
+  const cpf = String(v.cpf||'').replace(/\D/g,'');
+  $('cName').textContent = v.name || '—';
+  $('cCpf').textContent = cpf.length===11 ? cpf.slice(0,3)+'.'+cpf.slice(3,6)+'.'+cpf.slice(6,9)+'-'+cpf.slice(9) : (v.cpf||'—');
+  const b = v.birthday ? String(v.birthday).slice(0,10).split('-') : null;
+  $('cBirth').textContent = b && b.length===3 ? b[2]+'/'+b[1]+'/'+b[0] : 'não informado';
+  if (b && b.length===3) { const d=new Date(+b[0],+b[1]-1,+b[2]), n=new Date(); let a=n.getFullYear()-d.getFullYear(); if (n<new Date(n.getFullYear(),d.getMonth(),d.getDate())) a--; $('cAge').textContent='('+a+' anos)'; } else $('cAge').textContent='';
+  document.querySelectorAll('#cmpBox .chk').forEach(c => { c.checked=false; });
+  $('approve').disabled = true;
 }
+document.querySelectorAll('#cmpBox .chk').forEach(c => c.addEventListener('change', () => {
+  $('approve').disabled = [...document.querySelectorAll('#cmpBox .chk')].some(x => !x.checked);
+}));
 
 $('approve').onclick = async () => {
   if (!current) return;
-  try { await api('/verifications/'+current.id+'/approve', {method:'PUT'}); msg($('actMsg'),'Verificação aprovada.',true); setTimeout(loadList, 900); }
+  const checks = {}; document.querySelectorAll('#cmpBox .chk').forEach(c => { checks[c.value] = c.checked; });
+  try { await api('/verifications/'+current.id+'/approve', {method:'PUT', body: JSON.stringify({checks})}); msg($('actMsg'),'Verificação aprovada.',true); setTimeout(loadList, 900); }
   catch(e){ msg($('actMsg'), e.message); }
 };
 $('reject').onclick = async () => {

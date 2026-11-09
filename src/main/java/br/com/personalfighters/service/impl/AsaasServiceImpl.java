@@ -176,6 +176,11 @@ public class AsaasServiceImpl implements AsaasService {
       return true;
     }
     if (professional.getPixKey() == null || professional.getPixKey().isBlank()) return false;
+    String cpfD = professional.getCpf() == null ? "" : professional.getCpf().replaceAll("\\D", "");
+    if (cpfD.length() != 11 || !professional.getPixKey().replaceAll("\\D", "").equals(cpfD)) {
+      log.warn("Transferência recusada: a chave PIX do profissional {} não é o CPF dele", professional.getId());
+      return false;
+    }
     Map<String, Object> body = new HashMap<>();
     body.put("value", value.doubleValue());
     body.put("pixAddressKey", professional.getPixKey());

@@ -78,6 +78,9 @@ public class WalletService {
   public synchronized String withdraw(User pro, BigDecimal amount) {
     if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) throw new IllegalArgumentException("O saque mínimo é R$ 1,00.");
     if (pro.getPixKey() == null || pro.getPixKey().isBlank()) throw new IllegalArgumentException("Cadastre a sua chave PIX antes de sacar.");
+    String cpfDigits = pro.getCpf() == null ? "" : pro.getCpf().replaceAll("\\D", "");
+    if (cpfDigits.length() != 11 || !pro.getPixKey().replaceAll("\\D", "").equals(cpfDigits))
+      throw new IllegalArgumentException("O saque só vai para a chave PIX do seu CPF. Toque em \"Usar meu CPF como chave\" e tente de novo.");
     java.time.LocalDateTime hold = securityService.withdrawHoldUntil(pro.getId());
     if (hold != null) {
       securityService.event(pro.getId(), "WITHDRAW_HELD", "Tentou sacar R$ " + amount + " durante a espera de segurança");

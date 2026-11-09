@@ -41,6 +41,14 @@
   .gesture{border:2px solid var(--blue)}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .muted{color:var(--muted);font-size:13px}
+  .cmp{margin:12px 0;padding:12px 14px;border-radius:12px;background:#FFFBEB;border:1px solid #FCD34D;display:flex;flex-direction:column;gap:8px}
+  .cmp .cmpHead{font-weight:800;color:#78350F;font-size:13px}
+  .cmp label{display:flex;gap:10px;align-items:center;justify-content:flex-start;font-size:14px;cursor:pointer;margin:0;width:auto}
+  .cmp input[type=checkbox]{width:20px;height:20px;margin:0;flex:none;padding:0}
+  .cmp label span{flex:1;text-align:left}
+  .cmp b{font-size:16px;letter-spacing:.3px}
+  .cmp i{color:#92400E;font-style:normal;font-size:12px}
+  #approve:disabled{opacity:.45;cursor:not-allowed}
   .info{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
   .info div{background:#F8FAFC;border-radius:10px;padding:10px 12px;font-size:13px}
   .info b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:3px}
@@ -102,7 +110,15 @@
     <div class="card" style="margin-top:14px" id="actions">
       <h3>Decisão</h3>
       <p class="muted">Confira: o rosto é o mesmo em todas as selfies e na foto do documento? Nas fotos da prova de vida a cabeça está virada para lados diferentes? Os dados do documento batem com o cadastro?</p>
-      <div class="row"><button id="approve" class="ok">Aprovar verificação</button></div>
+      <div class="cmp" id="cmpBox">
+        <div class="cmpHead">Confira com o documento (o que a pessoa digitou no cadastro)</div>
+        <label><input type="checkbox" class="chk" value="name"> <span>Nome: <b id="cName">—</b></span></label>
+        <label><input type="checkbox" class="chk" value="cpf"> <span>CPF: <b id="cCpf">—</b></span></label>
+        <label><input type="checkbox" class="chk" value="birth"> <span>Nascimento: <b id="cBirth">—</b> <i id="cAge"></i></span></label>
+        <label><input type="checkbox" class="chk" value="face"> <span>O rosto das selfies é o mesmo da foto do documento</span></label>
+        <div class="muted" style="font-size:12px;margin-top:4px">Só dá para aprovar depois de marcar os quatro. Se algo não bater, recuse e escreva o motivo.</div>
+      </div>
+      <div class="row"><button id="approve" class="ok" disabled>Aprovar verificação</button></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
       <label for="reason">Motivo da recusa (o usuário vai ver esta mensagem)</label>
       <textarea id="reason" rows="3" placeholder="Ex.: A foto do documento está desfocada. Tire novamente em um lugar bem iluminado."></textarea>

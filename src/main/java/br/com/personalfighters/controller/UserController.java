@@ -166,6 +166,14 @@ public class UserController {
       String av = user.getAvatarUrl();
       if (av == null || !(av.isEmpty() || av.startsWith("/users/" + cur.getId() + "/avatar"))) user.setAvatarUrl(cur.getAvatarUrl());
       if (user.getPixKey() == null) { user.setPixKey(cur.getPixKey()); user.setPixKeyType(cur.getPixKeyType()); }
+      else if (!user.getPixKey().equals(cur.getPixKey())) {
+        // Chave PIX só pode ser o CPF da própria conta: o banco confirma o titular, então CPF falso não recebe saque
+        String cpfDigits = cur.getCpf() == null ? "" : cur.getCpf().replaceAll("\\D", "");
+        if (cpfDigits.length() != 11 || !user.getPixKey().replaceAll("\\D", "").equals(cpfDigits))
+          throw badReq("A chave PIX precisa ser o seu CPF (o mesmo da conta).");
+        user.setPixKey(cpfDigits);
+        user.setPixKeyType("CPF");
+      }
       if (user.getLatitude() == null) { user.setLatitude(cur.getLatitude()); user.setLongitude(cur.getLongitude()); }
       if (user.getPhoneNumber() == null) user.setPhoneNumber(cur.getPhoneNumber());
       // Trocar o celular exige o código por SMS no número NOVO; o número antigo é avisado e o saque fica segurado 24 h
