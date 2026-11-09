@@ -63,6 +63,17 @@ public class EmailServiceImpl implements EmailService {
             "Se não foi você que pediu, ignore este e-mail.\n\nEquipe OPUS");
   }
 
+  @Override
+  public void sendText(String to, String subject, String text) {
+    send(to, subject, text);
+  }
+
+  @Override
+  public boolean isConfigured() {
+    String u = System.getenv("MAIL_USERNAME"), p = System.getenv("MAIL_PASSWORD");
+    return u != null && !u.isBlank() && p != null && !p.isBlank();
+  }
+
   private void send(String to, String subject, String text) {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setTo(to);

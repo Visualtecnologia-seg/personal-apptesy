@@ -28,6 +28,8 @@ public class SecurityService {
   private final JdbcTemplate jdbc;
   private final NotificationService notificationService;
   private final UserRepository userRepository;
+  private final SmsService smsService;
+  private final EmailService emailService;
 
   static Timestamp now() { return Timestamp.valueOf(LocalDateTime.now(Z)); }
 
@@ -52,6 +54,13 @@ public class SecurityService {
     String text = "Novo acesso à sua conta OPUS em " + Objects.toString(name, "outro celular") + " (" + when + "). Foi você? Se não foi, abra o app → Perfil → Segurança → Não fui eu.";
     try { notificationService.sendToUser(u, false, text); } catch (Exception ignored) { }
     try { notificationService.sendToUser(u, true, text); } catch (Exception ignored) { }
+    // também por SMS (celular confirmado) e por e-mail, para o aviso chegar mesmo se o celular foi roubado
+    try {
+      Boolean pv = jdbc.queryForObject("SELECT phone_verified FROM user_ WHERE id = ?", Boolean.class, u.getId());
+      String ph = u.getPhoneNumber() == null ? "" : u.getPhoneNumber().replaceAll("\\D", "");
+      if (Boolean.TRUE.equals(pv) && ph.length() == 11) smsService.send("+55" + ph, "OPUS: " + text);
+    } catch (Exception ignored) { }
+    try { if (u.getEmail() != null) emailService.sendText(u.getEmail(), "Novo acesso à sua conta OPUS", "Olá " + Objects.toString(u.getName(), "") + ",\n\n" + text + "\n\nEquipe OPUS"); } catch (Exception ignored) { }
     return true;
   }
 

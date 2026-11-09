@@ -56,6 +56,7 @@ public class AuthenticationController {
   private final LoginHistoryRepository loginHistoryRepository;
   private final SecurityService securityService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.LoginResolver loginResolver;
 
   @PostMapping
   @ApiOperation(value = "Autentica o user e retorna o token")
@@ -64,7 +65,7 @@ public class AuthenticationController {
       HttpServletRequest request,
       HttpServletResponse response) throws Exception {
 
-    String email = authenticationRequest.getUsername();
+    String email = loginResolver.resolve(authenticationRequest.getUsername()); // usuário, e-mail, CPF ou telefone
     // Acesso do painel é separado: essas contas não entram pelo app
     if (email != null && (email.trim().toLowerCase().startsWith(PanelAuthController.PREFIX) || email.trim().toLowerCase().endsWith(PanelAuthController.DOMAIN))) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciais inválidas.", "message", "Credenciais inválidas."));
@@ -210,7 +211,9 @@ public class AuthenticationController {
 
   /** Procura a conta sem revelar (por erro 404) se ela existe. */
   private User findQuiet(String login) {
-    for (String l : new String[]{login, login.toLowerCase()}) {
+    String r = loginResolver.resolve(login);
+    if (r != null && r.toLowerCase().startsWith("painel:")) return null;
+    for (String l : new String[]{r, login, login.toLowerCase()}) {
       try { User u = userService.findByUsername(l); if (u != null) return u; } catch (Exception ignored) { }
     }
     return null;

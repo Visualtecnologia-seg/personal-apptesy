@@ -36,6 +36,7 @@ public class UserController {
   private final ProGrowthController proGrowthController;
   private final br.com.personalfighters.controller.auth.PhoneVerificationController phoneVerification;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.CodeStore codes;
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
@@ -60,19 +61,40 @@ public class UserController {
   @PostMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva um usuário novo.")
-  public Object save(@RequestBody User in, @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken) {
-    // Telefone confirmado por SMS é obrigatório no cadastro (o administrador pode cadastrar sem)
-    String phone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(in.getPhoneNumber());
+  public Object save(@RequestBody User in,
+                     @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken,
+                     @RequestHeader(value = "X-Email-Token", required = false) String emailToken,
+                     @RequestHeader(value = "X-Google-Token", required = false) String googleToken,
+                     @RequestHeader(value = "X-Terms-Version", required = false) String termsVersion) {
     boolean admin = br.com.personalfighters.util.Redactor.isAdmin();
+    String phone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(in.getPhoneNumber());
+    String email = br.com.personalfighters.controller.auth.EmailVerificationController.normalize(in.getEmail());
+    String googleSub = null;
     if (!admin) {
-      if (phone == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Digite um celular válido com DDD.");
-      if (!phone.equals(phoneVerification.phoneFromToken(phoneToken)))
-        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme o seu celular com o código enviado por SMS.");
+      // 1) termos de uso e privacidade aceitos
+      if (termsVersion == null || termsVersion.isBlank()) throw badReq("Aceite os Termos de Uso e a Política de Privacidade para continuar.");
+      // 2) maior de 18 anos
+      java.time.LocalDate b = in.getBirthday();
+      if (b == null) throw badReq("Informe sua data de nascimento.");
+      int age = java.time.Period.between(b, java.time.LocalDate.now()).getYears();
+      if (age < 18) throw badReq("O OPUS é só para maiores de 18 anos.");
+      if (age > 110) throw badReq("Confira a data de nascimento.");
+      // 3) celular confirmado por SMS e ainda sem outra conta
+      if (phone == null) throw badReq("Digite um celular válido com DDD.");
+      if (!phone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o seu celular com o código enviado por SMS.");
+      Integer samePhone = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE phone_verified = TRUE AND regexp_replace(COALESCE(phone_number, ''), '[^0-9]', '', 'g') = ?", Integer.class, phone);
+      if (samePhone != null && samePhone > 0) throw badReq("Este celular já tem uma conta. Entre com ele ou use \"Esqueci minha senha\".");
+      // 4) e-mail confirmado (por código ou pela conta Google)
+      if (email == null) throw badReq("Digite um e-mail válido.");
+      String g = codes.fromProof("google", googleToken);
+      if (g != null && g.startsWith(email + "|")) googleSub = g.substring(email.length() + 1);
+      else if (!email.equals(codes.fromProof("email", emailToken))) throw badReq("Confirme o seu e-mail com o código que enviamos.");
     }
     // Cadastro novo: copia SÓ os campos que a pessoa pode escolher.
     // (Antes, mandar o "id" de outra pessoa sobrescrevia a conta dela.)
     User user = new User();
-    user.setUsername(in.getUsername() == null ? null : in.getUsername().trim());
+    String uname = in.getUsername() == null ? "" : in.getUsername().trim();
+    user.setUsername(uname.isEmpty() ? newUsername(in.getName()) : uname);
     user.setPassword(in.getPassword());
     user.setName(in.getName());
     user.setSurname(in.getSurname());
@@ -80,12 +102,15 @@ public class UserController {
     user.setCpf(in.getCpf());
     user.setGender(in.getGender());
     user.setPhoneNumber(phone != null ? phone : in.getPhoneNumber());
-    user.setEmail(in.getEmail() == null ? null : in.getEmail().trim());
+    user.setEmail(email != null ? email : in.getEmail());
     user.setLatitude(in.getLatitude());
     user.setLongitude(in.getLongitude());
     user.setFullAddress(in.getFullAddress());
     User saved = userService.save(user);
-    if (!admin) jdbc.update("UPDATE user_ SET phone_verified = TRUE WHERE id = ?", saved.getId());
+    if (!admin) {
+      jdbc.update("UPDATE user_ SET phone_verified = TRUE, email_verified = TRUE, terms_version = ?, terms_accepted_at = NOW(), google_sub = ? WHERE id = ?",
+          termsVersion.length() > 20 ? termsVersion.substring(0, 20) : termsVersion, googleSub, saved.getId());
+    }
     return redactor.strip(saved, saved.getId()); // nunca devolve a senha (nem criptografada)
   }
 
@@ -131,7 +156,11 @@ public class UserController {
       if (user.getPhoneNumber() == null) user.setPhoneNumber(cur.getPhoneNumber());
       if (user.getFullAddress() == null) user.setFullAddress(cur.getFullAddress());
     }
+    String oldEmail = br.com.personalfighters.util.Redactor.isAdmin() ? null : me().getEmail();
     User saved = userService.update(user);
+    // trocou o e-mail: precisa confirmar de novo
+    if (oldEmail != null && saved.getEmail() != null && !oldEmail.equalsIgnoreCase(saved.getEmail()))
+      jdbc.update("UPDATE user_ SET email_verified = FALSE WHERE id = ?", saved.getId());
     return redactor.strip(saved, saved.getId());
   }
 
@@ -169,6 +198,26 @@ public class UserController {
   public Object setUserToAdmin(@RequestBody User user) {
     User saved = userService.update(user);
     return redactor.strip(saved, saved.getId());
+  }
+
+  private static org.springframework.web.server.ResponseStatusException badReq(String m) {
+    return new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, m);
+  }
+
+  /** "Maria da Silva" → "maria.silva4821" (a pessoa entra com CPF, e-mail ou telefone; o usuário é só um apelido interno). */
+  private String newUsername(String name) {
+    String base = java.text.Normalizer.normalize(name == null ? "" : name, java.text.Normalizer.Form.NFD)
+        .replaceAll("\\p{M}", "").toLowerCase().replaceAll("[^a-z ]", " ").trim();
+    String[] p = base.isEmpty() ? new String[]{"opus"} : base.split("\\s+");
+    String b = p.length > 1 ? p[0] + "." + p[p.length - 1] : p[0];
+    if (b.length() > 24) b = b.substring(0, 24);
+    java.security.SecureRandom r = new java.security.SecureRandom();
+    for (int i = 0; i < 20; i++) {
+      String u = b + (1000 + r.nextInt(9000));
+      Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE username = ?", Integer.class, u);
+      if (n != null && n == 0) return u;
+    }
+    return b + System.currentTimeMillis();
   }
 
   @PutMapping("/{id}/request-verification")
