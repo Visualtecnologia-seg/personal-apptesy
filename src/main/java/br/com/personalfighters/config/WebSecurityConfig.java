@@ -32,12 +32,11 @@ import java.util.Collections;
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
   private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status"};
-  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
+  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/auth/reset-password", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
   private static final String[] WHITELIST = {
       // Documentação da API (swagger) e /actuator saíram daqui: agora só administrador.
       "/actuator/health",
 
-      "/auth/check/*",
 
       // -- App Cliente web (SPA estático)
       "/app",
@@ -120,7 +119,9 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(Collections.singletonList("*"));
+    // Só o próprio servidor (painel) e testes locais podem chamar a API pelo navegador.
+    // Os apps de celular não usam CORS, então continuam funcionando normalmente.
+    configuration.setAllowedOriginPatterns(Arrays.asList("https://opus-backend-o8kw.onrender.com", "http://localhost:*", "http://127.0.0.1:*"));
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
     configuration.setExposedHeaders(Collections.singletonList("x-auth-token"));

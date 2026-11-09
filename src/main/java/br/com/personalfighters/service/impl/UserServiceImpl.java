@@ -108,9 +108,8 @@ public class UserServiceImpl implements UserService {
     if (user.getName() == null || user.getName().isBlank()) {
       throw new RuntimeException("Nome é obrigatório para o cadastro");
     }
-    if (user.getPassword() == null || user.getPassword().length() < 6) {
-      throw new RuntimeException("A senha deve ter no mínimo 6 caracteres");
-    }
+    String invalidPassword = br.com.personalfighters.util.PasswordRules.check(user.getPassword());
+    if (invalidPassword != null) throw new br.com.personalfighters.service.impl.exceptions.DataIntegrityException(invalidPassword);
     if (userRepository.existsByUsername(user.getUsername())) {
       throw new RuntimeException("Este nome de usuário já está em uso. Escolha outro.");
     }

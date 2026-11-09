@@ -47,6 +47,35 @@ public class OrderController {
     if (!admin() && !is(o.getCustomer(), me().getId())) throw denied();
     return o;
   }
+  /**
+   * Pedido novo vindo do app: copia SÓ o que o cliente escolhe (quem, quando, onde, quantas horas).
+   * Situação, valores, pagamento, código, disputa etc. nunca vêm do app — antes dava para criar
+   * pedido "já pago", com preço inventado, ou sobrescrever o pedido de outra pessoa pelo id.
+   */
+  private Order cleanNewOrder(Order in) {
+    Order o = new Order();
+    o.setCustomer(me());
+    if (in.getProfessional() != null && in.getProfessional().getId() != null) {
+      br.com.personalfighters.entity.User p = new br.com.personalfighters.entity.User();
+      p.setId(in.getProfessional().getId());
+      o.setProfessional(p);
+    }
+    if (in.getProduct() != null && in.getProduct().getId() != null) {
+      o.setProduct(in.getProduct()); // o servidor recarrega o produto pelo id (nenhum outro campo vale)
+    }
+    o.setDate(in.getDate());
+    o.setStartTime(in.getStartTime());
+    o.setEndTime(in.getEndTime());
+    if (in.getHours() != null) o.setHours(Math.max(1, Math.min(12, in.getHours())));
+    if (in.getNumberOfCustomers() != null) o.setNumberOfCustomers(Math.max(1, Math.min(20, in.getNumberOfCustomers())));
+    String addr = in.getServiceAddress();
+    o.setServiceAddress(addr == null ? null : (addr.length() > 300 ? addr.substring(0, 300) : addr));
+    o.setGender(in.getGender());
+    o.setUrgent(Boolean.TRUE.equals(in.getUrgent()));
+    o.setStatus(Status.OPEN);
+    return o;
+  }
+
   private Order proOf(UUID id, Long proId) {
     self(proId);
     Order o = orderService.findById(id);
@@ -78,7 +107,7 @@ public class OrderController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Salva uma nova order")
   public Map<String, Object> save(@RequestBody Order order, @RequestParam(value = "mode", required = false) String mode) {
-    if (!admin()) order.setCustomer(me()); // o pedido é sempre de quem está logado
+    if (!admin()) order = cleanNewOrder(order); // só os campos que o cliente pode escolher
     if (order.getProfessional() != null && order.getProfessional().getId() != null && order.getCustomer() != null && order.getCustomer().getId() != null) {
       Long blocked = jdbc.queryForObject("SELECT COUNT(*) FROM pro_blocked_client_ WHERE professional_id = ? AND client_id = ?", Long.class,
           order.getProfessional().getId(), order.getCustomer().getId());
@@ -179,7 +208,27 @@ public class OrderController {
                              @RequestParam double lng,
                              @RequestParam(defaultValue = "20") double radiusKm,
                              @RequestParam(required = false, defaultValue = "") String specialties) {
-    return redactor.strip(orderService.nearbyOrders(lat, lng, radiusKm, specialties), me().getId());
+    var u = me();
+    // Só profissional vê chamados abertos por perto (antes qualquer conta via nome e endereço de pedidos alheios)
+    // Só profissional com documentos aprovados vê chamados abertos por perto
+    if (!admin() && (u.getProfessional() == null || !Boolean.TRUE.equals(u.getVerified()))) throw denied();
+    java.util.List<Order> list = new java.util.ArrayList<>();
+    for (Order o : orderService.nearbyOrders(lat, lng, Math.max(1, Math.min(radiusKm, 50)), specialties)) {
+      // chamados dirigidos a outro profissional não aparecem
+      if (admin() || o.getProfessional() == null || java.util.Objects.equals(o.getProfessional().getId(), u.getId())) list.add(o);
+    }
+    Object tree = redactor.strip(list, u.getId());
+    // Endereço completo só depois de aceitar: aqui fica só o bairro/cidade (fim do endereço)
+    if (!admin() && tree instanceof com.fasterxml.jackson.databind.node.ArrayNode) {
+      for (com.fasterxml.jackson.databind.JsonNode n : (com.fasterxml.jackson.databind.node.ArrayNode) tree) {
+        if (n instanceof com.fasterxml.jackson.databind.node.ObjectNode && n.hasNonNull("serviceAddress")) {
+          String[] parts = n.get("serviceAddress").asText().split(",");
+          String area = parts.length >= 2 ? (parts[parts.length - 2].trim() + ", " + parts[parts.length - 1].trim()) : "Endereço liberado após aceitar";
+          ((com.fasterxml.jackson.databind.node.ObjectNode) n).put("serviceAddress", area.replaceAll("\\d", "").trim());
+        }
+      }
+    }
+    return tree;
   }
 
   @PostMapping("/{orderId}/pix")

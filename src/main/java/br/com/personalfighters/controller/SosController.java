@@ -112,7 +112,7 @@ public class SosController {
     if (n == null || n == 0) return bad("SOS não encontrado.");
     try {
       String raw = Objects.toString(body.get("audio"), "");
-      String type = Objects.toString(body.get("contentType"), "audio/mp4");
+      String type = br.com.personalfighters.util.MediaTypes.audioOr(Objects.toString(body.get("contentType"), ""), "audio/mp4");
       int comma = raw.indexOf(',');
       if (raw.startsWith("data:") && comma > 0) raw = raw.substring(comma + 1);
       byte[] data = Base64.getMimeDecoder().decode(raw);

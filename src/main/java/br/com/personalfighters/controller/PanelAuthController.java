@@ -235,6 +235,8 @@ public class PanelAuthController implements ApplicationRunner {
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   @Transactional
   public ResponseEntity<?> disableTwoFactor(@RequestBody Map<String, Object> b) {
+    // A verificação em duas etapas é obrigatória no painel: não dá mais para desligar.
+    if (b != null) return bad("A verificação em duas etapas é obrigatória e não pode ser desligada. Se perdeu o celular, use um código de emergência ou peça para outro administrador zerar.");
     User me = userService.findAuthUser();
     if (!passwordEncoder.matches(Objects.toString(b.get("password"), ""), me.getPassword())) return bad("A senha está errada.");
     if (!checkCode(me.getId(), Objects.toString(b.get("code"), ""), true)) return bad("Código incorreto.");

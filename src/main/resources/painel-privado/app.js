@@ -265,8 +265,8 @@ async function render2fa(){
   box.innerHTML = st.enabled
     ? `<div class="card" style="background:#ECFDF5;border:1px solid #A7F3D0"><h2 style="font-size:16px">🔒 Verificação em duas etapas ligada</h2><div class="muted" style="margin:6px 0 10px">Para entrar no painel é preciso a senha e o código do seu celular. Códigos de emergência restantes: <b>${st.recoveryLeft}</b>.</div>
        <div class="row" style="gap:8px;flex-wrap:wrap"><input id="tfaCode" inputmode="numeric" placeholder="Código atual" style="max-width:150px"><button class="ghost" onclick="tfaNewCodes()">Gerar novos códigos de emergência</button></div>
-       <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Desligar</summary><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="tfaPw" type="password" placeholder="Sua senha" style="max-width:180px"><button class="danger" onclick="tfaDisable()">Desligar 2 etapas</button></div></details><div id="tfaMsg"></div></div>`
-    : `<div class="card" style="background:#FFFBEB;border:1px solid #FDE68A"><h2 style="font-size:16px">⚠️ Proteja o painel: ligue a verificação em duas etapas</h2><div class="muted" style="margin:6px 0 10px">Mesmo que alguém descubra a sua senha, não entra sem o código do seu celular. Leva 1 minuto.</div><button class="primary" onclick="tfaStart()">Ligar agora</button><div id="tfaMsg"></div></div>`;
+       <div id="tfaMsg"></div></div>`
+    : `<div class="card" style="background:#FFFBEB;border:1px solid #FDE68A"><h2 style="font-size:16px">⚠️ Ligue a verificação em duas etapas (obrigatória)</h2><div class="muted" style="margin:6px 0 10px">Mesmo que alguém descubra a sua senha, não entra sem o código do seu celular. Leva 1 minuto.</div><button class="primary" onclick="tfaStart()">Ligar agora</button><div id="tfaMsg"></div></div>`;
 }
 async function tfaStart(){
   const box=$('tfaCard'); let r; try{ r=await api('/admin/me/2fa/setup',{method:'POST'}); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; return; }
@@ -283,7 +283,7 @@ function showRecovery(codes, title){
   $('tfaCard').innerHTML=`<div class="card" style="background:#EFF6FF;border:1px solid #BFDBFE;display:flex;flex-direction:column;gap:10px"><h2 style="font-size:16px">${title}</h2>
     <div><b>Guarde estes códigos de emergência</b> num lugar seguro (anote em papel ou tire um print e guarde fora do celular). Cada um funciona <b>uma vez só</b>, se você perder o celular.</div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-family:monospace;font-size:17px;background:#fff;padding:12px;border-radius:10px">${codes.map(c=>'<span>'+esc(c)+'</span>').join('')}</div>
-    <div class="muted">Eles não vão aparecer de novo.</div><button class="ghost" onclick="render2fa()">Já guardei</button></div>`;
+    <div class="muted">Eles não vão aparecer de novo.</div><button class="ghost" onclick="forced2fa?location.reload():render2fa()">Já guardei</button></div>`;
 }
 async function tfaEnable(){ try{ const r=await api('/admin/me/2fa/enable',{method:'POST',body:JSON.stringify({code:$('tfaFirst').value})}); showRecovery(r.recoveryCodes,'🔒 Pronto! Verificação em duas etapas ligada'); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
 async function tfaNewCodes(){ try{ const r=await api('/admin/me/2fa/recovery',{method:'POST',body:JSON.stringify({code:$('tfaCode').value})}); showRecovery(r.recoveryCodes,'Novos códigos de emergência'); }catch(e){ $('tfaMsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
@@ -298,7 +298,13 @@ async function removeAdmin(id){ if(!confirm('Tirar o acesso desta pessoa ao pain
 function adminName(){ return 'Administrador'; }
 document.addEventListener('keydown', e => { if (e.key==='Enter' && e.target && e.target.id==='gsearch') { const q=e.target.value.trim(); if(!q) return; cur='pedidos'; location.hash='pedidos'; navHtml(); VIEWS.pedidos('ALL', q); } });
 async function whoAmI(){ try{ const m=await api('/admin/me'); if(m.matricula){ $('meNm').textContent='Matrícula '+m.matricula; $('meAv').textContent=m.matricula; } }catch(e){} }
-function start(){  setTimeout(nag2fa, 1500); whoAmI(); $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
+// A verificação em duas etapas é obrigatória: sem ela o painel só mostra a tela para ligar.
+let forced2fa = false;
+function force2fa(){ forced2fa = true; $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); $('nav').innerHTML='';
+  V(`<div style="max-width:620px;margin:20px auto;display:flex;flex-direction:column;gap:12px">${head('Falta um passo para entrar','Para proteger os dados dos clientes, todo acesso ao painel precisa da verificação em duas etapas (Google Authenticator).')}<div id="tfaCard"></div></div>`);
+  render2fa(); }
+async function start(){ try{ const st=await api('/admin/me/2fa'); if(!st.enabled){ force2fa(); return; } }catch(e){ if(e && e.need2fa){ force2fa(); return; } }
+  setTimeout(nag2fa, 1500); whoAmI(); $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); const h=(location.hash||'').slice(1); cur = VIEWS[h] ? h : 'inicio'; go(cur); refreshCounts(); setInterval(refreshCounts, 20000); }
 window.__boot = () => { if (token) start(); else { $('loginBox').classList.remove('hidden'); checkSetup(); } };
 
 ;

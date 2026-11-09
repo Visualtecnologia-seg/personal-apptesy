@@ -31,7 +31,8 @@ public class AuthenticationService {
   static final String HEADER_STRING = "Authorization";
   /** Chave de assinatura dos tokens: vem da variável JWT_SECRET do servidor (nunca fica no código). */
   private static byte[] KEY;
-  static long EXPIRATION = 1000L * 60 * 60 * 24 * 360; /* milliseconds * seconds * minutes * hours * days = 360 days */
+  /** Login do app vale 30 dias (antes 360). O app entra de novo com a digital / "lembrar login". */
+  static long EXPIRATION = 1000L * 60 * 60 * 24 * 30;
   private final UserDetailsService userDetailsService;
   private final JdbcTemplate jdbc;
   /** Versão dos tokens de cada pessoa: "não fui eu" aumenta a versão e derruba todos os acessos antigos. */
@@ -89,7 +90,7 @@ public class AuthenticationService {
   public String addAuthentication(User user) {
     long expiration = EXPIRATION;
     if (isAdmin(user)) {
-      expiration = 1000L * 60 * 60 * 24 * 30; /* 30 days */
+      expiration = 1000L * 60 * 60 * 12; /* painel: 12 horas */
     }
     Map<String, Object> claims = generateUserClaims(user);
     claims.put("tv", tokenVersion(user.getId()));
@@ -133,6 +134,8 @@ public class AuthenticationService {
       if (username == null) return null;
       UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
+      // Conta bloqueada ou desativada perde o acesso na hora (antes o login antigo continuava valendo)
+      if (userDetails != null && !userDetails.isEnabled()) return null;
       if (userDetails != null) {
         // Token de antes do "não fui eu" / "sair de todos os aparelhos": não vale mais
         if (userDetails instanceof User) {

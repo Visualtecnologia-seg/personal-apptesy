@@ -34,7 +34,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ErrorDetails err = new ErrorDetails(
         HttpStatus.INTERNAL_SERVER_ERROR,
         LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),
-        exception.getMessage(),
+        safe(exception),
         request.getRequestURI()
     );
     return ResponseEntity.status(err.getStatus()).body(err);
@@ -88,10 +88,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<ErrorDetails> handleGlobalException(Exception exception, HttpServletRequest request) {
     ErrorDetails err = new ErrorDetails(
         HttpStatus.INTERNAL_SERVER_ERROR, LocalDateTime.now(ZoneId.of("America/Sao_Paulo")),
-        exception.getMessage(),
+        safe(exception),
         request.getRequestURI()
     );
-
     return ResponseEntity.status(err.getStatus()).body(err);
+  }
+
+  private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final java.util.regex.Pattern TECH = java.util.regex.Pattern.compile(
+      "(?i)(exception|java\\.|org\\.|sql|jdbc|hibernate|constraint|column|relation|null|stack|could not|failed to|unable to|http/|\\{|\\}|\\bat\\s)");
+
+  /** Mostra só mensagens escritas para o usuário. Detalhes técnicos ficam no log do servidor. */
+  static String safe(Exception e) {
+    String m = e.getMessage();
+    boolean ours = e.getClass() == RuntimeException.class || e instanceof IllegalArgumentException || e instanceof IllegalStateException
+        || e instanceof PaymentException;
+    if (ours && m != null && !m.isBlank() && m.length() <= 200 && !TECH.matcher(m).find()) return m;
+    LOG.warn("Erro interno: {}", e.toString());
+    return "Algo deu errado. Tente de novo em instantes.";
   }
 }

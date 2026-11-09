@@ -189,7 +189,7 @@ public class ProGrowthController {
       if (data.length > 5 * 1024 * 1024) return bad("Foto grande demais.");
     }
     jdbc.update("INSERT INTO pro_certificate_ (id, professional_id, title, number, photo, photo_type, status, created_at) VALUES (?,?,?,?,?,?,'PENDING',?)",
-        UUID.randomUUID(), me.getId(), title.length() > 140 ? title.substring(0, 140) : title, Objects.toString(b.get("number"), null), data, type == null ? "image/jpeg" : type, now());
+        UUID.randomUUID(), me.getId(), title.length() > 140 ? title.substring(0, 140) : title, Objects.toString(b.get("number"), null), data, br.com.personalfighters.util.MediaTypes.imageOr(type, "image/jpeg"), now());
     return ResponseEntity.ok(myCerts());
   }
 

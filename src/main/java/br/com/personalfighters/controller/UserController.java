@@ -85,7 +85,9 @@ public class UserController {
       else user.getProfessional().setId(cur.getProfessional().getId());
       if (user.getCustomer() == null || cur.getCustomer() == null) user.setCustomer(cur.getCustomer());
       else user.getCustomer().setId(cur.getCustomer().getId());
-      if (user.getAvatarUrl() == null) user.setAvatarUrl(cur.getAvatarUrl());
+      // Foto só pode apontar para o próprio servidor (enviada pela tela de foto); nada de link externo
+      String av = user.getAvatarUrl();
+      if (av == null || !(av.isEmpty() || av.startsWith("/users/" + cur.getId() + "/avatar"))) user.setAvatarUrl(cur.getAvatarUrl());
       if (user.getPixKey() == null) { user.setPixKey(cur.getPixKey()); user.setPixKeyType(cur.getPixKeyType()); }
       if (user.getLatitude() == null) { user.setLatitude(cur.getLatitude()); user.setLongitude(cur.getLongitude()); }
       if (user.getPhoneNumber() == null) user.setPhoneNumber(cur.getPhoneNumber());

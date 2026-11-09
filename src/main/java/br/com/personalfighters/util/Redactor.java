@@ -25,7 +25,8 @@ public class Redactor {
   private static final Set<String> PRIVATE = new HashSet<>(Arrays.asList(
       "cpf", "pixKey", "pixKeyType", "phoneNumber", "phone", "email", "username", "password",
       "asaasCustomerId", "birthday", "documentUrl", "docFrontUrl", "docBackUrl", "docSelfieUrl",
-      "verificationReason", "cardNumber", "creditCards", "bankData"));
+      "verificationReason", "cardNumber", "creditCards", "bankData",
+      "fullAddress", "address", "addresses", "referralCode", "lastLogin", "loginHistory"));
 
   private final ObjectMapper mapper;
 
@@ -51,6 +52,11 @@ public class Redactor {
     boolean me = person && viewerId != null && o.has("id") && o.get("id").canConvertToLong() && o.get("id").asLong() == viewerId;
     if (person && !me && !all) {
       for (String k : PRIVATE) o.remove(k);
+      // Localização de outra pessoa só aproximada (~1 km): serve para distância, não mostra a casa.
+      for (String k : new String[]{"latitude", "longitude"}) {
+        JsonNode v = o.get(k);
+        if (v != null && v.isNumber()) o.put(k, Math.round(v.asDouble() * 100.0) / 100.0);
+      }
     }
     if (person) o.remove("password"); // nem a própria senha (mesmo criptografada) sai do servidor
     Iterator<String> it = o.fieldNames();

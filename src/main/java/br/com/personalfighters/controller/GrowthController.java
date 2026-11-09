@@ -242,11 +242,30 @@ public class GrowthController {
 
   // ───────────── Indique e ganhe ─────────────
 
+  private static final String CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  /** Código de indicação próprio (6 letras/números). Antes o código era o e-mail da pessoa. */
+  private String referralCode(Long userId) {
+    String cur = jdbc.query("SELECT referral_code FROM user_ WHERE id = ?", rs -> rs.next() ? rs.getString(1) : null, userId);
+    if (cur != null && !cur.isBlank()) return cur;
+    java.security.SecureRandom r = new java.security.SecureRandom();
+    for (int i = 0; i < 20; i++) {
+      StringBuilder b = new StringBuilder();
+      for (int k = 0; k < 6; k++) b.append(CODE_CHARS.charAt(r.nextInt(CODE_CHARS.length())));
+      try {
+        int n = jdbc.update("UPDATE user_ SET referral_code = ? WHERE id = ? AND referral_code IS NULL", b.toString(), userId);
+        if (n > 0) return b.toString();
+        return jdbc.queryForObject("SELECT referral_code FROM user_ WHERE id = ?", String.class, userId);
+      } catch (org.springframework.dao.DataIntegrityViolationException dup) { /* código repetido: tenta outro */ }
+    }
+    throw new IllegalStateException("Não foi possível gerar o código de indicação.");
+  }
+
   @GetMapping("/referral/me")
   public Map<String, Object> referral() {
     User me = userService.findAuthUser();
     Map<String, Object> out = new LinkedHashMap<>();
-    out.put("code", me.getUsername());
+    out.put("code", referralCode(me.getId()));
     out.put("points", settings.getInt(SettingsService.REFERRAL_POINTS));
     out.put("invited", jdbc.queryForObject("SELECT COUNT(*) FROM referral_ WHERE referrer_id = ?", Long.class, me.getId()));
     out.put("rewarded", jdbc.queryForObject("SELECT COUNT(*) FROM referral_ WHERE referrer_id = ? AND rewarded_at IS NOT NULL", Long.class, me.getId()));
@@ -260,8 +279,8 @@ public class GrowthController {
   public ResponseEntity<?> applyReferral(@RequestBody Map<String, Object> b) {
     User me = userService.findAuthUser();
     String code = Objects.toString(b.get("code"), "").trim();
-    User ref = userRepository.findByUsername(code);
-    if (ref == null) ref = userRepository.findByUsername(code.toLowerCase());
+    List<Long> refIds = jdbc.queryForList("SELECT id FROM user_ WHERE referral_code = ?", Long.class, code.toUpperCase());
+    User ref = refIds.isEmpty() ? null : userRepository.findById(refIds.get(0)).orElse(null);
     if (ref == null) return bad("Código não encontrado. Confira com quem te indicou.");
     if (ref.getId().equals(me.getId())) return bad("Você não pode usar o seu próprio código.");
     if (jdbc.queryForObject("SELECT COUNT(*) FROM referral_ WHERE referred_id = ?", Long.class, me.getId()) > 0) return bad("Você já usou um código de indicação.");
@@ -273,6 +292,7 @@ public class GrowthController {
   /** A cada 15 minutos: dá os pontos de indicação depois do primeiro serviço concluído do indicado. */
   @Scheduled(fixedDelay = 900_000, initialDelay = 120_000)
   public void rewardReferrals() {
+    if (asaasService.isTestMode()) return; // com pagamento simulado, ninguém ganha pontos de indicação (evita fraude)
     try {
       int pts = settings.getInt(SettingsService.REFERRAL_POINTS);
       for (Map<String, Object> r : jdbc.queryForList("SELECT r.referred_id, r.referrer_id FROM referral_ r WHERE r.rewarded_at IS NULL AND EXISTS " +

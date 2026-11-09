@@ -55,6 +55,14 @@ public class EmailServiceImpl implements EmailService {
             "Atenciosamente,\nEquipa Profissional Opus");
   }
 
+  @Override
+  public void sendResetCode(String email, String name, String code) {
+    send(email, "Código para criar uma nova senha — OPUS",
+        "Olá " + name + ",\n\nSeu código para criar uma nova senha é:\n\n       " + code +
+            "\n\nEle vale por 15 minutos. Sua senha atual continua valendo até você criar a nova.\n" +
+            "Se não foi você que pediu, ignore este e-mail.\n\nEquipe OPUS");
+  }
+
   private void send(String to, String subject, String text) {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setTo(to);

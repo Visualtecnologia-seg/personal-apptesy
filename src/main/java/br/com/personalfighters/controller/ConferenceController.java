@@ -89,10 +89,12 @@ public class ConferenceController {
     if (o == null || !isCustomer(o, me)) return bad("Pedido não encontrado.");
     if (file == null || file.isEmpty()) return bad("Arquivo vazio.");
     if (file.getSize() > MAX_PROOF_BYTES) return bad("O vídeo ficou grande demais. Grave até 30 segundos.");
-    String type = Optional.ofNullable(file.getContentType()).orElse("application/octet-stream");
-    if (!type.startsWith("video/") && !type.startsWith("image/")) return bad("Envie um vídeo ou uma foto.");
+    String type = Optional.ofNullable(file.getContentType()).orElse("");
+    if (!br.com.personalfighters.util.MediaTypes.isVideo(type) && !br.com.personalfighters.util.MediaTypes.isImage(type)) return bad("Envie um vídeo ou uma foto.");
+    type = br.com.personalfighters.util.MediaTypes.isVideo(type) ? br.com.personalfighters.util.MediaTypes.videoOr(type, "video/mp4") : br.com.personalfighters.util.MediaTypes.imageOr(type, "image/jpeg");
     Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM order_photo_ WHERE order_id = ? AND kind = ?", Integer.class, id, kind);
     if (count != null && count >= 6) return bad("Você já enviou provas suficientes para este pedido.");
+    if (br.com.personalfighters.util.StorageGuard.dbFull(jdbc)) return bad("O envio de arquivos está pausado no momento. Tente mais tarde.");
     try {
       UUID pid = UUID.randomUUID();
       jdbc.update("INSERT INTO order_photo_ (id, order_id, kind, content_type, data, created_at, size_bytes) VALUES (?, ?, ?, ?, ?, ?, ?)",

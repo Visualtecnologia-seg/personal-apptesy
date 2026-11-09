@@ -149,8 +149,9 @@ public class SocialController {
     if (seconds != null && seconds > 305) return bad("O vídeo pode ter no máximo 5 minutos.");
     if (file == null || file.isEmpty()) return bad("Vídeo vazio.");
     if (file.getSize() > MAX_VIDEO_BYTES) return bad("O vídeo ficou grande demais (máximo 60 MB). Grave em qualidade menor ou mais curto.");
-    String type = Optional.ofNullable(file.getContentType()).orElse("video/mp4");
-    if (!type.startsWith("video/")) type = "video/mp4";
+    String quota = br.com.personalfighters.util.StorageGuard.videoQuota(jdbc, me.getId(), file.getSize());
+    if (quota != null) return bad(quota);
+    String type = br.com.personalfighters.util.MediaTypes.videoOr(file.getContentType(), "video/mp4");
     try {
       jdbc.update("DELETE FROM post_video_ WHERE post_id = ?", postId);
       UUID vid = UUID.randomUUID();

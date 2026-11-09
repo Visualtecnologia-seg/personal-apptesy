@@ -194,10 +194,12 @@ public class MoreController {
     Order o = orderRepository.findById(orderId).orElse(null);
     if (o == null || !(isPro(o, me) || isCustomer(o, me))) return bad("Pedido não encontrado.");
     if (file == null || file.isEmpty() || file.getSize() > 8L * 1024 * 1024) return bad("Áudio vazio ou grande demais (até 2 minutos).");
+    String quota = br.com.personalfighters.util.StorageGuard.audioQuota(jdbc, orderId, me.getId());
+    if (quota != null) return bad(quota);
     try {
       UUID id = UUID.randomUUID();
       jdbc.update("INSERT INTO chat_audio_ (id, order_id, sender_id, content_type, data, seconds, created_at) VALUES (?,?,?,?,?,?,?)",
-          id, orderId, me.getId(), Optional.ofNullable(file.getContentType()).orElse("audio/m4a"), file.getBytes(), seconds, now());
+          id, orderId, me.getId(), br.com.personalfighters.util.MediaTypes.audioOr(file.getContentType(), "audio/m4a"), file.getBytes(), seconds, now());
       boolean pro = isPro(o, me);
       Message m = messageRepository.save(Message.builder().orderId(orderId).senderId(me.getId()).senderName(me.getName())
           .senderRole(pro ? "PROFESSIONAL" : "CUSTOMER").messageType("AUDIO").text("🎤 Áudio" + (seconds != null ? " (" + seconds + "s)" : ""))
