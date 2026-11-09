@@ -25,6 +25,7 @@ public class WalletController {
   private final WalletService walletService;
   private final JdbcTemplate jdbc;
   private final br.com.personalfighters.service.SecurityService securityService;
+  private final br.com.personalfighters.service.PayoutService payoutService;
 
   @GetMapping("/wallet")
   public ResponseEntity<?> wallet() {
@@ -72,7 +73,9 @@ public class WalletController {
     String cpfD = me.getCpf() == null ? "" : me.getCpf().replaceAll("\\D", "");
     pix.put("cpf", cpfD.length() == 11 ? "***." + cpfD.substring(3, 6) + "." + cpfD.substring(6, 9) + "-**" : null);
     pix.put("isCpf", cpfD.length() == 11 && me.getPixKey() != null && me.getPixKey().replaceAll("\\D", "").equals(cpfD));
+    pix.put("ok", payoutService.pixOk(me));
     out.put("pix", pix);
+    out.put("payout", payoutService.summary(me));
     java.time.LocalDateTime hold = securityService.withdrawHoldUntil(me.getId());
     out.put("withdrawHoldUntil", hold == null ? null : hold.toString());
     return ResponseEntity.ok(out);
@@ -88,7 +91,7 @@ public class WalletController {
       return bad("Valor inválido.");
     }
     try {
-      String status = walletService.withdraw(me, amount);
+      String status = walletService.withdraw(me, amount, Objects.toString(body.get("to"), "PIX"));
       if (!"DONE".equals(status)) return bad("O banco não aceitou o saque agora. O valor continua na sua carteira. Tente de novo mais tarde.");
       return ResponseEntity.ok(Map.of("status", status, "available", walletService.available(me.getId())));
     } catch (IllegalArgumentException e) {

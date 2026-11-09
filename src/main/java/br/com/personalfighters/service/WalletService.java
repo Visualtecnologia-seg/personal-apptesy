@@ -28,6 +28,7 @@ public class WalletService {
   private final TransactionRepository transactionRepository;
   private final AsaasService asaasService;
   private final SecurityService securityService;
+  private final PayoutService payoutService;
 
   public static LocalDateTime now() { return LocalDateTime.now(ZoneId.of("America/Sao_Paulo")); }
 
@@ -74,26 +75,52 @@ public class WalletService {
     return (in == null ? BigDecimal.ZERO : in).subtract(out == null ? BigDecimal.ZERO : out);
   }
 
-  /** Saque no PIX do próprio profissional. Retorna o status final (DONE ou FAILED). */
-  public synchronized String withdraw(User pro, BigDecimal amount) {
+  public String withdraw(User pro, BigDecimal amount) { return withdraw(pro, amount, "PIX"); }
+
+  /**
+   * Saque do próprio profissional: na chave PIX (CPF ou CNPJ conferido) ou na conta bancária no CPF/CNPJ dele.
+   * Retorna o status final (DONE ou FAILED).
+   */
+  public synchronized String withdraw(User pro, BigDecimal amount, String to) {
     if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) throw new IllegalArgumentException("O saque mínimo é R$ 1,00.");
-    if (pro.getPixKey() == null || pro.getPixKey().isBlank()) throw new IllegalArgumentException("Cadastre a sua chave PIX antes de sacar.");
-    String cpfDigits = pro.getCpf() == null ? "" : pro.getCpf().replaceAll("\\D", "");
-    if (cpfDigits.length() != 11 || !pro.getPixKey().replaceAll("\\D", "").equals(cpfDigits))
-      throw new IllegalArgumentException("O saque só vai para a chave PIX do seu CPF. Toque em \"Usar meu CPF como chave\" e tente de novo.");
+    boolean toBank = "BANK".equalsIgnoreCase(to);
+    // PIX_CPF / PIX_CNPJ: a chave é o próprio documento (sem trocar a chave guardada)
+    String docKey = null;
+    if ("PIX_CPF".equalsIgnoreCase(to)) {
+      docKey = PayoutService.cpfOf(pro);
+      if (docKey == null) throw new IllegalArgumentException("Não encontramos o CPF da sua conta. Fale com o suporte.");
+    } else if ("PIX_CNPJ".equalsIgnoreCase(to)) {
+      docKey = payoutService.verifiedCnpj(pro.getId());
+      if (docKey == null) throw new IllegalArgumentException("Adicione e confirme o seu CNPJ antes.");
+    }
+    java.util.Map<String, Object> bank = null;
+    if (docKey != null) {
+      // nada a conferir: o documento é da própria conta
+    } else if (toBank) {
+      bank = payoutService.bank(pro.getId());
+      if (bank == null) throw new IllegalArgumentException("Cadastre a sua conta bancária antes de sacar.");
+      if (!payoutService.bankOk(pro, bank)) throw new IllegalArgumentException("A conta bancária precisa estar no seu CPF ou no seu CNPJ confirmado. Cadastre a conta de novo.");
+    } else {
+      if (pro.getPixKey() == null || pro.getPixKey().isBlank()) throw new IllegalArgumentException("Cadastre a sua chave PIX antes de sacar.");
+      if (!payoutService.pixOk(pro))
+        throw new IllegalArgumentException("O saque só vai para a chave PIX do seu CPF ou do seu CNPJ confirmado. Troque a chave e tente de novo.");
+    }
     java.time.LocalDateTime hold = securityService.withdrawHoldUntil(pro.getId());
     if (hold != null) {
       securityService.event(pro.getId(), "WITHDRAW_HELD", "Tentou sacar R$ " + amount + " durante a espera de segurança");
-      throw new IllegalArgumentException("Por segurança, como a chave PIX foi trocada há pouco, o saque fica liberado em " +
+      throw new IllegalArgumentException("Por segurança, como os dados de recebimento ou o celular foram trocados há pouco, o saque fica liberado em " +
           hold.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")) + ". O seu dinheiro continua guardado.");
     }
     if (amount.compareTo(available(pro.getId())) > 0) throw new IllegalArgumentException("Saldo insuficiente.");
     UUID id = UUID.randomUUID();
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', 'Saque PIX', ?, ?)",
-        id, pro.getId(), amount, mask(pro.getPixKey()), Timestamp.valueOf(now()));
+    String dest = docKey != null ? mask(docKey) : toBank ? bank.get("bank_name") + " " + mask(java.util.Objects.toString(bank.get("account"), "")) : mask(pro.getPixKey());
+    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', ?, ?, ?)",
+        id, pro.getId(), amount, toBank ? "Saque na conta" : "Saque PIX", dest, Timestamp.valueOf(now()));
     boolean ok;
     try {
-      ok = asaasService.isTestMode() || asaasService.transferToProfessional(pro, amount, "Saque OPUS");
+      ok = docKey != null ? asaasService.transferPixToOwnDoc(pro, docKey, amount, "Saque OPUS")
+          : toBank ? asaasService.transferToBank(pro, bank, amount, "Saque OPUS")
+          : asaasService.isTestMode() || asaasService.transferToProfessional(pro, amount, "Saque OPUS");
     } catch (Exception e) {
       log.error("Saque do profissional {} falhou: {}", pro.getId(), e.getMessage());
       ok = false;

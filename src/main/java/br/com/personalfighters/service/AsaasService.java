@@ -29,4 +29,10 @@ public interface AsaasService {
   /** Transferência PIX avulsa para o profissional (orçamento extra, taxa de cancelamento). */
   boolean transferToProfessional(br.com.personalfighters.entity.User professional, java.math.BigDecimal value, String description);
 
+  /** PIX para o CPF ou o CNPJ conferido do próprio profissional (a chave é o documento). */
+  boolean transferPixToOwnDoc(br.com.personalfighters.entity.User professional, String docDigits, java.math.BigDecimal value, String description);
+
+  /** Transferência para a conta bancária (agência e conta) do próprio profissional. */
+  boolean transferToBank(br.com.personalfighters.entity.User professional, java.util.Map<String, Object> bank, java.math.BigDecimal value, String description);
+
 }

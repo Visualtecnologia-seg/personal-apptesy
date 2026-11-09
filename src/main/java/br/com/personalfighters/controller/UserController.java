@@ -38,6 +38,7 @@ public class UserController {
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
   private final br.com.personalfighters.service.CodeStore codes;
   private final br.com.personalfighters.service.SecurityService securityService;
+  private final br.com.personalfighters.service.PayoutService payoutService;
 
   @GetMapping
   @ResponseStatus(HttpStatus.OK)
@@ -167,12 +168,13 @@ public class UserController {
       if (av == null || !(av.isEmpty() || av.startsWith("/users/" + cur.getId() + "/avatar"))) user.setAvatarUrl(cur.getAvatarUrl());
       if (user.getPixKey() == null) { user.setPixKey(cur.getPixKey()); user.setPixKeyType(cur.getPixKeyType()); }
       else if (!user.getPixKey().equals(cur.getPixKey())) {
-        // Chave PIX só pode ser o CPF da própria conta: o banco confirma o titular, então CPF falso não recebe saque
-        String cpfDigits = cur.getCpf() == null ? "" : cur.getCpf().replaceAll("\\D", "");
-        if (cpfDigits.length() != 11 || !user.getPixKey().replaceAll("\\D", "").equals(cpfDigits))
-          throw badReq("A chave PIX precisa ser o seu CPF (o mesmo da conta).");
-        user.setPixKey(cpfDigits);
-        user.setPixKeyType("CPF");
+        // Chave PIX só pode ser o CPF da própria conta ou o CNPJ (MEI) dela já conferido: o banco confirma o titular
+        String keyDigits = user.getPixKey().replaceAll("\\D", "");
+        String docType = payoutService.ownDocType(cur, keyDigits);
+        if (docType == null)
+          throw badReq("A chave PIX precisa ser o seu CPF ou o CNPJ (MEI) confirmado da sua conta.");
+        user.setPixKey(keyDigits);
+        user.setPixKeyType(docType);
       }
       if (user.getLatitude() == null) { user.setLatitude(cur.getLatitude()); user.setLongitude(cur.getLongitude()); }
       if (user.getPhoneNumber() == null) user.setPhoneNumber(cur.getPhoneNumber());

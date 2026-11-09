@@ -78,7 +78,7 @@ public class SecurityService {
   /** Até quando o saque fica segurado (troca de chave PIX ou "não fui eu" nas últimas 24 h). */
   public LocalDateTime withdrawHoldUntil(Long userId) {
     Timestamp t = jdbc.query("SELECT GREATEST(COALESCE(u.pix_key_changed_at, 'epoch'::timestamp), " +
-            "COALESCE((SELECT MAX(created_at) FROM security_event_ e WHERE e.user_id = u.id AND e.kind IN ('NOT_ME', 'PHONE_CHANGED')), 'epoch'::timestamp)) FROM user_ u WHERE u.id = ?",
+            "COALESCE((SELECT MAX(created_at) FROM security_event_ e WHERE e.user_id = u.id AND e.kind IN ('NOT_ME', 'PHONE_CHANGED', 'CNPJ_CHANGED', 'BANK_CHANGED')), 'epoch'::timestamp)) FROM user_ u WHERE u.id = ?",
         rs -> rs.next() ? rs.getTimestamp(1) : null, userId);
     if (t == null) return null;
     LocalDateTime until = t.toLocalDateTime().plusHours(PIX_HOLD_HOURS);

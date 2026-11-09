@@ -41,6 +41,7 @@ public class AsaasServiceImpl implements AsaasService {
 
   private final TransactionRepository transactionRepository;
   private final UserRepository userRepository;
+  private final br.com.personalfighters.service.PayoutService payoutService;
 
   private WebClient buildClient() {
     return WebClient.builder()
@@ -176,9 +177,8 @@ public class AsaasServiceImpl implements AsaasService {
       return true;
     }
     if (professional.getPixKey() == null || professional.getPixKey().isBlank()) return false;
-    String cpfD = professional.getCpf() == null ? "" : professional.getCpf().replaceAll("\\D", "");
-    if (cpfD.length() != 11 || !professional.getPixKey().replaceAll("\\D", "").equals(cpfD)) {
-      log.warn("Transferência recusada: a chave PIX do profissional {} não é o CPF dele", professional.getId());
+    if (!payoutService.pixOk(professional)) {
+      log.warn("Transferência recusada: a chave PIX do profissional {} não é o CPF nem o CNPJ conferido dele", professional.getId());
       return false;
     }
     Map<String, Object> body = new HashMap<>();
@@ -191,6 +191,65 @@ public class AsaasServiceImpl implements AsaasService {
       return true;
     } catch (Exception e) {
       log.error("Erro ao transferir PIX avulso: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  @Override
+  public boolean transferPixToOwnDoc(User professional, String docDigits, BigDecimal value, String description) {
+    if (professional == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
+    String type = payoutService.ownDocType(professional, docDigits);
+    if (type == null) {
+      log.warn("Transferência recusada: o documento não é do profissional {}", professional.getId());
+      return false;
+    }
+    if (isTestMode()) {
+      log.info("Modo de teste: PIX de R$ {} para o {} do profissional {} apenas registrado", value, type, professional.getId());
+      return true;
+    }
+    Map<String, Object> body = new HashMap<>();
+    body.put("value", value.doubleValue());
+    body.put("pixAddressKey", br.com.personalfighters.service.PayoutService.digits(docDigits));
+    body.put("pixAddressKeyType", type);
+    body.put("description", description);
+    try {
+      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block();
+      return true;
+    } catch (Exception e) {
+      log.error("Erro ao transferir PIX: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  @Override
+  public boolean transferToBank(User professional, Map<String, Object> bank, BigDecimal value, String description) {
+    if (professional == null || bank == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
+    if (!payoutService.bankOk(professional, bank)) {
+      log.warn("Transferência recusada: a conta bancária do profissional {} não está no CPF nem no CNPJ dele", professional.getId());
+      return false;
+    }
+    if (isTestMode()) {
+      log.info("Modo de teste: transferência bancária de R$ {} para {} apenas registrada", value, professional.getId());
+      return true;
+    }
+    Map<String, Object> bankBody = new HashMap<>();
+    bankBody.put("bank", Map.of("code", bank.get("bank_code")));
+    bankBody.put("ownerName", bank.get("owner_name"));
+    bankBody.put("cpfCnpj", bank.get("owner_doc"));
+    bankBody.put("agency", bank.get("agency"));
+    bankBody.put("account", bank.get("account"));
+    bankBody.put("accountDigit", bank.get("account_digit"));
+    bankBody.put("bankAccountType", bank.get("account_type"));
+    Map<String, Object> body = new HashMap<>();
+    body.put("value", value.doubleValue());
+    body.put("bankAccount", bankBody);
+    body.put("operationType", "PIX");
+    body.put("description", description);
+    try {
+      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block();
+      return true;
+    } catch (Exception e) {
+      log.error("Erro ao transferir para conta bancária: {}", e.getMessage());
       return false;
     }
   }
@@ -363,6 +422,10 @@ public class AsaasServiceImpl implements AsaasService {
 
     if (pixKey == null || pixKey.isBlank()) {
       log.warn("Profissional {} não tem chave PIX cadastrada", professional.getId());
+      return;
+    }
+    if (!payoutService.pixOk(professional)) {
+      log.warn("Repasse recusado: a chave PIX do profissional {} não é o CPF nem o CNPJ conferido dele", professional.getId());
       return;
     }
 
