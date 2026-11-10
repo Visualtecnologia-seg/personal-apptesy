@@ -262,7 +262,7 @@ public class MoreController {
   public ResponseEntity<?> onlineStatus(@PathVariable Long id, @RequestBody Map<String, Object> b) {
     User me = userService.findAuthUser();
     boolean on = Boolean.parseBoolean(Objects.toString(b.get("isOnline"), "false"));
-    int n = jdbc.update("UPDATE professional_ SET is_online = ? WHERE id = (SELECT professional_id FROM user_ WHERE id = ?)", on, me.getId());
+    int n = jdbc.update("UPDATE professional_ SET is_online = ?, online_at = CASE WHEN ? THEN NOW() ELSE online_at END WHERE id = (SELECT professional_id FROM user_ WHERE id = ?)", on, on, me.getId());
     if (n == 0) return bad("Só profissionais podem ficar online.");
     return ResponseEntity.ok(Map.of("online", on));
   }

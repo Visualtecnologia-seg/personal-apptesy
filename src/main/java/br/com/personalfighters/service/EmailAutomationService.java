@@ -42,6 +42,14 @@ public class EmailAutomationService {
   private final JdbcTemplate jdbc;
   private final EmailService email;
   private final byte[] key;
+  private SettingsService settings;
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  public void setSettings(SettingsService settings) { this.settings = settings; }
+
+  private int setting(String k, int def) {
+    try { return settings == null ? def : settings.getInt(k); } catch (Exception e) { return def; }
+  }
 
   public EmailAutomationService(JdbcTemplate jdbc, EmailService email, @Value("${jwt.secret}") String secret) {
     this.jdbc = jdbc;
@@ -271,7 +279,9 @@ public class EmailAutomationService {
     try {
       Map<String, Object> u = person(userId);
       if (u == null || !mark(userId, "VERIF_OK", "")) return;
-      verificationApprovedEmail(u, isPro(userId));
+      boolean pro = isPro(userId);
+      verificationApprovedEmail(u, pro);
+      if (pro) newProNearby(userId);
     } catch (Exception e) { log.warn("E-mail de aprovação {}: {}", userId, e.getMessage()); }
   }
 
@@ -398,5 +408,519 @@ public class EmailAutomationService {
         .small("Seus documentos ficam guardados com segurança e só a equipe do OPUS vê.")
         .unsubscribe(unsubscribeUrl(uid));
     email.send(Objects.toString(r.get("email")), name.isEmpty() ? "Falta pouco para você receber clientes" : name + ", falta pouco para você receber clientes", t);
+  }
+
+  // =====================================================================================
+  // Jornada do cliente e do profissional (recibo, aniversário, cupons, indicação etc.)
+  // =====================================================================================
+
+  private static final String KM = "6371*ACOS(LEAST(1, COS(RADIANS(%1$s.latitude))*COS(RADIANS(%2$s.latitude))*COS(RADIANS(%2$s.longitude)-RADIANS(%1$s.longitude))+SIN(RADIANS(%1$s.latitude))*SIN(RADIANS(%2$s.latitude))))";
+
+  private static String dm(Object d) {
+    if (d == null) return "";
+    LocalDate x = d instanceof java.sql.Date ? ((java.sql.Date) d).toLocalDate() : d instanceof Timestamp ? ((Timestamp) d).toLocalDateTime().toLocalDate() : null;
+    return x == null ? "" : x.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+  }
+
+  private static BigDecimal bd(Object o) { return o == null ? BigDecimal.ZERO : o instanceof BigDecimal ? (BigDecimal) o : new BigDecimal(o.toString()); }
+
+  /** Cria um cupom só desta pessoa (código único, vale 1 vez). */
+  private String personalCoupon(String prefix, int percent, int days, String description) {
+    String chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    java.security.SecureRandom r = new java.security.SecureRandom();
+    for (int tries = 0; tries < 5; tries++) {
+      StringBuilder c = new StringBuilder(prefix).append('-');
+      for (int i = 0; i < 5; i++) c.append(chars.charAt(r.nextInt(chars.length())));
+      try {
+        jdbc.update("INSERT INTO coupon_ (code, description, percent, amount, min_order, valid_until, max_uses, used, one_per_user, active, created_at) VALUES (?, ?, ?, 0, 0, ?, 1, 0, TRUE, TRUE, NOW())",
+            c.toString(), description, BigDecimal.valueOf(percent), java.sql.Date.valueOf(LocalDate.now(Z).plusDays(days)));
+        return c.toString();
+      } catch (Exception dup) { /* código repetido: tenta outro */ }
+    }
+    return null;
+  }
+
+  // ---------- 6) recibo do pagamento ----------
+
+  @Scheduled(cron = "0 */5 * * * *", zone = "America/Sao_Paulo")
+  public void receipts() {
+    if (!email.isConfigured()) return;
+    try {
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT o.id, o.customer_id, o.date, o.start_time, o.total_cost, o.service_value, COALESCE(o.discount_amount,0) AS discount, o.coupon_code, o.package_purchase_id, " +
+              " u.name, u.email, p.name AS service, pr.name AS pro, t.asaas_payment_id AS payid " +
+              "FROM order_ o JOIN user_ u ON u.id = o.customer_id LEFT JOIN product_ p ON p.id = o.product_id LEFT JOIN user_ pr ON pr.id = o.professional_id " +
+              "LEFT JOIN transaction_ t ON t.order_id = o.id " +
+              "WHERE o.pix_paid = TRUE AND o.created_at > ? AND u.deleted_at IS NULL AND u.email LIKE '%@%' " +
+              "AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = o.customer_id AND l.kind = 'RECEIPT' AND l.ref = CAST(o.id AS varchar)) LIMIT 30",
+          Timestamp.valueOf(LocalDateTime.now(Z).minusDays(2)));
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("customer_id")).longValue();
+        if (!mark(uid, "RECEIPT", r.get("id").toString())) continue;
+        receiptEmail(r);
+      }
+    } catch (Exception e) { log.warn("Recibos: {}", e.getMessage()); }
+  }
+
+  public void receiptEmail(Map<String, Object> r) {
+    String oid = r.get("id").toString();
+    BigDecimal total = bd(r.get("total_cost")), service = r.get("service_value") == null ? total : bd(r.get("service_value")), discount = bd(r.get("discount"));
+    BigDecimal fee = total.subtract(service).max(BigDecimal.ZERO), paid = total.subtract(discount);
+    boolean pkg = r.get("package_purchase_id") != null;
+    String when = dm(r.get("date")) + (r.get("start_time") != null ? " às " + r.get("start_time").toString().substring(0, 5) : "");
+    List<String[]> det = MailTemplate.rows("Serviço", Objects.toString(r.get("service"), "Serviço"));
+    if (r.get("pro") != null) det.add(new String[]{"Profissional", Objects.toString(r.get("pro"))});
+    if (!when.isBlank()) det.add(new String[]{"Data marcada", when});
+    det.add(new String[]{"Valor do serviço", money(service)});
+    if (fee.signum() > 0) det.add(new String[]{"Taxa de proteção OPUS", money(fee)});
+    if (discount.signum() > 0) det.add(new String[]{"Desconto" + (r.get("coupon_code") != null ? " (" + r.get("coupon_code") + ")" : ""), "− " + money(discount)});
+    det.add(new String[]{"Total pago", pkg ? "Aula do pacote" : money(paid)});
+    det.add(new String[]{"Forma de pagamento", pkg ? "Pacote de aulas" : "PIX"});
+    det.add(new String[]{"Pago em", LocalDateTime.now(Z).format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"))});
+    det.add(new String[]{"Código do pedido", oid.substring(0, 8).toUpperCase()});
+    MailTemplate t = MailTemplate.client()
+        .preheader("Recebemos " + (pkg ? "seu pedido" : money(paid)) + ". O dinheiro fica guardado até o serviço terminar.")
+        .kicker("Recibo de pagamento").title("Pagamento recebido")
+        .p("Olá" + (first(r.get("name")).isEmpty() ? "" : ", " + first(r.get("name"))) + "! Este é o comprovante do seu pagamento.")
+        .details(det)
+        .alert("Seu dinheiro fica guardado pelo OPUS e só vai para o profissional depois que você confirmar que o serviço terminou. Se algo der errado, você recebe de volta.", false)
+        .button("Ver recibo no app", MailTemplate.openApp(false, "recibo/" + oid))
+        .small("Este e-mail é um comprovante de pagamento e não substitui nota fiscal.");
+    email.send(Objects.toString(r.get("email")), "Recibo: " + Objects.toString(r.get("service"), "seu pedido") + (pkg ? "" : " · " + money(paid)), t);
+  }
+
+  // ---------- 7) aniversário (com cupom) ----------
+
+  @Scheduled(cron = "0 0 9 * * *", zone = "America/Sao_Paulo")
+  public void birthdays() {
+    if (!email.isConfigured()) return;
+    try {
+      LocalDate today = LocalDate.now(Z);
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT u.id, u.name, u.email FROM user_ u WHERE " + ACTIVE + " AND u.birthday IS NOT NULL AND EXTRACT(MONTH FROM u.birthday) = ? AND EXTRACT(DAY FROM u.birthday) = ? LIMIT 100",
+          today.getMonthValue(), today.getDayOfMonth());
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("id")).longValue();
+        if (!mark(uid, "BIRTHDAY", String.valueOf(today.getYear()))) continue;
+        int pct = setting(SettingsService.BIRTHDAY_COUPON_PERCENT, 15);
+        String code = pct > 0 ? personalCoupon("NIVER", pct, 15, "Aniversário de " + first(r.get("name"))) : null;
+        birthdayEmail(uid, r, code, pct);
+      }
+    } catch (Exception e) { log.warn("Aniversários: {}", e.getMessage()); }
+  }
+
+  public void birthdayEmail(long uid, Map<String, Object> r, String code, int pct) {
+    String name = first(r.get("name"));
+    MailTemplate t = MailTemplate.client()
+        .preheader("Hoje o dia é seu! Preparamos um presente.")
+        .hero("alongamento.jpg").kicker("Feliz aniversário").title(name.isEmpty() ? "Parabéns pelo seu dia!" : "Parabéns, " + name + "!")
+        .p("Toda a equipe do OPUS deseja um ano cheio de saúde, conquistas e momentos bons. Obrigado por fazer parte do OPUS.");
+    if (code != null) t.p("Para comemorar, um presente para você usar quando quiser nos próximos 15 dias:")
+        .coupon(code, pct + "% de desconto", "Use na tela de pagamento · vale até " + LocalDate.now(Z).plusDays(15).format(DateTimeFormatter.ofPattern("dd/MM")))
+        .button("Usar meu presente", MailTemplate.openApp(false, null));
+    t.unsubscribe(unsubscribeUrl(uid));
+    email.send(Objects.toString(r.get("email")), name.isEmpty() ? "Feliz aniversário! Tem presente para você" : "Feliz aniversário, " + name + "! Tem presente para você", t);
+  }
+
+  // ---------- 8) profissional novo perto de você ----------
+
+  /** Chamado quando um profissional é aprovado: avisa clientes da região que já contrataram a mesma categoria. */
+  public void newProNearby(long proId) {
+    if (!email.isConfigured()) return;
+    try {
+      List<Map<String, Object>> pro = jdbc.queryForList("SELECT u.id, u.name, u.latitude, u.longitude, " +
+          " (SELECT STRING_AGG(DISTINCT p.name, ', ') FROM product__professional pp JOIN product_ p ON p.id = pp.product_id WHERE pp.professional_id = u.id) AS services " +
+          "FROM user_ u WHERE u.id = ? AND u.latitude IS NOT NULL", proId);
+      if (pro.isEmpty() || pro.get(0).get("services") == null) return;
+      Map<String, Object> pr = pro.get(0);
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT DISTINCT u.id, u.name, u.email, c.name AS category FROM user_ u " +
+              "JOIN order_ o ON o.customer_id = u.id JOIN product_ op ON op.id = o.product_id JOIN category_ c ON c.id = op.category_id " +
+              "JOIN product_ mp ON mp.category_id = op.category_id JOIN product__professional pp ON pp.product_id = mp.id AND pp.professional_id = ? " +
+              "JOIN user_ me ON me.id = ? " +
+              "WHERE " + ACTIVE + " AND u.id <> ? AND u.latitude IS NOT NULL AND " + String.format(KM, "u", "me") + " <= 15 " +
+              " AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = u.id AND l.kind = 'NEWPRO' AND l.sent_at > ?) LIMIT 60",
+          proId, proId, proId, Timestamp.valueOf(LocalDateTime.now(Z).minusDays(14)));
+      java.util.Set<Long> done = new java.util.HashSet<>();
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("id")).longValue();
+        if (!done.add(uid) || !mark(uid, "NEWPRO", String.valueOf(proId))) continue;
+        newProEmail(uid, r, pr);
+      }
+    } catch (Exception e) { log.warn("Profissional novo perto: {}", e.getMessage()); }
+  }
+
+  public void newProEmail(long uid, Map<String, Object> r, Map<String, Object> pro) {
+    String cat = Objects.toString(r.get("category"), "serviços");
+    MailTemplate t = MailTemplate.client()
+        .preheader(first(pro.get("name")) + " acabou de chegar ao OPUS perto de você.")
+        .hero("pintura.jpg").kicker("Novo perto de você").title("Chegou profissional de " + cat.toLowerCase(new Locale("pt", "BR")) + " na sua região")
+        .p("Olá" + (first(r.get("name")).isEmpty() ? "" : ", " + first(r.get("name"))) + "! Como você já contratou " + cat.toLowerCase(new Locale("pt", "BR")) + " pelo OPUS, achamos que vai gostar de saber:")
+        .person(Objects.toString(pro.get("name")), "Verificado · " + Objects.toString(pro.get("services"), ""), MailTemplate.openApp(false, "professionals/" + pro.get("id")))
+        .gap()
+        .p("Ele teve a identidade conferida pela nossa equipe. Profissional novo costuma ter horários livres, então é uma boa hora para marcar.")
+        .button("Ver agenda", MailTemplate.openApp(false, "professionals/" + pro.get("id")))
+        .unsubscribe(unsubscribeUrl(uid));
+    email.send(Objects.toString(r.get("email")), "Novo profissional de " + cat.toLowerCase(new Locale("pt", "BR")) + " perto de você", t);
+  }
+
+  // ---------- 9) profissional parado há 14 dias ----------
+
+  @Scheduled(cron = "0 0 15 * * *", zone = "America/Sao_Paulo")
+  public void idlePros() {
+    if (!email.isConfigured()) return;
+    try {
+      Timestamp d14 = Timestamp.valueOf(LocalDateTime.now(Z).minusDays(14));
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT u.id, u.name, u.email FROM user_ u JOIN professional_ p ON p.id = u.professional_id WHERE " + ACTIVE +
+              " AND u.verification_status = 'APPROVED' AND COALESCE(p.is_online,FALSE) = FALSE " +
+              " AND COALESCE(p.online_at, (SELECT MAX(d.last_seen) FROM user_device_ d WHERE d.user_id = u.id), u.created_at_, '2000-01-01') < ? " +
+              " AND NOT EXISTS (SELECT 1 FROM order_ o WHERE o.professional_id = u.id AND o.created_at > ?) " +
+              " AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = u.id AND l.kind = 'IDLEPRO' AND l.sent_at > ?) LIMIT 60",
+          d14, d14, Timestamp.valueOf(LocalDateTime.now(Z).minusDays(30)));
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("id")).longValue();
+        if (!mark(uid, "IDLEPRO", LocalDate.now(Z).toString())) continue;
+        List<Map<String, Object>> dem = jdbc.queryForList(
+            "SELECT p.name, COUNT(o.id) AS n FROM product__professional pp JOIN product_ p ON p.id = pp.product_id " +
+                "LEFT JOIN order_ o ON o.product_id = p.id AND o.created_at > ? WHERE pp.professional_id = ? GROUP BY p.name ORDER BY n DESC LIMIT 3", d14, uid);
+        idleProEmail(uid, r, dem);
+      }
+    } catch (Exception e) { log.warn("Profissional parado: {}", e.getMessage()); }
+  }
+
+  public void idleProEmail(long uid, Map<String, Object> r, List<Map<String, Object>> demand) {
+    String name = first(r.get("name"));
+    long total = 0;
+    for (Map<String, Object> d : demand) total += ((Number) d.get("n")).longValue();
+    MailTemplate t = MailTemplate.pro()
+        .preheader("Faz duas semanas que você não fica online. Os clientes continuam procurando.")
+        .hero("eletrica.jpg").kicker("Sentimos sua falta").title(name.isEmpty() ? "Os clientes estão procurando você" : name + ", os clientes estão procurando você")
+        .p("Faz mais de duas semanas que você não fica online no OPUS. Enquanto isso, os pedidos continuaram chegando.");
+    if (total >= 3) {
+      List<String[]> st = new java.util.ArrayList<>();
+      for (Map<String, Object> d : demand) if (((Number) d.get("n")).longValue() > 0) st.add(new String[]{Objects.toString(d.get("name")), String.valueOf(d.get("n"))});
+      t.p("Pedidos dos seus serviços nas últimas 2 semanas:").stats(st);
+    }
+    t.checklist(java.util.Arrays.asList(
+            "**Fique online** nos horários em que pode atender. Você escolhe quando parar.",
+            "**Confira sua agenda e sua área de atendimento** para receber só o que faz sentido.",
+            "**Responda rápido**: quem responde em até 10 minutos aparece primeiro."))
+        .button("Ficar online agora", MailTemplate.openApp(true, null))
+        .small("Não está mais atendendo? Você pode pausar o perfil no app, em Perfil.")
+        .unsubscribe(unsubscribeUrl(uid));
+    email.send(Objects.toString(r.get("email")), name.isEmpty() ? "Os clientes estão procurando você" : name + ", os clientes estão procurando você", t);
+  }
+
+  // ---------- 10) "quer marcar de novo?" ----------
+
+  @Scheduled(cron = "0 0 18 * * *", zone = "America/Sao_Paulo")
+  public void rebook() {
+    if (!email.isConfigured()) return;
+    try {
+      LocalDateTime now = LocalDateTime.now(Z);
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT o.id, o.customer_id, o.professional_id, u.name, u.email, pr.name AS pro, p.name AS service, " +
+              " (SELECT MAX(rv.rating) FROM review_ rv WHERE rv.order_id = o.id) AS rating " +
+              "FROM order_ o JOIN user_ u ON u.id = o.customer_id JOIN user_ pr ON pr.id = o.professional_id LEFT JOIN product_ p ON p.id = o.product_id " +
+              "WHERE o.status IN ('DONE','REVIEWED') AND o.done_at BETWEEN ? AND ? AND " + ACTIVE +
+              " AND pr.deleted_at IS NULL AND COALESCE(pr.blocked,false) = false " +
+              " AND NOT EXISTS (SELECT 1 FROM order_ o2 WHERE o2.customer_id = o.customer_id AND o2.created_at > o.done_at AND o2.status <> 'CANCELLED') " +
+              " AND NOT EXISTS (SELECT 1 FROM pro_blocked_client_ b WHERE b.professional_id = o.professional_id AND b.client_id = o.customer_id) " +
+              " AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = o.customer_id AND l.kind = 'REBOOK' AND l.sent_at > ?) " +
+              "ORDER BY o.done_at LIMIT 80",
+          Timestamp.valueOf(now.minusDays(7)), Timestamp.valueOf(now.minusDays(5)), Timestamp.valueOf(now.minusDays(10)));
+      java.util.Set<Long> seen = new java.util.HashSet<>();
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("customer_id")).longValue();
+        Object rating = r.get("rating");
+        if (rating != null && ((Number) rating).intValue() < 4) continue; // não foi bem avaliado: não sugere de novo
+        if (!seen.add(uid) || !mark(uid, "REBOOK", r.get("id").toString())) continue;
+        rebookEmail(uid, r);
+      }
+    } catch (Exception e) { log.warn("Marcar de novo: {}", e.getMessage()); }
+  }
+
+  public void rebookEmail(long uid, Map<String, Object> r) {
+    String pro = first(r.get("pro")), svc = Objects.toString(r.get("service"), "o serviço");
+    MailTemplate t = MailTemplate.client()
+        .preheader("Gostou de " + svc.toLowerCase(new Locale("pt", "BR")) + " com " + pro + "? Marque o próximo em poucos toques.")
+        .hero("boxe.jpg").kicker("Próximo horário").title("Quer marcar de novo com " + pro + "?")
+        .p("Olá" + (first(r.get("name")).isEmpty() ? "" : ", " + first(r.get("name"))) + "! Já faz uma semana desde o último atendimento com " + pro + " (" + svc.toLowerCase(new Locale("pt", "BR")) + "). Quem mantém a frequência vê resultado mais rápido.")
+        .person(Objects.toString(r.get("pro")), svc, MailTemplate.openApp(false, "professionals/" + r.get("professional_id")))
+        .gap()
+        .button("Marcar de novo", MailTemplate.openApp(false, "professionals/" + r.get("professional_id")))
+        .small("Dica: no perfil do profissional você pode comprar um pacote de aulas e pagar menos por cada uma.")
+        .unsubscribe(unsubscribeUrl(uid));
+    email.send(Objects.toString(r.get("email")), "Quer marcar de novo com " + pro + "?", t);
+  }
+
+  // ---------- 11) cupom do primeiro pedido ----------
+
+  @Scheduled(cron = "0 30 12 * * *", zone = "America/Sao_Paulo")
+  public void welcomeCoupon() {
+    if (!email.isConfigured()) return;
+    int pct = setting(SettingsService.WELCOME_COUPON_PERCENT, 10);
+    if (pct <= 0) return;
+    try {
+      LocalDateTime now = LocalDateTime.now(Z);
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT u.id, u.name, u.email FROM user_ u WHERE " + ACTIVE + " AND COALESCE(u.signup_app,'CLIENT') <> 'PRO' " +
+              " AND u.created_at_ BETWEEN ? AND ? AND NOT EXISTS (SELECT 1 FROM order_ o WHERE o.customer_id = u.id) " +
+              " AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = u.id AND l.kind = 'WELCOMECOUPON') LIMIT 80",
+          Timestamp.valueOf(now.minusDays(5)), Timestamp.valueOf(now.minusDays(3)));
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("id")).longValue();
+        if (!mark(uid, "WELCOMECOUPON", "")) continue;
+        String code = personalCoupon("BEMVINDO", pct, 7, "Primeiro pedido de " + first(r.get("name")));
+        if (code != null) welcomeCouponEmail(uid, r, code, pct);
+      }
+    } catch (Exception e) { log.warn("Cupom de primeiro pedido: {}", e.getMessage()); }
+  }
+
+  public void welcomeCouponEmail(long uid, Map<String, Object> r, String code, int pct) {
+    String name = first(r.get("name"));
+    MailTemplate t = MailTemplate.client()
+        .preheader(pct + "% de desconto no seu primeiro pedido. Vale por 7 dias.")
+        .hero("grama.jpg").kicker("Presente de boas-vindas").title(name.isEmpty() ? "Seu primeiro pedido com desconto" : name + ", seu primeiro pedido com desconto")
+        .p("Você criou sua conta e ainda não experimentou o OPUS. Para começar bem, separamos um desconto:")
+        .coupon(code, pct + "% de desconto", "No primeiro pedido · vale até " + LocalDate.now(Z).plusDays(7).format(DateTimeFormatter.ofPattern("dd/MM")))
+        .checklist(java.util.Arrays.asList(
+            "Escolha o serviço e o profissional.",
+            "Na tela de pagamento, digite o código em **Tem um cupom?**",
+            "Pague com PIX. O dinheiro fica guardado até o serviço terminar."))
+        .button("Escolher um profissional", MailTemplate.openApp(false, null))
+        .unsubscribe(unsubscribeUrl(uid));
+    email.send(Objects.toString(r.get("email")), pct + "% de desconto no seu primeiro pedido", t);
+  }
+
+  // ---------- 12) indicação ----------
+
+  @Scheduled(cron = "0 */30 * * * *", zone = "America/Sao_Paulo")
+  public void referrals() {
+    if (!email.isConfigured()) return;
+    try {
+      LocalDateTime now = LocalDateTime.now(Z);
+      int pts = setting(SettingsService.REFERRAL_POINTS, 100);
+      for (Map<String, Object> r : jdbc.queryForList(
+          "SELECT r.referrer_id, r.referred_id, a.name, a.email, b.name AS friend FROM referral_ r JOIN user_ a ON a.id = r.referrer_id JOIN user_ b ON b.id = r.referred_id " +
+              "WHERE r.created_at > ? AND a.deleted_at IS NULL AND a.email LIKE '%@%' " +
+              "AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = r.referrer_id AND l.kind = 'REF_JOIN' AND l.ref = CAST(r.referred_id AS varchar)) LIMIT 50",
+          Timestamp.valueOf(now.minusDays(2)))) {
+        long uid = ((Number) r.get("referrer_id")).longValue();
+        if (!mark(uid, "REF_JOIN", r.get("referred_id").toString())) continue;
+        referralEmail(r, false, pts);
+      }
+      for (Map<String, Object> r : jdbc.queryForList(
+          "SELECT r.referrer_id, r.referred_id, a.name, a.email, b.name AS friend FROM referral_ r JOIN user_ a ON a.id = r.referrer_id JOIN user_ b ON b.id = r.referred_id " +
+              "WHERE r.rewarded_at > ? AND a.deleted_at IS NULL AND a.email LIKE '%@%' " +
+              "AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = r.referrer_id AND l.kind = 'REF_REWARD' AND l.ref = CAST(r.referred_id AS varchar)) LIMIT 50",
+          Timestamp.valueOf(now.minusDays(3)))) {
+        long uid = ((Number) r.get("referrer_id")).longValue();
+        if (!mark(uid, "REF_REWARD", r.get("referred_id").toString())) continue;
+        referralEmail(r, true, pts);
+      }
+    } catch (Exception e) { log.warn("E-mails de indicação: {}", e.getMessage()); }
+  }
+
+  public void referralEmail(Map<String, Object> r, boolean rewarded, int pts) {
+    String friend = first(r.get("friend"));
+    if (friend.isEmpty()) friend = "Seu amigo";
+    MailTemplate t = MailTemplate.client().hero(rewarded ? "pagamento.jpg" : "grama.jpg").kicker("Indique e ganhe");
+    if (rewarded) {
+      t.preheader("Você ganhou " + pts + " pontos pela indicação de " + friend + ".")
+          .title("Você ganhou " + pts + " pontos!")
+          .p(friend + " fez o primeiro serviço pelo OPUS com o seu código. Como combinado, os " + pts + " pontos já estão na sua conta.")
+          .alert("Seus pontos viram desconto nos próximos pedidos. É só escolher usar os pontos na hora de pagar.", false)
+          .button("Ver meus pontos", MailTemplate.openApp(false, "carteira"))
+          .p("Quanto mais amigos você indicar, mais pontos você ganha.");
+    } else {
+      t.preheader(friend + " entrou no OPUS com o seu código.")
+          .title(friend + " entrou com o seu código!")
+          .p("Obrigado por indicar o OPUS. Assim que " + friend + " fizer o primeiro serviço, vocês dois ganham " + pts + " pontos.")
+          .button("Indicar mais amigos", MailTemplate.openApp(false, "indique"));
+    }
+    email.send(Objects.toString(r.get("email")), rewarded ? "Você ganhou " + pts + " pontos pela indicação" : friend + " entrou no OPUS com o seu código", t);
+  }
+
+  // ---------- 13) profissional cancelou: sugere outros ----------
+
+  public void proCancelled(java.util.UUID orderId) {
+    if (!email.isConfigured()) return;
+    try {
+      List<Map<String, Object>> os = jdbc.queryForList(
+          "SELECT o.id, o.customer_id, o.professional_id, o.product_id, o.date, o.start_time, u.name, u.email, p.name AS service, pr.name AS pro " +
+              "FROM order_ o JOIN user_ u ON u.id = o.customer_id LEFT JOIN product_ p ON p.id = o.product_id LEFT JOIN user_ pr ON pr.id = o.professional_id " +
+              "WHERE o.id = ? AND u.deleted_at IS NULL AND u.email LIKE '%@%'", orderId);
+      if (os.isEmpty()) return;
+      Map<String, Object> o = os.get(0);
+      long uid = ((Number) o.get("customer_id")).longValue();
+      if (!mark(uid, "PROCANCEL", orderId.toString())) return;
+      List<Map<String, Object>> alts = o.get("product_id") == null ? java.util.Collections.emptyList() : jdbc.queryForList(
+          "SELECT u.id, u.name, (SELECT AVG(rv.rating) FROM review_ rv WHERE rv.professional_id = u.id) AS rating, " +
+              " (SELECT COUNT(*) FROM order_ x WHERE x.professional_id = u.id AND x.status IN ('DONE','REVIEWED')) AS done, " +
+              " CASE WHEN c.latitude IS NULL OR u.latitude IS NULL THEN NULL ELSE " + String.format(KM, "c", "u") + " END AS km " +
+              "FROM product__professional pp JOIN user_ u ON u.id = pp.professional_id JOIN user_ c ON c.id = ? " +
+              "WHERE pp.product_id = ? AND u.id <> ? AND u.verification_status = 'APPROVED' AND u.deleted_at IS NULL AND COALESCE(u.blocked,false) = false " +
+              "ORDER BY km NULLS LAST, rating DESC NULLS LAST LIMIT 3",
+          uid, o.get("product_id"), o.get("professional_id"));
+      proCancelledEmail(o, alts);
+    } catch (Exception e) { log.warn("Profissional cancelou {}: {}", orderId, e.getMessage()); }
+  }
+
+  public void proCancelledEmail(Map<String, Object> o, List<Map<String, Object>> alts) {
+    String svc = Objects.toString(o.get("service"), "seu serviço");
+    String when = dm(o.get("date")) + (o.get("start_time") != null ? " às " + o.get("start_time").toString().substring(0, 5) : "");
+    MailTemplate t = MailTemplate.client()
+        .preheader("O profissional não vai poder atender. Separamos outras opções para você.")
+        .kicker("Pedido cancelado").title("O profissional precisou cancelar")
+        .p("Olá" + (first(o.get("name")).isEmpty() ? "" : ", " + first(o.get("name"))) + "! " + first(o.get("pro")) + " cancelou o pedido de " + svc.toLowerCase(new Locale("pt", "BR"))
+            + (when.isBlank() ? "" : " marcado para " + when) + ". Pedimos desculpas pelo transtorno.")
+        .alert("Se você já pagou, o valor volta inteiro para você, sem nenhum desconto.", false);
+    if (!alts.isEmpty()) {
+      t.p("Para você não ficar sem atendimento, separamos profissionais verificados que fazem o mesmo serviço:");
+      for (Map<String, Object> a : alts) {
+        StringBuilder info = new StringBuilder();
+        if (a.get("rating") != null) info.append("★ ").append(String.format(BR, "%.1f", ((Number) a.get("rating")).doubleValue())).append(" · ");
+        long done = ((Number) a.get("done")).longValue();
+        info.append(done > 0 ? done + " serviço(s) feito(s)" : "Novo no OPUS");
+        if (a.get("km") != null) info.append(" · ").append(String.format(BR, "%.1f km", ((Number) a.get("km")).doubleValue()));
+        t.person(Objects.toString(a.get("name")), info.toString(), MailTemplate.openApp(false, "professionals/" + a.get("id")));
+      }
+      t.gap();
+    }
+    t.button("Escolher outro profissional", MailTemplate.openApp(false, null));
+    email.send(Objects.toString(o.get("email")), "Seu pedido foi cancelado pelo profissional", t);
+  }
+
+  // ---------- 14) saque feito ou com problema ----------
+
+  public void withdrawResult(long proId, BigDecimal amount, String dest, boolean ok) {
+    if (!email.isConfigured()) return;
+    try {
+      Map<String, Object> u = person(proId);
+      if (u != null) withdrawEmail(u, amount, dest, ok);
+    } catch (Exception e) { log.warn("E-mail de saque {}: {}", proId, e.getMessage()); }
+  }
+
+  public void withdrawEmail(Map<String, Object> u, BigDecimal amount, String dest, boolean ok) {
+    String when = LocalDateTime.now(Z).format(DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm"));
+    MailTemplate t = MailTemplate.pro();
+    if (ok) {
+      t.preheader("Seu saque de " + money(amount) + " foi enviado.")
+          .hero("ganhos.jpg").kicker("Saque feito").title("Seu saque de " + money(amount) + " foi enviado")
+          .p("Olá" + (first(u.get("name")).isEmpty() ? "" : ", " + first(u.get("name"))) + "! Mandamos o dinheiro para você.")
+          .details(MailTemplate.rows("Valor", money(amount), "Para", Objects.toString(dest, ""), "Quando", when))
+          .small("PIX costuma cair na hora. Conta bancária pode levar até 1 dia útil.")
+          .alert("Não pediu este saque? Abra o app agora em Perfil → Segurança → Não fui eu, e fale com o suporte.", true);
+    } else {
+      t.preheader("Não conseguimos fazer o seu saque. O dinheiro continua na sua carteira.")
+          .kicker("Saque não feito").title("Não conseguimos enviar o seu saque")
+          .p("Olá" + (first(u.get("name")).isEmpty() ? "" : ", " + first(u.get("name"))) + "! O saque de " + money(amount) + " para " + Objects.toString(dest, "a sua conta") + " não foi concluído.")
+          .alert("Fique tranquilo: o dinheiro continua na sua carteira do OPUS.", false)
+          .checklist(java.util.Arrays.asList(
+              "Confira se a chave PIX ou a conta está no **seu CPF ou no seu CNPJ**.",
+              "Confira os números da agência e da conta.",
+              "Tente sacar de novo pelo app."))
+          .button("Conferir onde eu recebo", MailTemplate.openApp(true, "recebimento"));
+    }
+    email.send(Objects.toString(u.get("email")), ok ? "Saque de " + money(amount) + " enviado" : "Seu saque não foi concluído", t);
+  }
+
+  // ---------- 15) extrato do mês para o MEI ----------
+
+  @Scheduled(cron = "0 30 7 1 * *", zone = "America/Sao_Paulo")
+  public void monthlyStatements() {
+    if (!email.isConfigured()) return;
+    LocalDate first = LocalDate.now(Z).minusMonths(1).withDayOfMonth(1);
+    try {
+      List<Map<String, Object>> pros = jdbc.queryForList(
+          "SELECT DISTINCT w.professional_id FROM wallet_entry_ w WHERE w.kind IN ('CREDIT','STAGE') AND w.status = 'DONE' AND w.created_at >= ? AND w.created_at < ?",
+          Timestamp.valueOf(first.atStartOfDay()), Timestamp.valueOf(first.plusMonths(1).atStartOfDay()));
+      for (Map<String, Object> p : pros) monthlyStatement(((Number) p.get("professional_id")).longValue(), first);
+    } catch (Exception e) { log.warn("Extratos do mês: {}", e.getMessage()); }
+  }
+
+  public void monthlyStatement(long proId, LocalDate month) {
+    try {
+      Map<String, Object> u = person(proId);
+      if (u == null || !mark(proId, "STATEMENT", month.toString().substring(0, 7))) return;
+      Timestamp a = Timestamp.valueOf(month.atStartOfDay()), b = Timestamp.valueOf(month.plusMonths(1).atStartOfDay());
+      List<Map<String, Object>> lines = jdbc.queryForList(
+          "SELECT w.created_at, w.description, w.amount, w.kind FROM wallet_entry_ w WHERE w.professional_id = ? AND w.kind IN ('CREDIT','STAGE') AND w.status = 'DONE' AND w.created_at >= ? AND w.created_at < ? ORDER BY w.created_at",
+          proId, a, b);
+      BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status = 'DONE' AND created_at >= ? AND created_at < ?",
+          BigDecimal.class, proId, a, b);
+      BigDecimal year = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND status = 'DONE' AND created_at >= ? AND created_at < ?",
+          BigDecimal.class, proId, Timestamp.valueOf(month.withDayOfYear(1).atStartOfDay()), b);
+      statementEmail(u, month, lines, out == null ? BigDecimal.ZERO : out, year == null ? BigDecimal.ZERO : year);
+    } catch (Exception e) { log.warn("Extrato {}: {}", proId, e.getMessage()); }
+  }
+
+  public void statementEmail(Map<String, Object> u, LocalDate month, List<Map<String, Object>> lines, BigDecimal withdrawn, BigDecimal year) {
+    String mes = month.format(DateTimeFormatter.ofPattern("MMMM 'de' yyyy", BR));
+    BigDecimal total = BigDecimal.ZERO;
+    StringBuilder csv = new StringBuilder("﻿Data;Descrição;Valor\r\n");
+    List<String[]> rows = new java.util.ArrayList<>();
+    for (Map<String, Object> l : lines) {
+      BigDecimal v = bd(l.get("amount"));
+      total = total.add(v);
+      String d = ((Timestamp) l.get("created_at")).toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+      String desc = Objects.toString(l.get("description"), "Serviço").replace(";", ",");
+      csv.append(d).append(';').append(desc).append(';').append(v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ',')).append("\r\n");
+      if (rows.size() < 25) rows.add(new String[]{d.substring(0, 5) + " · " + desc, money(v)});
+    }
+    csv.append(";Total do mês;").append(total.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ',')).append("\r\n");
+    BigDecimal limit = new BigDecimal("81000");
+    int pctYear = year.multiply(BigDecimal.valueOf(100)).divide(limit, 0, java.math.RoundingMode.HALF_UP).intValue();
+    MailTemplate t = MailTemplate.pro()
+        .preheader("Você recebeu " + money(total) + " em " + mes + ". O extrato completo vai em anexo.")
+        .kicker("Extrato do mês").title("Seu extrato de " + mes)
+        .stats(MailTemplate.rows("recebido no mês", money(total), "serviços e etapas", String.valueOf(lines.size()), "sacado no mês", money(withdrawn)))
+        .p("Lançamentos do mês:")
+        .details(rows);
+    if (lines.size() > rows.size()) t.small("E mais " + (lines.size() - rows.size()) + " lançamento(s) na planilha em anexo.");
+    t.rich("**No ano até agora: " + money(year) + "**. Para o MEI, o limite é de R$ 81.000,00 por ano (você está em " + pctYear + "%).");
+    if (pctYear >= 80) t.alert("Atenção: você já passou de 80% do limite anual do MEI. Converse com um contador.", true);
+    t.small("A planilha em anexo abre no Excel ou no Google Planilhas e serve para guardar o histórico e declarar o faturamento do MEI. Este extrato não substitui nota fiscal.")
+        .button("Ver minha carteira", MailTemplate.openApp(true, "carteira"));
+    email.send(Objects.toString(u.get("email")), "Seu extrato de " + mes + ": " + money(total), t,
+        "extrato-opus-" + month.toString().substring(0, 7) + ".csv", csv.toString().getBytes(StandardCharsets.UTF_8), "text/csv");
+  }
+
+  // ---------- 16) senha ou e-mail trocados ----------
+
+  public void passwordChanged(long userId) {
+    try {
+      Map<String, Object> u = person(userId);
+      if (u != null) securityChangeEmail(Objects.toString(u.get("email")), u, "Sua senha foi trocada", "A senha da sua conta OPUS foi trocada agora (" + nowText() + ").");
+    } catch (Exception e) { log.warn("Aviso de senha {}: {}", userId, e.getMessage()); }
+  }
+
+  /** Avisa o e-mail ANTIGO (é ele que interessa se alguém trocou sem a pessoa saber) e o novo. */
+  public void emailChanged(long userId, String oldEmail, String newEmail) {
+    try {
+      Map<String, Object> u = new java.util.HashMap<>();
+      List<Map<String, Object>> r = jdbc.queryForList("SELECT name FROM user_ WHERE id = ?", userId);
+      u.put("name", r.isEmpty() ? "" : r.get(0).get("name"));
+      String text = "O e-mail da sua conta OPUS foi trocado de " + maskEmail(oldEmail) + " para " + maskEmail(newEmail) + " (" + nowText() + ").";
+      securityChangeEmail(oldEmail, u, "O e-mail da sua conta foi trocado", text);
+      securityChangeEmail(newEmail, u, "O e-mail da sua conta foi trocado", text);
+    } catch (Exception e) { log.warn("Aviso de e-mail {}: {}", userId, e.getMessage()); }
+  }
+
+  private static String nowText() { return LocalDateTime.now(Z).format(DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")); }
+
+  public static String maskEmail(String e) {
+    if (e == null || !e.contains("@")) return "";
+    String[] p = e.split("@", 2);
+    String n = p[0].length() <= 2 ? p[0].charAt(0) + "•" : p[0].substring(0, 2) + "•••";
+    return n + "@" + p[1];
+  }
+
+  public void securityChangeEmail(String to, Map<String, Object> u, String title, String text) {
+    if (to == null || !to.contains("@")) return;
+    email.sendSecurityAlert(to, Objects.toString(u.get("name"), ""), title + " · OPUS", title,
+        text + "\nFoi você? Então está tudo certo.\nNão foi você? Abra o app agora e troque a senha em Perfil → Segurança, ou responda este e-mail que a equipe bloqueia a conta para você.");
   }
 }

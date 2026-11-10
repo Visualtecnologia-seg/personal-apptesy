@@ -52,6 +52,7 @@ public class AuthenticationController {
   private final UserService userService;
   private final br.com.personalfighters.util.Redactor redactor;
   private final EmailService emailService;
+  private final br.com.personalfighters.service.EmailAutomationService emailAutomation;
   private final LoginAttemptService loginAttemptService;
   private final LoginHistoryRepository loginHistoryRepository;
   private final SecurityService securityService;
@@ -151,6 +152,7 @@ public class AuthenticationController {
     String invalid = br.com.personalfighters.util.PasswordRules.check(data.getNewPassword());
     if (invalid != null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, invalid);
     jdbc.update("UPDATE user_ SET password = ? WHERE id = ?", enc.encode(data.getNewPassword()), user.getId());
+    emailAutomation.passwordChanged(user.getId());
     return true;
   }
 
@@ -204,6 +206,7 @@ public class AuthenticationController {
     jdbc.update("DELETE FROM password_reset_ WHERE user_id = ?", user.getId());
     jdbc.update("UPDATE user_ SET password = ? WHERE id = ?", new BCryptPasswordEncoder().encode(pass), user.getId());
     authenticationService.revokeAll(user.getId()); // derruba os logins antigos
+    emailAutomation.passwordChanged(user.getId());
     return ResponseEntity.ok(Map.of("ok", true));
   }
 

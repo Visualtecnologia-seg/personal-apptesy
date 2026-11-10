@@ -165,10 +165,17 @@ public class EmailServiceImpl implements EmailService {
   public void send(String to, String subject, MailTemplate t) {
     if (to == null || !to.contains("@")) return;
     final String html = t.html(), text = t.text();
-    pool.execute(() -> deliver(to, subject, html, text));
+    pool.execute(() -> deliver(to, subject, html, text, null, null, null));
   }
 
-  private void deliver(String to, String subject, String html, String text) {
+  @Override
+  public void send(String to, String subject, MailTemplate t, String fileName, byte[] file, String mime) {
+    if (to == null || !to.contains("@")) return;
+    final String html = t.html(), text = t.text();
+    pool.execute(() -> deliver(to, subject, html, text, fileName, file, mime));
+  }
+
+  private void deliver(String to, String subject, String html, String text, String fileName, byte[] file, String mime) {
     try {
       MimeMessage msg = emailSender.createMimeMessage();
       MimeMessageHelper h = new MimeMessageHelper(msg, true, StandardCharsets.UTF_8.name());
@@ -182,6 +189,7 @@ public class EmailServiceImpl implements EmailService {
       h.setTo(to);
       h.setSubject(subject);
       h.setText(text, html);
+      if (fileName != null && file != null) h.addAttachment(fileName, new org.springframework.core.io.ByteArrayResource(file), mime);
       emailSender.send(msg);
     } catch (Exception e) {
       log.error("Falha ao enviar e-mail para {}: {}", to, e.getMessage());

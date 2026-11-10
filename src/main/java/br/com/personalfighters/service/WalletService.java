@@ -136,6 +136,7 @@ public class WalletService {
     }
     String status = ok ? "DONE" : "FAILED";
     jdbc.update("UPDATE wallet_entry_ SET status = ? WHERE id = ?", status, id);
+    emailAutomation.withdrawResult(pro.getId(), amount, dest, ok);
     return status;
   }
 

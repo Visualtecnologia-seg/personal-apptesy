@@ -138,7 +138,7 @@ public class MailTemplate {
     boolean first = true;
     for (String[] r : rows) {
       body.append("<tr><td style=\"padding:12px 16px;").append(first ? "" : "border-top:1px solid #EEF1F5;").append(FONT).append("font-size:14px;color:").append(MUTED).append(";\">").append(esc(r[0]))
-          .append("</td><td align=\"right\" style=\"padding:12px 16px;").append(first ? "" : "border-top:1px solid #EEF1F5;").append(FONT).append("font-size:14px;font-weight:600;color:").append(TEXT).append(";\">").append(esc(r[1])).append("</td></tr>");
+          .append("</td><td align=\"right\" style=\"padding:12px 16px;").append(first ? "" : "border-top:1px solid #EEF1F5;").append(FONT).append("font-size:14px;font-weight:600;white-space:nowrap;color:").append(TEXT).append(";\">").append(esc(r[1])).append("</td></tr>");
       text.append(r[0]).append(": ").append(r[1]).append("\n");
       first = false;
     }
@@ -168,6 +168,35 @@ public class MailTemplate {
   public static String openApp(boolean pro, String path) {
     return base() + "/abrir/" + (pro ? "profissional" : "cliente") + (path == null || path.isBlank() ? "" : "?p=" + path);
   }
+
+  /** Cupom em destaque (caixa tracejada com o código). */
+  public MailTemplate coupon(String code, String label, String note) {
+    body.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:4px 0 20px;\"><tr><td align=\"center\" style=\"border:2px dashed ").append(accent())
+        .append(";border-radius:14px;padding:18px 12px;background:").append(pro ? "#F0FDF6" : "#F5F8FF").append(";\">")
+        .append("<div style=\"").append(FONT).append("font-size:13px;font-weight:700;letter-spacing:1px;color:").append(accent()).append(";\">").append(esc(label.toUpperCase())).append("</div>")
+        .append("<div style=\"").append(FONT).append("font-size:24px;font-weight:800;letter-spacing:2px;white-space:nowrap;color:").append(NAVY).append(";margin:8px 0 6px;\">").append(esc(code)).append("</div>");
+    if (note != null) body.append("<div style=\"").append(FONT).append("font-size:13px;color:").append(MUTED).append(";\">").append(esc(note)).append("</div>");
+    body.append("</td></tr></table>");
+    text.append(label).append(": ").append(code).append(note == null ? "" : " (" + note + ")").append("\n\n");
+    return this;
+  }
+
+  /** Cartão de um profissional (nome, linha de detalhes e link para o perfil). */
+  public MailTemplate person(String name, String info, String url) {
+    String initial = name == null || name.isBlank() ? "?" : name.trim().substring(0, 1).toUpperCase();
+    body.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 10px;border:1px solid #E5E9F0;border-radius:12px;\"><tr>")
+        .append("<td width=\"56\" style=\"padding:12px 0 12px 14px;\"><div style=\"width:42px;height:42px;line-height:42px;border-radius:21px;background:").append(NAVY)
+        .append(";color:#fff;text-align:center;").append(FONT).append("font-size:17px;font-weight:700;\">").append(esc(initial)).append("</div></td>")
+        .append("<td style=\"padding:12px 8px;\"><div style=\"").append(FONT).append("font-size:15px;font-weight:700;color:").append(NAVY).append(";\">").append(esc(name)).append("</div>")
+        .append("<div style=\"").append(FONT).append("font-size:13px;color:").append(MUTED).append(";margin-top:2px;\">").append(esc(info)).append("</div></td>")
+        .append("<td align=\"right\" style=\"padding:12px 14px 12px 0;\"><a href=\"").append(esc(url)).append("\" style=\"").append(FONT)
+        .append("font-size:14px;font-weight:700;color:").append(accent()).append(";text-decoration:none;white-space:nowrap;\">Ver perfil &rsaquo;</a></td></tr></table>");
+    text.append("- ").append(name).append(" (").append(info).append("): ").append(url).append("\n");
+    return this;
+  }
+
+  /** Espaço depois de uma lista de cartões. */
+  public MailTemplate gap() { body.append("<div style=\"height:10px;line-height:10px;\">&nbsp;</div>"); text.append("\n"); return this; }
 
   public String text() {
     StringBuilder t = new StringBuilder(text);

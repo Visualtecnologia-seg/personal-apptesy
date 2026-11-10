@@ -32,6 +32,9 @@ public class SettingsService implements ApplicationRunner {
   public static final String POINTS_MIN_SERVICE = "points_min_service";
   public static final String REDEEM_MIN_ORDER = "redeem_min_order";
   public static final String REFERRAL_POINTS = "referral_points";
+  /** Cupom de boas-vindas (quem não fez o 1º pedido) e de aniversário, em % do pedido. 0 = não manda cupom. */
+  public static final String WELCOME_COUPON_PERCENT = "welcome_coupon_percent";
+  public static final String BIRTHDAY_COUPON_PERCENT = "birthday_coupon_percent";
   public static final String PACKAGE_MAX_DISCOUNT = "package_max_discount";
   /** Horas que um problema relatado pode ficar travado sem decisão. */
   public static final String DISPUTE_TIMEOUT_HOURS = "dispute_timeout_hours";
@@ -105,6 +108,8 @@ public class SettingsService implements ApplicationRunner {
     m.put(POINTS_MIN_SERVICE, "20");
     m.put(REDEEM_MIN_ORDER, "100");
     m.put(REFERRAL_POINTS, "100");
+    m.put(WELCOME_COUPON_PERCENT, "10");
+    m.put(BIRTHDAY_COUPON_PERCENT, "15");
     m.put(PACKAGE_MAX_DISCOUNT, "30");
     m.put(DISPUTE_TIMEOUT_HOURS, "2");
     m.put(DISPUTE_TIMEOUT_REFUND, "1");

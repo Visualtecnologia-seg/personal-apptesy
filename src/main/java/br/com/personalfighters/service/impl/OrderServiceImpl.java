@@ -56,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
   private final NotificationService notificationService;
   private final TransactionService transactionService;
   private final EmailService emailService;
+  private final br.com.personalfighters.service.EmailAutomationService emailAutomation;
   private final PointsRepository pointsRepository;
   private final br.com.personalfighters.service.PointsAwarder pointsAwarder;
   private final br.com.personalfighters.service.TripService tripService;
@@ -279,7 +280,9 @@ public class OrderServiceImpl implements OrderService {
       }
       notificationService.sendCancellationToCustomerAndProfessional(order);
       try {
-        if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
+        // Quem cancelou foi o profissional: o cliente recebe outras opções. Nos outros casos, o aviso simples.
+        if (role.equals(Role.PROFESSIONAL)) emailAutomation.proCancelled(order.getId());
+        else if (order.getCustomer() != null && order.getCustomer().getEmail() != null) {
           emailService.sendOrderCancelled(order.getCustomer().getEmail(), order.getCustomer().getName());
         }
       } catch (Exception e) {

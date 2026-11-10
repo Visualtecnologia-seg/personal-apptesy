@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 public class ProfessionalServiceImpl implements ProfessionalService {
 
   private final ProfessionalRepository professionalRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @Override
   public void setActive(Long id) {
@@ -41,6 +42,8 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         .findById(id)
         .orElseThrow(() -> new ObjectNotFoundException("Profissional não encontrado: " + id));
     professional.setIsOnline(isOnline);
-    return professionalRepository.save(professional);
+    Professional saved = professionalRepository.save(professional);
+    if (isOnline) jdbc.update("UPDATE professional_ SET online_at = NOW() WHERE id = ?", id);
+    return saved;
   }
 }

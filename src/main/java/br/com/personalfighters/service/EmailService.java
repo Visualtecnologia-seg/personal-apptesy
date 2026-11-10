@@ -22,6 +22,9 @@ public interface EmailService {
   /** E-mail montado com o MailTemplate. Enviado em segundo plano. */
   void send(String to, String subject, MailTemplate t);
 
+  /** Igual ao send, com um arquivo anexo (ex.: extrato em planilha). */
+  void send(String to, String subject, MailTemplate t, String fileName, byte[] file, String mime);
+
   /** Falso quando o servidor ainda não tem o e-mail configurado (MAIL_USERNAME/MAIL_PASSWORD). */
   boolean isConfigured();
 }

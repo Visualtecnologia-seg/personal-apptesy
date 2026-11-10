@@ -36,6 +36,7 @@ public class UserController {
   private final ProGrowthController proGrowthController;
   private final br.com.personalfighters.controller.auth.PhoneVerificationController phoneVerification;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.EmailAutomationService emailAutomation;
   private final br.com.personalfighters.service.CodeStore codes;
   private final br.com.personalfighters.service.SecurityService securityService;
   private final br.com.personalfighters.service.PayoutService payoutService;
@@ -210,7 +211,10 @@ public class UserController {
     User saved = userService.update(user);
     // trocou o e-mail: precisa confirmar de novo
     if (oldEmail != null && saved.getEmail() != null && !oldEmail.equalsIgnoreCase(saved.getEmail()))
+    {
       jdbc.update("UPDATE user_ SET email_verified = FALSE WHERE id = ?", saved.getId());
+      emailAutomation.emailChanged(saved.getId(), oldEmail, saved.getEmail());
+    }
     if (phoneChange != null) {
       jdbc.update("UPDATE user_ SET phone_verified = ? WHERE id = ?", phoneVerification.smsOn(), saved.getId());
       securityService.phoneChanged(saved, phoneChange[0], phoneChange[1]);
