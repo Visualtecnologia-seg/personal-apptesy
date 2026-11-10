@@ -76,6 +76,9 @@ public class UserController {
     String email = br.com.personalfighters.controller.auth.EmailVerificationController.normalize(in.getEmail());
     String googleSub = null, appleSub = null;
     if (!admin) {
+      // 0) nome completo de verdade: nome e sobrenome, só letras
+      String nameProblem = fullNameProblem(in.getName());
+      if (nameProblem != null) throw badReq(nameProblem);
       // 1) termos de uso e privacidade aceitos
       if (termsVersion == null || termsVersion.isBlank()) throw badReq("Aceite os Termos de Uso e a Política de Privacidade para continuar.");
       // 2) maior de 18 anos
@@ -363,4 +366,15 @@ public class UserController {
     return out;
   }
 
+
+  /** Nome e sobrenome com pelo menos 2 letras cada, sem números ou símbolos. Nulo = está certo. */
+  static String fullNameProblem(String name) {
+    String n = name == null ? "" : name.trim().replaceAll("\\s+", " ");
+    if (n.isEmpty()) return "Digite seu nome completo.";
+    if (!n.matches("[\\p{L}][\\p{L} .'-]*")) return "O nome deve ter só letras (sem números ou símbolos).";
+    long words = java.util.Arrays.stream(n.split(" ")).filter(w -> w.replaceAll("[^\\p{L}]", "").length() >= 2).count();
+    if (words < 2) return "Digite seu nome completo, com nome e sobrenome (como está no documento).";
+    if (n.length() > 80) return "O nome está muito longo.";
+    return null;
+  }
 }
