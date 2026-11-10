@@ -250,4 +250,153 @@ public class EmailAutomationService {
         .unsubscribe(unsubscribeUrl(proId));
     email.send(Objects.toString(u.get("email")), "Sua semana: " + money(earned) + " em " + services + " serviço(s)", t);
   }
+
+  // ---------- 4) profissional: cadastro aprovado / recusado / dinheiro na carteira ----------
+
+  /** Veio do app do profissional ou já trabalha como profissional. */
+  public boolean isPro(long userId) {
+    try {
+      Long n = jdbc.queryForObject("SELECT COUNT(*) FROM user_ u WHERE u.id = ? AND (u.signup_app = 'PRO' " +
+          "OR EXISTS (SELECT 1 FROM product__professional pp WHERE pp.professional_id = u.id) OR EXISTS (SELECT 1 FROM order_ o WHERE o.professional_id = u.id))", Long.class, userId);
+      return n != null && n > 0;
+    } catch (Exception e) { return false; }
+  }
+
+  private Map<String, Object> person(long userId) {
+    List<Map<String, Object>> r = jdbc.queryForList("SELECT u.id, u.name, u.email FROM user_ u WHERE u.id = ? AND u.deleted_at IS NULL AND u.email LIKE '%@%'", userId);
+    return r.isEmpty() ? null : r.get(0);
+  }
+
+  public void verificationApproved(long userId) {
+    try {
+      Map<String, Object> u = person(userId);
+      if (u == null || !mark(userId, "VERIF_OK", "")) return;
+      verificationApprovedEmail(u, isPro(userId));
+    } catch (Exception e) { log.warn("E-mail de aprovação {}: {}", userId, e.getMessage()); }
+  }
+
+  public void verificationApprovedEmail(Map<String, Object> u, boolean pro) {
+    String name = first(u.get("name"));
+    MailTemplate t;
+    if (pro) {
+      t = MailTemplate.pro()
+          .preheader("Sua identidade foi confirmada. Agora você aparece para os clientes.")
+          .hero("pintura.jpg").kicker("Cadastro aprovado").title(name.isEmpty() ? "Você está verificado!" : name + ", você está verificado!")
+          .p("Conferimos seus documentos e está tudo certo. A partir de agora seu perfil aparece com o selo de verificado e os clientes já podem contratar você.")
+          .checklist(java.util.Arrays.asList(
+              "**Fique online** no app para receber chamados perto de você.",
+              "**Confira seus serviços e preços**: perfis completos recebem mais pedidos.",
+              "**Responda rápido**: quem responde em até 10 minutos fecha mais serviços."))
+          .button("Ficar online agora", MailTemplate.openApp(true, null));
+    } else {
+      t = MailTemplate.client()
+          .preheader("Sua identidade foi confirmada.")
+          .hero("alongamento.jpg").kicker("Identidade confirmada").title(name.isEmpty() ? "Tudo certo com a sua conta" : name + ", tudo certo com a sua conta")
+          .p("Conferimos seus documentos e sua identidade está confirmada. Os profissionais veem que você é verificado, o que deixa tudo mais seguro para os dois lados.")
+          .button("Abrir o OPUS", MailTemplate.openApp(false, null));
+    }
+    email.send(Objects.toString(u.get("email")), pro ? "Cadastro aprovado: você já pode receber clientes" : "Sua identidade foi confirmada", t);
+  }
+
+  private static final Map<String, String> STEP_NAMES = Map.of(
+      "DOC_FRONT", "Foto da frente do documento", "DOC_BACK", "Foto do verso do documento",
+      "FACE", "Fotos do rosto", "SELFIE_DOC", "Foto segurando o documento");
+
+  public void verificationRejected(long userId, String reason, List<String> steps) {
+    try {
+      Map<String, Object> u = person(userId);
+      if (u == null) return;
+      // pode ser recusado mais de uma vez: no máximo 1 e-mail por dia
+      if (!mark(userId, "VERIF_NO", LocalDate.now(Z).toString())) return;
+      verificationRejectedEmail(u, isPro(userId), reason, steps);
+    } catch (Exception e) { log.warn("E-mail de recusa {}: {}", userId, e.getMessage()); }
+  }
+
+  public void verificationRejectedEmail(Map<String, Object> u, boolean pro, String reason, List<String> steps) {
+    List<String> items = new java.util.ArrayList<>();
+    for (String st : steps) items.add(STEP_NAMES.getOrDefault(st, st));
+    MailTemplate t = (pro ? MailTemplate.pro() : MailTemplate.client())
+        .preheader("Falta pouco: precisamos que você envie de novo algumas fotos.")
+        .kicker("Verificação de identidade").title("Precisamos de mais uma foto")
+        .p("Olá" + (first(u.get("name")).isEmpty() ? "" : ", " + first(u.get("name"))) + "! Conferimos seu cadastro, mas não conseguimos confirmar tudo desta vez.")
+        .alert("Motivo: " + Objects.toString(reason, ""), false)
+        .p("Envie de novo só isto:")
+        .checklist(items)
+        .button("Enviar de novo", MailTemplate.openApp(pro, "verificacao"))
+        .small("Dica: use um lugar bem iluminado, sem reflexo no documento, e deixe o rosto inteiro aparecendo.");
+    email.send(Objects.toString(u.get("email")), "Falta pouco para confirmar seu cadastro", t);
+  }
+
+  /** Dinheiro entrou na carteira do profissional (serviço concluído ou etapa aprovada). */
+  public void walletCredit(long proId, BigDecimal amount, String what) {
+    if (!email.isConfigured() || amount == null) return;
+    try {
+      Map<String, Object> u = person(proId);
+      if (u == null) return;
+      BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND status = 'DONE'", BigDecimal.class, proId);
+      BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status <> 'FAILED'", BigDecimal.class, proId);
+      walletCreditEmail(u, amount, what, (in == null ? BigDecimal.ZERO : in).subtract(out == null ? BigDecimal.ZERO : out));
+    } catch (Exception e) { log.warn("E-mail de carteira {}: {}", proId, e.getMessage()); }
+  }
+
+  public void walletCreditEmail(Map<String, Object> u, BigDecimal amount, String what, BigDecimal balance) {
+    String when = LocalDateTime.now(Z).format(DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm"));
+    MailTemplate t = MailTemplate.pro()
+        .preheader("Entrou " + money(amount) + " na sua carteira OPUS.")
+        .hero("ganhos.jpg").kicker("Dinheiro na carteira").title("Caiu " + money(amount) + " na sua carteira")
+        .p("Olá" + (first(u.get("name")).isEmpty() ? "" : ", " + first(u.get("name"))) + "! O pagamento foi liberado e já está disponível para sacar.")
+        .details(MailTemplate.rows("Valor", money(amount), "Referente a", Objects.toString(what, "Serviço"), "Quando", when, "Saldo para sacar", money(balance)))
+        .button("Sacar agora", MailTemplate.openApp(true, "sacar"))
+        .small("O saque vai para o PIX no seu CPF ou CNPJ, ou para a sua conta bancária.");
+    email.send(Objects.toString(u.get("email")), "Caiu " + money(amount) + " na sua carteira", t);
+  }
+
+  // ---------- 5) profissional que não terminou o cadastro ----------
+
+  @Scheduled(cron = "0 0 11 * * *", zone = "America/Sao_Paulo")
+  public void proOnboarding() {
+    if (!email.isConfigured()) return;
+    try {
+      LocalDateTime now = LocalDateTime.now(Z);
+      List<Map<String, Object>> rows = jdbc.queryForList(
+          "SELECT u.id, u.name, u.email, u.created_at_, u.avatar_url, u.pix_key, COALESCE(u.verification_status,'NONE') AS vs, " +
+              " (SELECT COUNT(*) FROM product__professional pp WHERE pp.professional_id = u.id) AS services, " +
+              " (SELECT COUNT(*) FROM bank_account_ b WHERE b.user_id = u.id) AS bank " +
+              "FROM user_ u WHERE " + ACTIVE + " AND u.signup_app = 'PRO' AND u.created_at_ < ? AND u.created_at_ > ? " +
+              " AND NOT EXISTS (SELECT 1 FROM email_log_ l WHERE l.user_id = u.id AND l.kind = 'ONBOARD' AND l.sent_at > ?) " +
+              "ORDER BY u.id LIMIT 60",
+          Timestamp.valueOf(now.minusDays(1)), Timestamp.valueOf(now.minusDays(15)), Timestamp.valueOf(now.minusHours(40)));
+      for (Map<String, Object> r : rows) {
+        long uid = ((Number) r.get("id")).longValue();
+        boolean docs = !"NONE".equals(r.get("vs")) && !"".equals(r.get("vs")) && !"REJECTED".equals(r.get("vs"));
+        boolean services = ((Number) r.get("services")).longValue() > 0;
+        boolean pay = (r.get("pix_key") != null && !r.get("pix_key").toString().isBlank()) || ((Number) r.get("bank")).longValue() > 0;
+        boolean photo = r.get("avatar_url") != null && !r.get("avatar_url").toString().isBlank();
+        if (docs && services && pay) continue; // já está tudo pronto
+        long days = java.time.Duration.between(((Timestamp) r.get("created_at_")).toLocalDateTime(), now).toDays();
+        String stage = days >= 7 ? "7" : days >= 3 ? "3" : "1";
+        if (!mark(uid, "ONBOARD", stage)) continue;
+        onboardingEmail(uid, r, docs, services, pay, photo);
+      }
+    } catch (Exception e) { log.warn("E-mail cadastro incompleto: {}", e.getMessage()); }
+  }
+
+  public void onboardingEmail(long uid, Map<String, Object> r, boolean docs, boolean services, boolean pay, boolean photo) {
+    String name = first(r.get("name"));
+    int done = (docs ? 1 : 0) + (services ? 1 : 0) + (pay ? 1 : 0) + (photo ? 1 : 0);
+    List<String> todo = new java.util.ArrayList<>();
+    if (!docs) todo.add("**Enviar seus documentos**: leva 2 minutos (foto do documento e uma selfie).");
+    if (!services) todo.add("**Cadastrar seus serviços** com preço e uma descrição curta.");
+    if (!pay) todo.add("**Dizer onde receber**: PIX no seu CPF ou CNPJ, ou conta bancária.");
+    if (!photo) todo.add("**Colocar uma foto sua** no perfil.");
+    MailTemplate t = MailTemplate.pro()
+        .preheader("Faltam " + todo.size() + " passo(s) para você começar a receber clientes.")
+        .hero("eletrica.jpg").kicker("Seu cadastro · " + done + " de 4 prontos").title(name.isEmpty() ? "Falta pouco para receber clientes" : name + ", falta pouco para receber clientes")
+        .p("Clientes já estão procurando profissionais perto de você, mas seu perfil só aparece quando o cadastro estiver completo. Falta isto:")
+        .checklist(todo)
+        .button(docs ? "Completar meu cadastro" : "Enviar documentos agora", MailTemplate.openApp(true, docs ? null : "verificacao"))
+        .small("Seus documentos ficam guardados com segurança e só a equipe do OPUS vê.")
+        .unsubscribe(unsubscribeUrl(uid));
+    email.send(Objects.toString(r.get("email")), name.isEmpty() ? "Falta pouco para você receber clientes" : name + ", falta pouco para você receber clientes", t);
+  }
 }

@@ -29,6 +29,7 @@ public class WalletService {
   private final AsaasService asaasService;
   private final SecurityService securityService;
   private final PayoutService payoutService;
+  private final EmailAutomationService emailAutomation;
 
   public static LocalDateTime now() { return LocalDateTime.now(ZoneId.of("America/Sao_Paulo")); }
 
@@ -52,6 +53,7 @@ public class WalletService {
         UUID.randomUUID(), pro.getId(), amount, order.getId(),
         "Serviço de " + (order.getCustomer() != null && order.getCustomer().getName() != null ? order.getCustomer().getName().trim().split("\\s+")[0] : "cliente"),
         Timestamp.valueOf(now()));
+    emailAutomation.walletCredit(pro.getId(), amount, serviceName(order));
     tx.ifPresent(t -> {
       t.setProfessionalIsPaid(true);
       t.setProfessionalPaymentDate(LocalDate.now());
@@ -67,6 +69,13 @@ public class WalletService {
     if (pro == null || amount == null || amount.signum() <= 0) return;
     jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at) VALUES (?, ?, 'STAGE', ?, ?, 'DONE', ?, ?)",
         UUID.randomUUID(), pro.getId(), amount, order.getId(), "Etapa " + idx + " aprovada", Timestamp.valueOf(now()));
+    emailAutomation.walletCredit(pro.getId(), amount, "Etapa " + idx + " de " + serviceName(order));
+  }
+
+  private static String serviceName(Order o) {
+    String svc = o.getProduct() != null && o.getProduct().getName() != null ? o.getProduct().getName() : "Serviço";
+    String c = o.getCustomer() != null && o.getCustomer().getName() != null ? o.getCustomer().getName().trim().split("\\s+")[0] : null;
+    return c == null ? svc : svc + " para " + c;
   }
 
   public BigDecimal available(Long proId) {

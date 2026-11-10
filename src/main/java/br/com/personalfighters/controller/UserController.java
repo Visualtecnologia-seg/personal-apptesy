@@ -115,13 +115,15 @@ public class UserController {
     user.setLongitude(in.getLongitude());
     user.setFullAddress(in.getFullAddress());
     // só indica de qual app veio (o cadastro sempre recebe os dois papéis)
-    if (in.getRole() != null && in.getRole().size() == 1 && in.getRole().get(0) == br.com.personalfighters.model.Role.PROFESSIONAL)
+    boolean proApp = in.getRole() != null && in.getRole().size() == 1 && in.getRole().get(0) == br.com.personalfighters.model.Role.PROFESSIONAL;
+    if (proApp)
       user.setRole(new java.util.ArrayList<>(java.util.List.of(br.com.personalfighters.model.Role.PROFESSIONAL)));
     User saved = userService.save(user);
     if (!admin) {
       jdbc.update("UPDATE user_ SET phone_verified = ?, email_verified = TRUE, terms_version = ?, terms_accepted_at = NOW(), google_sub = ? WHERE id = ?",
           phoneVerification.smsOn(), termsVersion.length() > 20 ? termsVersion.substring(0, 20) : termsVersion, googleSub, saved.getId());
       if (appleSub != null) jdbc.update("UPDATE user_ SET apple_sub = ? WHERE id = ?", appleSub, saved.getId());
+      jdbc.update("UPDATE user_ SET signup_app = ? WHERE id = ?", proApp ? "PRO" : "CLIENT", saved.getId());
       // Código de quem indicou (opcional): os dois ganham pontos no primeiro serviço
       if (referralCode != null && !referralCode.isBlank()) {
         java.util.List<Long> ref = jdbc.queryForList("SELECT id FROM user_ WHERE referral_code = ?", Long.class, referralCode.trim().toUpperCase());

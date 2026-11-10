@@ -37,6 +37,7 @@ public class VerificationController {
   private final UserService userService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
   private final br.com.personalfighters.service.SecurityService securityService;
+  private final br.com.personalfighters.service.EmailAutomationService emailAutomation;
 
   // ───────────────────────────── App (o próprio usuário) ─────────────────────────────
 
@@ -225,6 +226,7 @@ public class VerificationController {
         u.setVerificationReason(null);
         userRepository.save(u);
       });
+      emailAutomation.verificationApproved(v.getUserId());
       return ResponseEntity.ok(summary(v));
     }).orElse(ResponseEntity.notFound().build());
   }
@@ -266,6 +268,7 @@ public class VerificationController {
         u.setVerificationReason(reason);
         userRepository.save(u);
       });
+      emailAutomation.verificationRejected(v.getUserId(), reason, steps);
       return ResponseEntity.ok(summary(v));
     }).orElse(ResponseEntity.notFound().build());
   }
