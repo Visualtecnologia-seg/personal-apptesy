@@ -38,6 +38,7 @@ public class ProGrowthController {
   private final NotificationService notificationService;
   private final JdbcTemplate jdbc;
   private final br.com.personalfighters.service.SecurityService securityService;
+  private final br.com.personalfighters.service.EmailAutomationService emailAutomation;
 
   private static Timestamp now() { return Timestamp.valueOf(LocalDateTime.now(Z)); }
 
@@ -406,6 +407,7 @@ public class ProGrowthController {
         if (ins == 0) continue;
         String v = String.format(new Locale("pt", "BR"), "R$ %,.2f", ((BigDecimal) r.get("v")).doubleValue());
         notificationService.sendToUser(userService.findById(id), true, "Sua semana: " + r.get("n") + " serviço(s) e " + v + " ganhos. Abra o app e veja onde estão pedindo mais.");
+        emailAutomation.weeklyPro(id, monday, ((Number) r.get("n")).longValue(), (BigDecimal) r.get("v"));
       } catch (Exception e) { log.warn("Resumo semanal {}: {}", id, e.getMessage()); }
     }
   }

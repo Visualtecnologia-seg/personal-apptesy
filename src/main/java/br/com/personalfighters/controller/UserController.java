@@ -113,6 +113,9 @@ public class UserController {
     user.setLatitude(in.getLatitude());
     user.setLongitude(in.getLongitude());
     user.setFullAddress(in.getFullAddress());
+    // só indica de qual app veio (o cadastro sempre recebe os dois papéis)
+    if (in.getRole() != null && in.getRole().size() == 1 && in.getRole().get(0) == br.com.personalfighters.model.Role.PROFESSIONAL)
+      user.setRole(new java.util.ArrayList<>(java.util.List.of(br.com.personalfighters.model.Role.PROFESSIONAL)));
     User saved = userService.save(user);
     if (!admin) {
       jdbc.update("UPDATE user_ SET phone_verified = TRUE, email_verified = TRUE, terms_version = ?, terms_accepted_at = NOW(), google_sub = ? WHERE id = ?",

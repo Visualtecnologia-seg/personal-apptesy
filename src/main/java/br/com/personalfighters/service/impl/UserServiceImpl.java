@@ -130,6 +130,8 @@ public class UserServiceImpl implements UserService {
     String passwordHash = new BCryptPasswordEncoder().encode(user.getPassword());
     user.setPassword(passwordHash);
     user.setActive(true);
+    // O app do profissional manda role = PROFESSIONAL; serve só para escolher o e-mail de boas-vindas
+    boolean fromProApp = user.getRole() != null && user.getRole().contains(Role.PROFESSIONAL) && !user.getRole().contains(Role.CUSTOMER);
     user.setRole(Arrays.asList(Role.CUSTOMER, Role.PROFESSIONAL));
 
     Professional professional = new Professional();
@@ -161,7 +163,7 @@ public class UserServiceImpl implements UserService {
     financeRepository.save(finance);
 
     try {
-      emailService.sendWelcome(user.getEmail(), user.getName());
+      emailService.sendWelcome(user.getEmail(), user.getName(), fromProApp);
     } catch (Exception e) {
       log.warn("E-mail de boas-vindas não enviado: {}", e.getMessage());
     }

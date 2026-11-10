@@ -60,7 +60,7 @@ public class SecurityService {
       String ph = u.getPhoneNumber() == null ? "" : u.getPhoneNumber().replaceAll("\\D", "");
       if (Boolean.TRUE.equals(pv) && ph.length() == 11) smsService.send("+55" + ph, "OPUS: " + text);
     } catch (Exception ignored) { }
-    try { if (u.getEmail() != null) emailService.sendText(u.getEmail(), "Novo acesso à sua conta OPUS", "Olá " + Objects.toString(u.getName(), "") + ",\n\n" + text + "\n\nEquipe OPUS"); } catch (Exception ignored) { }
+    try { if (u.getEmail() != null) emailService.sendSecurityAlert(u.getEmail(), u.getName(), "Novo acesso à sua conta OPUS", "Novo acesso à sua conta", text); } catch (Exception ignored) { }
     return true;
   }
 
@@ -71,7 +71,7 @@ public class SecurityService {
     String text = "O celular da sua conta OPUS foi trocado para (" + newPhone.substring(0, 2) + ") *****-" + newPhone.substring(7) + " em " + when +
         ". Saques ficam segurados por 24 h. Não foi você? Fale com o suporte do OPUS agora.";
     try { if (oldPhone != null) smsService.send("+55" + oldPhone, "OPUS: " + text); } catch (Exception ignored) { }
-    try { if (u.getEmail() != null) emailService.sendText(u.getEmail(), "Celular da sua conta OPUS trocado", "Olá " + Objects.toString(u.getName(), "") + ",\n\n" + text + "\n\nEquipe OPUS"); } catch (Exception ignored) { }
+    try { if (u.getEmail() != null) emailService.sendSecurityAlert(u.getEmail(), u.getName(), "Celular da sua conta OPUS trocado", "O celular da sua conta foi trocado", text); } catch (Exception ignored) { }
     try { notificationService.sendToUser(u, false, text); } catch (Exception ignored) { }
   }
 
