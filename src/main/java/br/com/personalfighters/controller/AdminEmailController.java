@@ -56,6 +56,55 @@ public class AdminEmailController {
     email.sendSecurityAlert(to, "Mariana Souza", "Novo acesso à sua conta OPUS", "Novo acesso à sua conta",
         "Novo acesso à sua conta OPUS em Galaxy A54. Foi você? Se não foi, abra o app → Perfil → Segurança → Não fui eu.");
     email.sendOrderConfirmed(to, "Mariana Souza", today.plusDays(2).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")), "18:30");
-    return ResponseEntity.ok(Map.of("sent", 9));
+    int sent = 9;
+    if (Boolean.TRUE.equals(body.get("todos"))) sent += moreSamples(to, today);
+    return ResponseEntity.ok(Map.of("sent", sent));
+  }
+
+  /** Exemplos dos e-mails do profissional e da jornada do cliente. */
+  private int moreSamples(String to, LocalDate today) {
+    Map<String, Object> c = new HashMap<>(); c.put("name", "Mariana Souza"); c.put("email", to);
+    Map<String, Object> p = new HashMap<>(); p.put("name", "Carlos Lima"); p.put("email", to);
+    automation.verificationApprovedEmail(p, true);
+    automation.verificationRejectedEmail(p, true, "A foto do documento ficou desfocada e não dá para ler o CPF.", Arrays.asList("DOC_FRONT", "SELFIE_DOC"));
+    automation.walletCreditEmail(p, new BigDecimal("180.00"), "Pintura de parede para Mariana", new BigDecimal("1040.50"));
+    automation.onboardingEmail(0, p, false, true, false, true);
+    Map<String, Object> r = new HashMap<>(c);
+    r.put("id", UUID.fromString("7f3a9c21-0000-4000-8000-000000000000")); r.put("total_cost", new BigDecimal("126.00")); r.put("service_value", new BigDecimal("120.00"));
+    r.put("discount", new BigDecimal("12.60")); r.put("coupon_code", "BEMVINDO-K7Q2M"); r.put("service", "Aula de boxe"); r.put("pro", "Rafael Costa");
+    r.put("date", java.sql.Date.valueOf(today.plusDays(2))); r.put("start_time", java.sql.Time.valueOf("18:30:00"));
+    automation.receiptEmail(r);
+    automation.birthdayEmail(0, c, "NIVER-EXEMP", 15);
+    Map<String, Object> np = new HashMap<>(); np.put("id", 0); np.put("name", "Juliana Prado"); np.put("services", "Personal trainer, Alongamento");
+    Map<String, Object> nc = new HashMap<>(c); nc.put("category", "Personal");
+    automation.newProEmail(0, nc, np);
+    List<Map<String, Object>> dem = new ArrayList<>();
+    for (Object[] d : new Object[][]{{"Instalação elétrica", 14}, {"Troca de tomada", 9}, {"Chuveiro", 5}}) { Map<String, Object> m = new HashMap<>(); m.put("name", d[0]); m.put("n", d[1]); dem.add(m); }
+    automation.idleProEmail(0, p, dem);
+    Map<String, Object> rb = new HashMap<>(c); rb.put("pro", "Rafael Costa"); rb.put("service", "Aula de boxe"); rb.put("professional_id", 0);
+    automation.rebookEmail(0, rb);
+    automation.welcomeCouponEmail(0, c, "BEMVINDO-EXEMP", 10);
+    Map<String, Object> rf = new HashMap<>(c); rf.put("friend", "Bruno Alves");
+    automation.referralEmail(rf, false, 100);
+    automation.referralEmail(rf, true, 100);
+    Map<String, Object> oc = new HashMap<>(c); oc.put("service", "Instalação elétrica"); oc.put("pro", "Carlos Lima");
+    oc.put("date", java.sql.Date.valueOf(today.plusDays(1))); oc.put("start_time", java.sql.Time.valueOf("09:00:00"));
+    List<Map<String, Object>> alts = new ArrayList<>();
+    for (Object[] d : new Object[][]{{"André Ribeiro", 4.9, 32, 1.8}, {"Paulo Mendes", 4.7, 11, 3.2}, {"Luiz Fernandes", null, 0, 4.5}}) {
+      Map<String, Object> m = new HashMap<>(); m.put("id", 0); m.put("name", d[0]); m.put("rating", d[1]); m.put("done", d[2]); m.put("km", d[3]); alts.add(m);
+    }
+    automation.proCancelledEmail(oc, alts);
+    automation.withdrawEmail(p, new BigDecimal("500.00"), "PIX CPF •••.456.789-••", true);
+    automation.withdrawEmail(p, new BigDecimal("500.00"), "Banco do Brasil ••••4521", false);
+    List<Map<String, Object>> lines = new ArrayList<>();
+    String[] ds = {"Instalação elétrica para Mariana", "Troca de chuveiro para João", "Etapa 1 de Reforma elétrica para Ana", "Tomadas para Pedro", "Instalação de ventilador para Lúcia", "Etapa 2 de Reforma elétrica para Ana"};
+    double[] vs = {180, 90, 400, 120, 150, 400};
+    LocalDate m0 = today.minusMonths(1).withDayOfMonth(1);
+    for (int i = 0; i < ds.length; i++) {
+      Map<String, Object> m = new HashMap<>(); m.put("created_at", java.sql.Timestamp.valueOf(m0.plusDays(2 + i * 4).atTime(14, 0))); m.put("description", ds[i]); m.put("amount", BigDecimal.valueOf(vs[i])); lines.add(m);
+    }
+    automation.statementEmail(p, m0, lines, new BigDecimal("900.00"), new BigDecimal("14820.00"));
+    automation.securityChangeEmail(to, c, "Sua senha foi trocada", "A senha da sua conta OPUS foi trocada agora.");
+    return 17;
   }
 }
