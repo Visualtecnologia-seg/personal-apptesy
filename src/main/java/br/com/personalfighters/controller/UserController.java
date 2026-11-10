@@ -87,11 +87,13 @@ public class UserController {
       int age = java.time.Period.between(b, java.time.LocalDate.now()).getYears();
       if (age < 18) throw badReq("O OPUS é só para maiores de 18 anos.");
       if (age > 110) throw badReq("Confira a data de nascimento.");
-      // 3) celular confirmado por SMS e ainda sem outra conta
-      if (phone == null) throw badReq("Digite um celular válido com DDD.");
+      // 3) celular: só é obrigatório (e confirmado por SMS) quando o SMS estiver ligado
+      boolean phoneTyped = in.getPhoneNumber() != null && !in.getPhoneNumber().replaceAll("\\D", "").isEmpty();
+      if (phone == null && (phoneVerification.smsOn() || phoneTyped)) throw badReq("Digite um celular válido com DDD.");
       // Enquanto o SMS não estiver ligado, o celular é só informado (não conferido)
       if (phoneVerification.smsOn() && !phone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o seu celular com o código enviado por SMS.");
-      Integer samePhone = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE phone_verified = TRUE AND regexp_replace(COALESCE(phone_number, ''), '[^0-9]', '', 'g') = ?", Integer.class, phone);
+      Integer samePhone = phone == null ? Integer.valueOf(0) : null;
+      if (samePhone == null) samePhone = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE phone_verified = TRUE AND regexp_replace(COALESCE(phone_number, ''), '[^0-9]', '', 'g') = ?", Integer.class, phone);
       if (samePhone != null && samePhone > 0) throw badReq("Este celular já tem uma conta. Entre com ele ou use \"Esqueci minha senha\".");
       // 4) e-mail confirmado (por código ou pela conta Google)
       if (email == null) throw badReq("Digite um e-mail válido.");
@@ -113,7 +115,7 @@ public class UserController {
     user.setBirthday(in.getBirthday());
     user.setCpf(in.getCpf());
     user.setGender(in.getGender());
-    user.setPhoneNumber(phone != null ? phone : in.getPhoneNumber());
+    user.setPhoneNumber(phone);
     user.setEmail(email != null ? email : in.getEmail());
     user.setLatitude(in.getLatitude());
     user.setLongitude(in.getLongitude());
@@ -193,7 +195,9 @@ public class UserController {
       String newPhone = br.com.personalfighters.controller.auth.PhoneVerificationController.normalize(user.getPhoneNumber());
       String rawNew = user.getPhoneNumber() == null ? "" : user.getPhoneNumber().replaceAll("\\D", "");
       String rawOld = cur.getPhoneNumber() == null ? "" : cur.getPhoneNumber().replaceAll("\\D", "");
-      if (!rawNew.equals(rawOld)) {
+      if (!rawNew.equals(rawOld) && rawNew.isEmpty() && !phoneVerification.smsOn()) {
+        user.setPhoneNumber(null); // sem SMS, o telefone é opcional e pode ser apagado
+      } else if (!rawNew.equals(rawOld)) {
         if (newPhone == null) throw badReq("Digite um celular válido com DDD.");
         if (!newPhone.equals(oldPhone)) {
           if (phoneVerification.smsOn() && !newPhone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o novo celular com o código enviado por SMS.");
