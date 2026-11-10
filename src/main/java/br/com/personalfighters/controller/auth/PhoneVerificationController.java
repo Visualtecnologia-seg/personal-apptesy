@@ -30,6 +30,9 @@ public class PhoneVerificationController {
     return d;
   }
 
+  /** SMS de verdade ligado (Twilio configurado). Desligado: o celular não é conferido por SMS. */
+  public boolean smsOn() { return !sms.isTestMode(); }
+
   @PostMapping("/send")
   public ResponseEntity<?> send(@RequestBody Map<String, Object> body) {
     String phone = normalize(Objects.toString(body.get("phone"), ""));

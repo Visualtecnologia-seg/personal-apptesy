@@ -29,6 +29,7 @@ import java.util.*;
 public class AltLoginController {
 
   private final CodeStore codes;
+  private final br.com.personalfighters.service.SmsService sms;
   private final LoginResolver resolver;
   private final UserDetailsService userDetailsService;
   private final AuthenticationService authenticationService;
@@ -88,6 +89,8 @@ public class AltLoginController {
   @PostMapping("/phone/login")
   public ResponseEntity<?> phoneLogin(@RequestBody Map<String, Object> body, HttpServletRequest req) {
     String phone = PhoneVerificationController.normalize(Objects.toString(body.get("phone"), ""));
+    // Sem SMS de verdade o código seria sempre o mesmo: entrar por SMS fica desligado
+    if (sms.isTestMode()) return PhoneVerificationController.bad("Entrar com código por SMS ainda não está disponível. Entre com sua senha.");
     if (phone == null) return PhoneVerificationController.bad("Digite um celular válido com DDD.");
     String err = codes.check("SMS", phone, Objects.toString(body.get("code"), ""));
     if (err != null) return PhoneVerificationController.bad(err);

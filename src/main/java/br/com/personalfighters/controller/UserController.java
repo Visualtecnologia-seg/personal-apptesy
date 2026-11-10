@@ -85,7 +85,8 @@ public class UserController {
       if (age > 110) throw badReq("Confira a data de nascimento.");
       // 3) celular confirmado por SMS e ainda sem outra conta
       if (phone == null) throw badReq("Digite um celular válido com DDD.");
-      if (!phone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o seu celular com o código enviado por SMS.");
+      // Enquanto o SMS não estiver ligado, o celular é só informado (não conferido)
+      if (phoneVerification.smsOn() && !phone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o seu celular com o código enviado por SMS.");
       Integer samePhone = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE phone_verified = TRUE AND regexp_replace(COALESCE(phone_number, ''), '[^0-9]', '', 'g') = ?", Integer.class, phone);
       if (samePhone != null && samePhone > 0) throw badReq("Este celular já tem uma conta. Entre com ele ou use \"Esqueci minha senha\".");
       // 4) e-mail confirmado (por código ou pela conta Google)
@@ -118,8 +119,8 @@ public class UserController {
       user.setRole(new java.util.ArrayList<>(java.util.List.of(br.com.personalfighters.model.Role.PROFESSIONAL)));
     User saved = userService.save(user);
     if (!admin) {
-      jdbc.update("UPDATE user_ SET phone_verified = TRUE, email_verified = TRUE, terms_version = ?, terms_accepted_at = NOW(), google_sub = ? WHERE id = ?",
-          termsVersion.length() > 20 ? termsVersion.substring(0, 20) : termsVersion, googleSub, saved.getId());
+      jdbc.update("UPDATE user_ SET phone_verified = ?, email_verified = TRUE, terms_version = ?, terms_accepted_at = NOW(), google_sub = ? WHERE id = ?",
+          phoneVerification.smsOn(), termsVersion.length() > 20 ? termsVersion.substring(0, 20) : termsVersion, googleSub, saved.getId());
       if (appleSub != null) jdbc.update("UPDATE user_ SET apple_sub = ? WHERE id = ?", appleSub, saved.getId());
       // Código de quem indicou (opcional): os dois ganham pontos no primeiro serviço
       if (referralCode != null && !referralCode.isBlank()) {
@@ -189,7 +190,7 @@ public class UserController {
       if (!rawNew.equals(rawOld)) {
         if (newPhone == null) throw badReq("Digite um celular válido com DDD.");
         if (!newPhone.equals(oldPhone)) {
-          if (!newPhone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o novo celular com o código enviado por SMS.");
+          if (phoneVerification.smsOn() && !newPhone.equals(phoneVerification.phoneFromToken(phoneToken))) throw badReq("Confirme o novo celular com o código enviado por SMS.");
           Integer taken = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE id <> ? AND phone_verified = TRUE AND regexp_replace(COALESCE(phone_number, ''), '[^0-9]', '', 'g') = ?", Integer.class, cur.getId(), newPhone);
           if (taken != null && taken > 0) throw badReq("Este celular já está em outra conta.");
           phoneChange = new String[]{oldPhone, newPhone};
@@ -209,7 +210,7 @@ public class UserController {
     if (oldEmail != null && saved.getEmail() != null && !oldEmail.equalsIgnoreCase(saved.getEmail()))
       jdbc.update("UPDATE user_ SET email_verified = FALSE WHERE id = ?", saved.getId());
     if (phoneChange != null) {
-      jdbc.update("UPDATE user_ SET phone_verified = TRUE WHERE id = ?", saved.getId());
+      jdbc.update("UPDATE user_ SET phone_verified = ? WHERE id = ?", phoneVerification.smsOn(), saved.getId());
       securityService.phoneChanged(saved, phoneChange[0], phoneChange[1]);
     }
     return redactor.strip(saved, saved.getId());

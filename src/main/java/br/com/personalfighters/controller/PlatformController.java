@@ -11,9 +11,11 @@ import java.util.Map;
 public class PlatformController {
 
   private final br.com.personalfighters.service.AsaasService asaasService;
+  private final br.com.personalfighters.service.SmsService smsService;
 
-  public PlatformController(br.com.personalfighters.service.AsaasService asaasService) {
+  public PlatformController(br.com.personalfighters.service.AsaasService asaasService, br.com.personalfighters.service.SmsService smsService) {
     this.asaasService = asaasService;
+    this.smsService = smsService;
   }
 
   @GetMapping("/config")
@@ -26,6 +28,8 @@ public class PlatformController {
     m.put("platformFeeLabel", label);
     m.put("platformFeeDescription", "A plataforma retém " + label + " de taxa sobre cada serviço concluído.");
     m.put("testPayments", asaasService.isTestMode());
+    // Os apps escondem "entrar por SMS" e a confirmação por SMS no cadastro enquanto o SMS não estiver ligado
+    m.put("sms", !smsService.isTestMode());
     m.put("cancelPricePerKm", br.com.personalfighters.service.TripService.PRICE_PER_KM);
     m.put("cancelMinFee", br.com.personalfighters.service.TripService.MIN_FEE);
     m.put("pointsPerService", br.com.personalfighters.service.PointsAwarder.POINTS_PER_SERVICE);
