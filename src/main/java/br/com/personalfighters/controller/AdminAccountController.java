@@ -53,7 +53,19 @@ public class AdminAccountController {
     List<Map<String, Object>> rows = jdbc.queryForList("SELECT id FROM user_ WHERE LOWER(email) = LOWER(?) AND username NOT LIKE 'painel:%' AND deleted_at IS NULL", email);
     if (rows.isEmpty()) return bad("Nenhuma conta ativa com esse e-mail.");
     if (rows.size() > 1) return bad("Mais de uma conta com esse e-mail. Fale com o suporte técnico.");
-    Long id = ((Number) rows.get(0).get("id")).longValue();
+    return eraseById(((Number) rows.get(0).get("id")).longValue());
+  }
+
+  /** Botão "Apagar conta de vez" na ficha da pessoa no painel. */
+  @PostMapping("/{id}/erase")
+  public ResponseEntity<?> eraseOne(@PathVariable Long id, @RequestBody Map<String, Object> b) {
+    if (!"APAGAR".equals(b.get("confirm"))) return bad("Digite APAGAR para confirmar.");
+    Integer ok = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE id = ? AND username NOT LIKE 'painel:%' AND deleted_at IS NULL", Integer.class, id);
+    if (ok == null || ok == 0) return bad("Conta não encontrada ou já apagada.");
+    return eraseById(id);
+  }
+
+  private ResponseEntity<?> eraseById(Long id) {
 
     Long open = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE (customer_id = ? OR professional_id = ?) AND status NOT IN ('DONE','REVIEWED','CANCELLED','BLOCKED')", Long.class, id, id);
     if (open != null && open > 0) return bad("A conta tem " + open + " pedido(s) em andamento. Cancele antes de apagar.");
