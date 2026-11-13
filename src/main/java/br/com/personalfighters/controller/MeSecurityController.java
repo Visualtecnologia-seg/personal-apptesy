@@ -156,10 +156,10 @@ public class MeSecurityController {
     Long id = me.getId();
     String tag = "excluido-" + id;
     // Pedidos e pagamentos ficam guardados sem os dados pessoais (obrigação fiscal); o resto é apagado.
-    jdbc.update("UPDATE user_ SET name = 'Conta excluída', surname = NULL, email = ?, username = ?, phone_number = NULL, birthday = NULL, avatar_url = NULL, " +
+    jdbc.update("UPDATE user_ SET name = 'Conta excluída', surname = NULL, email = ?, username = ?, cpf = ?, cnpj = NULL, cnpj_name = NULL, phone_number = NULL, birthday = NULL, avatar_url = NULL, " +
         "latitude = NULL, longitude = NULL, full_address = NULL, pix_key = NULL, pix_key_type = NULL, document_url = NULL, doc_front_url = NULL, doc_back_url = NULL, doc_selfie_url = NULL, " +
         "password = ?, active = FALSE, deleted_at = ? WHERE id = ?",
-        tag + "@excluido.opus", tag, passwordEncoder.encode(UUID.randomUUID().toString()), now(), id);
+        tag + "@excluido.opus", tag, "x" + id, passwordEncoder.encode(UUID.randomUUID().toString()), now(), id);
     for (String sql : new String[]{
         "DELETE FROM identity_verification_ WHERE user_id = ?",
         "DELETE FROM user_device_ WHERE user_id = ?",
