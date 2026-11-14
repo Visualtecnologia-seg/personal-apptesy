@@ -72,6 +72,18 @@ public class PublicProfileController {
       pr.append("<span class=\"pz\">👍 ").append(MailTemplate.esc(Objects.toString(t.get("tag")))).append("</span>");
     }
     String firstName = name.split(" ")[0];
+    // Um depoimento real de cliente (o mais recente, nota 4 ou 5, com comentário)
+    String quote = "";
+    try {
+      List<Map<String, Object>> q = jdbc.queryForList("SELECT r.comment, r.rating, c.name AS who FROM review_ r LEFT JOIN user_ c ON c.id = r.customer_id " +
+          "WHERE r.professional_id = ? AND COALESCE(r.type,'CLIENT_TO_PRO') = 'CLIENT_TO_PRO' AND r.rating >= 4 AND LENGTH(TRIM(COALESCE(r.comment,''))) >= 12 ORDER BY r.id DESC LIMIT 1", uid);
+      if (!q.isEmpty()) {
+        String c = Objects.toString(q.get(0).get("comment"), "").trim();
+        if (c.length() > 160) c = c.substring(0, 157) + "…";
+        String who = Objects.toString(q.get(0).get("who"), "Cliente").trim().split(" ")[0];
+        quote = "<div class=\"sec\"><div class=\"q\"><div class=\"qs\">★★★★★</div><p>“" + MailTemplate.esc(c) + "”</p><span>" + MailTemplate.esc(who) + ", cliente pelo OPUS</span></div></div>";
+      }
+    } catch (Exception ignored) { }
     String fn = MailTemplate.esc(firstName);
     String initials = name.substring(0, 1).toUpperCase();
     String meta = (rating != null ? "<b>★ " + rating + "</b> · " + reviews + " avaliaç" + (reviews == 1 ? "ão" : "ões") + " · " : "<b>Novo no OPUS</b> · ")
@@ -113,6 +125,7 @@ public class PublicProfileController {
         ".bar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid #E5E7EB;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}" +
         ".bar .in{max-width:480px;margin:0 auto}.cta{display:flex;align-items:center;justify-content:center;gap:8px;height:54px;border-radius:16px;background:#0B1530;color:#fff;font-weight:800;font-size:16.5px;text-decoration:none}" +
         ".dl{display:block;text-align:center;margin-top:8px;font-size:13px;color:#1D4ED8;font-weight:700;text-decoration:none}" +
+        ".q{background:#fff;border-radius:22px;padding:18px 20px;border:1px solid #E5E7EB}.qs{color:#F59E0B;letter-spacing:2px;font-size:15px}.q p{margin:8px 0 6px;font-size:15.5px;line-height:1.5;color:#0B1530;font-style:italic}.q span{font-size:12.5px;color:#64748B;font-weight:700}" +
         ".foot{text-align:center;color:#94A3B8;font-size:12px;margin-top:26px}</style></head><body><div class=\"w\">" +
         "<div class=\"hero\"><div class=\"brand\"><img src=\"/email/logo.png\" alt=\"\">OPUS</div>" +
         (hasPhoto ? "<img class=\"av\" src=\"/users/" + uid + "/avatar\" alt=\"\">" : "<div class=\"av\">" + MailTemplate.esc(initials) + "</div>") +
@@ -124,6 +137,7 @@ public class PublicProfileController {
         "<h3>Seu dinheiro protegido</h3>" +
         "<p>Você paga pelo app e o valor fica guardado no cofre do OPUS. " + fn + " só recebe depois que você confere e aprova o serviço.</p>" +
         "<div class=\"flow\">" + flow + "</div></div></div>" +
+        quote +
         "<div class=\"sec\"><p class=\"h2\">Rápido, seguro e sem dor de cabeça</p><div class=\"feats\">" +
         "<div class=\"f\"><div class=\"fi\" style=\"background:#FEF3C7;color:#D97706\">" + icBolt + "</div><div><b>Rápido</b><span>Peça em 1 minuto: escreva, fale ou mande uma foto do problema.</span></div></div>" +
         "<div class=\"f\"><div class=\"fi\" style=\"background:#EFF4FF;color:#1D4ED8\">" + icId + "</div><div><b>Seguro</b><span>Profissional com documento e selfie conferidos, chat no app e botão SOS.</span></div></div>" +
