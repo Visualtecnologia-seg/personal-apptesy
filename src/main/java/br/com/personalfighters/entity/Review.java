@@ -60,4 +60,8 @@ public class Review {
   /** CLIENT | PROFESSIONAL */
   @Column(name = "reviewer_role", length = 20)
   private String reviewerRole;
+
+  /** Elogios rápidos escolhidos pelo cliente, separados por "|" (ex.: "Pontual|Limpou tudo depois"). */
+  @Column(name = "tags", columnDefinition = "TEXT")
+  private String tags;
 }

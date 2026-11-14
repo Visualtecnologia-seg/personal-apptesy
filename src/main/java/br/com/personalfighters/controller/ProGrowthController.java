@@ -389,6 +389,10 @@ public class ProGrowthController {
     out.put("rating", jdbc.queryForObject("SELECT ROUND(AVG(rating)::numeric,1) FROM review_ WHERE professional_id = ?", BigDecimal.class, id));
     out.put("done", n("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND status IN ('DONE','REVIEWED')", id));
     out.put("seals", seals(id));
+    out.put("reviews", n("SELECT COUNT(*) FROM review_ WHERE professional_id = ? AND COALESCE(type,'CLIENT_TO_PRO') = 'CLIENT_TO_PRO'", id));
+    out.put("services", jdbc.queryForList("SELECT p.name FROM product__professional pp JOIN product_ p ON p.id = pp.product_id WHERE pp.professional_id = ? ORDER BY p.name LIMIT 6", String.class, id));
+    out.put("praise", ReviewController.topTags(jdbc, id, 4));
+    out.put("link", br.com.personalfighters.util.MailTemplate.base() + "/p/" + id);
     return ResponseEntity.ok(out);
   }
 

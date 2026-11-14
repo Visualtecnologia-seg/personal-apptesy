@@ -47,6 +47,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
       // -- Imagens dos e-mails, link "parar de receber" e "abrir o app"
       "/email/**",
       "/abrir/*",
+      // -- Página pública do profissional (link de compartilhar)
+      "/p/*",
 
       // -- Painel de verificação (página estática; as APIs continuam protegidas)
       "/painel",

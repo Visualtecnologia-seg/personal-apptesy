@@ -22,6 +22,7 @@ public class ReviewController {
   private final ReviewService reviewService;
   private final br.com.personalfighters.service.UserService userService;
   private final br.com.personalfighters.repository.OrderRepository orderRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   @GetMapping("/{id}")
   @ApiOperation(value = "Retorna review pelo ID.")
@@ -64,6 +65,7 @@ public class ReviewController {
     review.setProfessional(o.getProfessional());
     review.setType(client ? "CLIENT_TO_PRO" : "PRO_TO_CLIENT");
     review.setReviewerRole(client ? "CUSTOMER" : "PROFESSIONAL");
+    review.setTags(client ? cleanTags(review.getTags()) : null);
     return reviewService.save(review);
   }
 
@@ -89,5 +91,31 @@ public class ReviewController {
   @ResponseStatus(HttpStatus.OK)
   public void delete(@PathVariable Long id) {
     reviewService.delete(id);
+  }
+
+  /** Até 6 elogios, cada um curto e só com letras/números/acentos. */
+  static String cleanTags(String raw) {
+    if (raw == null || raw.isBlank()) return null;
+    java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+    for (String t : raw.split("\\|")) {
+      String v = t.trim().replaceAll("\\s+", " ");
+      if (v.length() < 3 || v.length() > 40 || !v.matches("[\\p{L}0-9 ,.'-]+")) continue;
+      out.add(v);
+      if (out.size() >= 6) break;
+    }
+    return out.isEmpty() ? null : String.join("|", out);
+  }
+
+  /** Elogios mais recebidos pelo profissional (para o perfil). */
+  @GetMapping("/users/{id}/elogios")
+  public java.util.List<java.util.Map<String, Object>> praise(@PathVariable Long id) {
+    return topTags(jdbc, id, 6);
+  }
+
+  public static java.util.List<java.util.Map<String, Object>> topTags(org.springframework.jdbc.core.JdbcTemplate jdbc, Long proId, int limit) {
+    try {
+      return jdbc.queryForList("SELECT t AS tag, COUNT(*) AS n FROM review_ r, unnest(string_to_array(r.tags, '|')) AS t " +
+          "WHERE r.professional_id = ? AND r.tags IS NOT NULL AND COALESCE(r.type,'CLIENT_TO_PRO') = 'CLIENT_TO_PRO' GROUP BY t ORDER BY n DESC, t LIMIT ?", proId, limit);
+    } catch (Exception e) { return java.util.List.of(); }
   }
 }

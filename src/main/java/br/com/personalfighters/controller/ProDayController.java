@@ -44,6 +44,11 @@ public class ProDayController {
     BigDecimal goal = null;
     try { goal = jdbc.queryForObject("SELECT weekly_goal FROM professional_area_ WHERE professional_id = ?", BigDecimal.class, id); } catch (Exception ignored) { }
     out.put("weeklyGoal", goal);
+    BigDecimal mGoal = null;
+    try { mGoal = jdbc.queryForObject("SELECT monthly_goal FROM professional_area_ WHERE professional_id = ?", BigDecimal.class, id); } catch (Exception ignored) { }
+    out.put("monthlyGoal", mGoal);
+    LocalDateTime monthStart = d.withDayOfMonth(1).atStartOfDay();
+    out.put("monthEarned", sum(id, monthStart, monthStart.plusMonths(1)));
 
     // Próximos atendimentos (hoje e amanhã) e aulas em grupo de hoje
     out.put("next", jdbc.queryForList(
@@ -71,7 +76,13 @@ public class ProDayController {
     User me = userService.findAuthUser();
     BigDecimal v;
     try { v = new BigDecimal(Objects.toString(b.get("value"), "0").replace(',', '.')); } catch (Exception e) { return bad("Valor inválido."); }
-    if (v.signum() < 0 || v.compareTo(new BigDecimal("100000")) > 0) return bad("Valor inválido.");
+    if (v.signum() < 0 || (!"month".equals(b.get("period")) && v.compareTo(new BigDecimal("100000")) > 0)) return bad("Valor inválido.");
+    if ("month".equals(b.get("period"))) {
+      if (v.compareTo(new BigDecimal("1000000")) > 0) return bad("Valor inválido.");
+      jdbc.update("INSERT INTO professional_area_ (professional_id, monthly_goal, updated_at) VALUES (?, ?, ?) " +
+          "ON CONFLICT (professional_id) DO UPDATE SET monthly_goal = EXCLUDED.monthly_goal, updated_at = EXCLUDED.updated_at", me.getId(), v, Timestamp.valueOf(LocalDateTime.now(Z)));
+      return ResponseEntity.ok(Map.of("monthlyGoal", v));
+    }
     jdbc.update("INSERT INTO professional_area_ (professional_id, weekly_goal, updated_at) VALUES (?, ?, ?) " +
         "ON CONFLICT (professional_id) DO UPDATE SET weekly_goal = EXCLUDED.weekly_goal, updated_at = EXCLUDED.updated_at", me.getId(), v, Timestamp.valueOf(LocalDateTime.now(Z)));
     return ResponseEntity.ok(Map.of("weeklyGoal", v));
