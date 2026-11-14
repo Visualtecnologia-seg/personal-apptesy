@@ -31,8 +31,8 @@ import java.util.Collections;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
-  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status"};
-  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/auth/reset-password", "/auth/phone/send", "/auth/phone/verify", "/auth/phone/login", "/auth/email/send", "/auth/email/verify", "/auth/google", "/auth/apple", "/users", "/partners/lead", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
+  private static final String[] PUBLIC_MATCHERS_GET = {"/users/*/avatar", "/orders/photos/*", "/platform/config", "/posts/photos/*", "/posts/videos/*", "/public/pro/*", "/public/export/*", "/panel-auth/status", "/showcase/*", "/showcase/*/cover", "/showcase/items/*/image", "/showcase/items/*/go"};
+  private static final String[] PUBLIC_MATCHERS_POST = {"/asaas/webhook", "/auth", "/auth/forgot-password", "/auth/reset-password", "/auth/phone/send", "/auth/phone/verify", "/auth/phone/login", "/auth/email/send", "/auth/email/verify", "/auth/google", "/auth/apple", "/users", "/partners/lead", "/showcase/items/*/click", "/panel-auth/login", "/panel-auth/2fa", "/panel-auth/setup"};
   private static final String[] WHITELIST = {
       // Documentação da API (swagger) e /actuator saíram daqui: agora só administrador.
       "/actuator/health",

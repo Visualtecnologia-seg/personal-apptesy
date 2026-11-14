@@ -72,6 +72,21 @@ public class PublicProfileController {
       pr.append("<span class=\"pz\">👍 ").append(MailTemplate.esc(Objects.toString(t.get("tag")))).append("</span>");
     }
     String firstName = name.split(" ")[0];
+    // Capa e indicação em destaque (só o que o administrador aprovou)
+    Map<String, Object> show = ShowcaseController.publicData(jdbc, uid);
+    @SuppressWarnings("unchecked") Map<String, Object> cov = (Map<String, Object>) show.get("cover");
+    @SuppressWarnings("unchecked") List<Map<String, Object>> recs = (List<Map<String, Object>>) show.get("items");
+    String heroStyle = cov == null ? "" : " style=\"background:linear-gradient(180deg,rgba(11,21,48,.35),rgba(11,21,48,.82)),url('/showcase/" + uid + "/cover?v=" + cov.get("v") + "') center/cover\"";
+    String partnerTag = cov != null && "PARTNER".equals(cov.get("mode")) && cov.get("brand") != null
+        ? "<div class=\"ptag\">Parceria · " + MailTemplate.esc(Objects.toString(cov.get("brand"))) + "</div>" : "";
+    String recoHtml = "";
+    if (!recs.isEmpty()) {
+      Map<String, Object> it = recs.get(0);
+      recoHtml = "<div class=\"sec\"><a class=\"reco\" href=\"/showcase/items/" + it.get("id") + "/go\" rel=\"sponsored nofollow noopener\" target=\"_blank\">" +
+          "<img src=\"/showcase/items/" + it.get("id") + "/image?v=" + it.get("v") + "\" alt=\"\">" +
+          "<div><small>" + ("PARTNER".equals(it.get("kind")) ? "PARCERIA · " : "") + MailTemplate.esc(firstName.toUpperCase()) + " RECOMENDA</small><b>" + MailTemplate.esc(Objects.toString(it.get("title"))) + "</b>" +
+          "<span>Ver " + ("Mercado Livre".equals(it.get("store")) ? "no " : "na ") + MailTemplate.esc(Objects.toString(it.get("store"))) + " ↗</span></div></a></div>";
+    }
     // Um depoimento real de cliente (o mais recente, nota 4 ou 5, com comentário)
     String quote = "";
     try {
@@ -126,18 +141,21 @@ public class PublicProfileController {
         ".bar .in{max-width:480px;margin:0 auto}.cta{display:flex;align-items:center;justify-content:center;gap:8px;height:54px;border-radius:16px;background:#0B1530;color:#fff;font-weight:800;font-size:16.5px;text-decoration:none}" +
         ".dl{display:block;text-align:center;margin-top:8px;font-size:13px;color:#1D4ED8;font-weight:700;text-decoration:none}" +
         ".q{background:#fff;border-radius:22px;padding:18px 20px;border:1px solid #E5E7EB}.qs{color:#F59E0B;letter-spacing:2px;font-size:15px}.q p{margin:8px 0 6px;font-size:15.5px;line-height:1.5;color:#0B1530;font-style:italic}.q span{font-size:12.5px;color:#64748B;font-weight:700}" +
+        ".ptag{display:inline-block;margin-top:12px;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);padding:5px 10px;border-radius:8px}" +
+        ".reco{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,#1A0A10,#3B0A14);color:#fff;border-radius:20px;padding:12px;text-decoration:none}.reco img{width:66px;height:66px;border-radius:14px;object-fit:cover;background:#fff;flex:none}" +
+        ".reco small{display:block;font-size:10px;letter-spacing:1.2px;font-weight:800;color:#FDBA74}.reco b{display:block;font-size:16px;margin:3px 0}.reco span{font-size:12.5px;color:#FECACA;font-weight:700}" +
         ".foot{text-align:center;color:#94A3B8;font-size:12px;margin-top:26px}</style></head><body><div class=\"w\">" +
-        "<div class=\"hero\"><div class=\"brand\"><img src=\"/email/logo.png\" alt=\"\">OPUS</div>" +
+        "<div class=\"hero\"" + heroStyle + "><div class=\"brand\"><img src=\"/email/logo.png\" alt=\"\">OPUS</div>" +
         (hasPhoto ? "<img class=\"av\" src=\"/users/" + uid + "/avatar\" alt=\"\">" : "<div class=\"av\">" + MailTemplate.esc(initials) + "</div>") +
         "<h1>" + MailTemplate.esc(name) + "</h1><p class=\"meta\">" + meta + "</p>" +
         (verified ? "<div class=\"ver\">✓ Identidade verificada pelo OPUS</div>" : "") +
-        (pr.length() > 0 ? "<div class=\"pzs\">" + pr + "</div>" : "") +
+        (pr.length() > 0 ? "<div class=\"pzs\">" + pr + "</div>" : "") + partnerTag +
         "</div>" +
         "<div class=\"sec\"><div class=\"safe\"><div class=\"ic\">" + icShield + "</div>" +
         "<h3>Seu dinheiro protegido</h3>" +
         "<p>Você paga pelo app e o valor fica guardado no cofre do OPUS. " + fn + " só recebe depois que você confere e aprova o serviço.</p>" +
         "<div class=\"flow\">" + flow + "</div></div></div>" +
-        quote +
+        quote + recoHtml +
         "<div class=\"sec\"><p class=\"h2\">Rápido, seguro e sem dor de cabeça</p><div class=\"feats\">" +
         "<div class=\"f\"><div class=\"fi\" style=\"background:#FEF3C7;color:#D97706\">" + icBolt + "</div><div><b>Rápido</b><span>Peça em 1 minuto: escreva, fale ou mande uma foto do problema.</span></div></div>" +
         "<div class=\"f\"><div class=\"fi\" style=\"background:#EFF4FF;color:#1D4ED8\">" + icId + "</div><div><b>Seguro</b><span>Profissional com documento e selfie conferidos, chat no app e botão SOS.</span></div></div>" +

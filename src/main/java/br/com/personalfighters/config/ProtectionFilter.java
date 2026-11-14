@@ -55,6 +55,8 @@ public class ProtectionFilter extends OncePerRequestFilter {
         || (path.startsWith("/search") && !allow(ip, "search", 120, MIN))
         || ("POST".equals(m) && path.equals("/messages") && !allow(ip, "msg", 60, MIN))
         || ("POST".equals(m) && path.equals("/partners/lead") && !allow(ip, "lead", 5, HOUR))
+        || ("POST".equals(m) && path.startsWith("/showcase/") && !allow(ip, "showclick", 30, MIN))
+        || (("PUT".equals(m) || "POST".equals(m)) && path.startsWith("/pro/showcase") && !allow(ip, "showedit", 30, 10 * MIN))
         || ("POST".equals(m) && isUpload(req) && !allow(ip, "upload", 40, 10 * MIN))) {
       res.setStatus(429);
       res.setContentType("application/json;charset=UTF-8");
@@ -83,7 +85,8 @@ public class ProtectionFilter extends OncePerRequestFilter {
 
   private static boolean isMedia(String p) {
     return p.startsWith("/orders/photos/") || p.startsWith("/posts/photos/") || p.startsWith("/posts/videos/")
-        || (p.startsWith("/users/") && p.endsWith("/avatar")) || p.contains("/audio") || p.contains("/certificates/") || p.contains("/photo");
+        || (p.startsWith("/users/") && p.endsWith("/avatar")) || p.contains("/audio") || p.contains("/certificates/") || p.contains("/photo")
+        || (p.contains("/showcase/") && (p.endsWith("/cover") || p.endsWith("/image") || p.endsWith("/cover-image")));
   }
 
   /** IP real do aparelho (o servidor fica atrás do Cloudflare/Render). */

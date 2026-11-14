@@ -74,6 +74,7 @@ public class AdminController {
     alerts.put("verifications", count("SELECT COUNT(*) FROM identity_verification_ WHERE status = 'PENDING'"));
     alerts.put("disputes", count("SELECT COUNT(*) FROM order_ WHERE dispute_status = 'OPEN'"));
     alerts.put("support", count("SELECT COUNT(DISTINCT user_id) FROM support_message_ WHERE from_admin = FALSE AND read_by_admin = FALSE"));
+    alerts.put("showcase", count("SELECT (SELECT COUNT(*) FROM pro_cover_ WHERE status = 'PENDING') + (SELECT COUNT(*) FROM pro_reco_ WHERE status = 'PENDING')"));
     alerts.put("sos", count("SELECT COUNT(*) FROM protection_session_ WHERE active = TRUE AND level >= 3 AND acknowledged_at IS NULL"));
     out.put("alerts", alerts);
     int days = "month".equals(range) ? 30 : 7;

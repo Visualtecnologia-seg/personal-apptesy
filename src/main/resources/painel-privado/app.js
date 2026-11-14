@@ -10,6 +10,7 @@ const IC = {
   cupons:'<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M13 5v14" stroke-dasharray="2 2"/>',
   parceiros:'<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>',
   social:'<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/>',
+  vitrines:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="14" width="5" height="6" rx="1.5"/><rect x="10" y="14" width="5" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>',
   certs:'<circle cx="12" cy="9" r="5"/><path d="M8.5 13l-1.5 8 5-3 5 3-1.5-8"/>',
   avisos:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>',
   golpes:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16h.01"/>',
@@ -19,11 +20,11 @@ const IC = {
 };
 const NAV = [['g','Operação'],['inicio','Início'],['pedidos','Pedidos'],['usuarios','Usuários'],['verif','Verificações','verifications'],['suporte','Suporte e disputas','support'],['sos','SOS','sos'],
   ['g','Dinheiro'],['fin','Financeiro'],['cupons','Cupons'],['parceiros','Lojas e seguros'],
-  ['g','Comunidade'],['social','Rede social'],['certs','Certificados'],['avisos','Avisos'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],
+  ['g','Comunidade'],['social','Rede social'],['vitrines','Capas e indicações','showcase'],['certs','Certificados'],['avisos','Avisos'],['golpes','Alertas de golpe'],['demanda','Mapa de demanda'],
   ['g','Sistema'],['config','Configurações'],['equipe','Equipe']];
 let cur = 'inicio', counts = {}, timer = null, lastSos = 0;
 function navHtml(){ $('nav').innerHTML = NAV.map(([k,l]) => k==='g' ? `<div class="grp">${l}</div>` : `<a href="#${k}" class="${k===cur?'on':''}" onclick="go('${k}');return false">${P(IC[k]||'')}<span>${l}</span><span class="bd ${k==='sos'?'red':''}" id="bd-${k}"></span></a>`).join(''); paintBadges(); }
-function paintBadges(){ const map={verif:counts.verifications,suporte:(counts.support||0)+(counts.disputes||0),sos:counts.sos}; for(const k in map){ const el=$('bd-'+k); if(!el) continue; el.textContent=map[k]||''; el.style.display=map[k]?'flex':'none'; } }
+function paintBadges(){ const map={vitrines:counts.showcase,verif:counts.verifications,suporte:(counts.support||0)+(counts.disputes||0),sos:counts.sos}; for(const k in map){ const el=$('bd-'+k); if(!el) continue; el.textContent=map[k]||''; el.style.display=map[k]?'flex':'none'; } }
 function go(k){ cur=k; location.hash=k; navHtml(); clearInterval(timer); timer=null; VIEWS[k](); }
 const V = html => { $('view').innerHTML = html; };
 const head = (t,s,right='') => `<div class="row" style="justify-content:space-between"><div><h1 style="font-size:24px">${t}</h1><div class="muted" style="margin-top:4px">${s}</div></div><div class="row">${right}</div></div>`;
@@ -124,6 +125,16 @@ const VIEWS = {
       <div class="card"><h2 style="font-size:17px;margin-bottom:10px">Enviados</h2>${rows.map(b=>`<div style="padding:10px 0;border-bottom:1px solid #F1F5F9"><div style="font-size:14px">${esc(b.text)}</div><div class="muted">${fmt(b.createdAt)} · ${{ALL:'Todos',CUSTOMERS:'Clientes',PROFESSIONALS:'Profissionais'}[b.audience]} · ${b.sentCount} pessoas · ${esc(b.adminName||'')}</div></div>`).join('')||'<div class="muted">Nenhum aviso enviado.</div>'}</div></div>`);
   },
 
+  async vitrines(){
+    let d={covers:[],items:[]}; try { d = await api('/admin/showcase/pending'); } catch(e){}
+    V(head('Capas e indicações','Capas de perfil e produtos indicados pelos profissionais. Só aparecem para os clientes depois de aprovados.')+
+      `<h3 style="font-size:15px;margin:18px 0 10px">Capas (${d.covers.length})</h3><div class="posts">${d.covers.map(c=>`<div class="card" style="padding:10px"><img id="cv-${c.userId}" alt="Capa de ${esc(c.proName)}" style="width:100%;aspect-ratio:3/1;object-fit:cover;border-radius:10px;background:#EEF2F7"><div style="margin-top:8px;font-weight:700;font-size:14px">${esc(c.proName)}</div><div class="muted">${c.mode==='PARTNER'?'Parceria com <b>'+esc(c.brand||'')+'</b>':'Só capa'} · ${fmt(c.updatedAt)}</div><div class="row" style="margin-top:8px"><button class="ok" onclick="reviewShow('cover','${c.userId}',true)">Aprovar</button><button class="danger" onclick="reviewShow('cover','${c.userId}',false)">Recusar</button></div></div>`).join('')||'<div class="card muted">Nenhuma capa esperando.</div>'}</div>`+
+      `<h3 style="font-size:15px;margin:22px 0 10px">Indicações de produtos (${d.items.length})</h3><div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Foto</th><th>Profissional</th><th>Produto</th><th>Link</th><th></th></tr></thead><tbody>
+      ${d.items.map(i=>`<tr><td><img id="it-${i.id}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:10px;background:#EEF2F7"></td><td><b>${esc(i.proName)}</b></td><td><b>${esc(i.title)}</b>${i.kind==='PARTNER'?' <span class="pill p-purple">Parceria</span>':''}<div class="muted" style="max-width:260px">${esc(i.note||'')}</div></td><td><span class="pill p-blue">${esc(i.store)}</span><div><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer" style="font-size:12px;word-break:break-all">${esc(String(i.url).slice(0,60))}…</a></div></td><td><button class="ok" onclick="reviewShow('items','${i.id}',true)">Aprovar</button> <button class="danger" onclick="reviewShow('items','${i.id}',false)">Recusar</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nenhuma indicação esperando.</td></tr>'}
+      </tbody></table></div></div>`);
+    d.covers.forEach(async c=>{ try{ $('cv-'+c.userId).src = await blob('/admin/showcase/cover/'+c.userId+'/image'); }catch(e){} });
+    d.items.forEach(async i=>{ try{ $('it-'+i.id).src = await blob('/admin/showcase/items/'+i.id+'/image'); }catch(e){} });
+  },
   async certs(){
     let rows=[]; try { rows = await api('/admin/certificates?status=PENDING'); } catch(e){}
     V(head('Certificados dos profissionais','CREF, cursos e registros: aprovados aparecem como selo no perfil')+`<div class="card" style="padding:6px"><div class="wrap"><table><thead><tr><th>Profissional</th><th>Certificado</th><th>Número</th><th>Foto</th><th></th></tr></thead><tbody>
@@ -242,6 +253,7 @@ async function sosAck(id, close){ const note=($('note-'+id)||{}).value||''; if(c
 async function exportCsv(){ try{ const u=await blob('/admin/finance/export.csv'); const a=document.createElement('a'); a.href=u; a.download='opus-financeiro.csv'; a.click(); }catch(e){ alert(e.message); } }
 async function delPost(id){ const reason=prompt('Motivo (o profissional é avisado):','Conteúdo impróprio'); if(reason===null) return; try{ await api('/admin/posts/'+id+'?reason='+encodeURIComponent(reason),{method:'DELETE'}); VIEWS.social(); }catch(e){ alert(e.message); } }
 async function sendBroadcast(){ const text=$('btxt').value.trim(), audience=$('aud').value; if(!text) return; if(!confirm('Enviar para '+$('aud').selectedOptions[0].text.toLowerCase()+'?')) return; try{ const r=await api('/admin/broadcast',{method:'POST',body:JSON.stringify({text,audience})}); alert('Aviso enviado para '+r.sent+' pessoas.'); VIEWS.avisos(); }catch(e){ $('bmsg').innerHTML='<div class="msg p-bad">'+esc(e.message)+'</div>'; } }
+async function reviewShow(kind,id,ok){ const note= ok?'':(prompt('Motivo da recusa (o profissional vai ver):')||''); if(!ok && !note) return; try{ await api('/admin/showcase/'+(kind==='cover'?'cover/'+id:'items/'+id)+'/review',{method:'POST',body:JSON.stringify({approve:ok,note})}); refreshCounts(); VIEWS.vitrines(); }catch(e){ alert(e.message); } }
 async function reviewCert(id,ok){ const note= ok?'':prompt('Motivo da recusa:')||''; try{ await api('/admin/certificates/'+id+'/review',{method:'POST',body:JSON.stringify({approve:ok,note})}); VIEWS.certs(); }catch(e){ alert(e.message); } }
 async function certPhoto(id){
   // mostra a foto aqui mesmo (abrir em nova aba é bloqueado no celular)
