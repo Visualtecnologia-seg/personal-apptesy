@@ -50,6 +50,12 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
       // -- Página pública do profissional (link de compartilhar)
       "/p/*",
 
+      // -- Páginas exigidas pelas lojas (privacidade, termos, apagar conta pelo site)
+      "/privacidade",
+      "/termos",
+      "/excluir-conta",
+      "/excluir-conta/confirmar",
+
       // -- Painel de verificação (página estática; as APIs continuam protegidas)
       "/painel",
       "/painel/**",

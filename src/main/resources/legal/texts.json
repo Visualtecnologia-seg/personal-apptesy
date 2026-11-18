@@ -1,0 +1,98 @@
+{
+ "TERMS": {
+  "title": "Termos de Uso",
+  "updated": "Novembro de 2026",
+  "sections": [
+   {
+    "h": "1. O que é o OPUS",
+    "p": "O OPUS é uma plataforma que conecta clientes a profissionais autônomos para a contratação de serviços. O OPUS não presta os serviços: cada profissional é responsável pelo trabalho que oferece e realiza."
+   },
+   {
+    "h": "2. Quem pode usar",
+    "p": "Só pessoas maiores de 18 anos, com CPF próprio e válido, celular e e-mail confirmados. Cada pessoa pode ter uma única conta. As informações do cadastro devem ser verdadeiras e mantidas atualizadas."
+   },
+   {
+    "h": "3. Conta e senha",
+    "p": "A conta é pessoal e intransferível. Você é responsável por guardar sua senha e os códigos recebidos por SMS ou e-mail. Se perceber um acesso que não foi seu, use \"Não fui eu\" no app ou fale com o suporte."
+   },
+   {
+    "h": "4. Pagamentos e cofre",
+    "p": "O cliente paga pelo app. O valor fica guardado no cofre do OPUS e só é liberado ao profissional quando o serviço é confirmado, ou automaticamente após o prazo informado no pedido, se não houver reclamação. A taxa da plataforma é paga pelo cliente e aparece antes do pagamento."
+   },
+   {
+    "h": "5. Cancelamentos e problemas",
+    "p": "Pedidos podem ser cancelados antes de o atendimento começar, conforme as regras mostradas no app (podendo haver taxa de deslocamento se o profissional já tiver saído). Depois que o atendimento começa, problemas devem ser relatados pelo botão \"Tive um problema\"; a equipe OPUS analisa e decide sobre devoluções."
+   },
+   {
+    "h": "6. Conduta",
+    "p": "É proibido: combinar pagamento por fora do app, compartilhar contatos para fugir da plataforma, ofender, ameaçar ou discriminar, enviar conteúdo ilegal, usar dados de outra pessoa ou tentar burlar a segurança do sistema. O descumprimento pode levar à suspensão ou ao encerramento da conta."
+   },
+   {
+    "h": "7. Avaliações",
+    "p": "Clientes e profissionais podem se avaliar depois do serviço. As avaliações devem ser honestas e respeitosas. O OPUS pode remover avaliações falsas ou ofensivas."
+   },
+   {
+    "h": "8. Segurança",
+    "p": "O app oferece recursos como chat protegido, gravação de áudio de segurança e botão de SOS. Em emergências, procure também as autoridades (190, 192, 193)."
+   },
+   {
+    "h": "9. Responsabilidades",
+    "p": "O OPUS se esforça para manter a plataforma segura e disponível, mas não garante funcionamento sem interrupções. O OPUS não se responsabiliza por acordos feitos fora do app."
+   },
+   {
+    "h": "10. Mudanças nestes termos",
+    "p": "Os termos podem ser atualizados. Quando houver mudança importante, avisaremos no app e pediremos um novo aceite."
+   },
+   {
+    "h": "11. Contato",
+    "p": "Dúvidas: fale com o suporte pelo próprio app (Perfil → Suporte). Fica eleito o foro do domicílio do consumidor para resolver questões destes termos."
+   }
+  ]
+ },
+ "PRIVACY": {
+  "title": "Política de Privacidade",
+  "updated": "Novembro de 2026",
+  "sections": [
+   {
+    "h": "1. Quais dados coletamos",
+    "p": "Cadastro: nome, CPF, data de nascimento, celular, e-mail, senha (guardada de forma criptografada) e foto de perfil. Uso: pedidos, mensagens do chat, avaliações, localização durante os atendimentos, aparelhos usados para entrar e registros de acesso. Verificação de identidade: fotos do documento e selfie, quando enviadas."
+   },
+   {
+    "h": "2. Para que usamos",
+    "p": "Para criar e proteger sua conta, conectar clientes e profissionais, processar pagamentos, mostrar a localização durante o atendimento, prevenir fraudes, cumprir obrigações legais e dar suporte. Não vendemos seus dados."
+   },
+   {
+    "h": "3. Com quem compartilhamos",
+    "p": "Só o necessário: com a outra parte do pedido (nome, foto e o endereço do atendimento após o aceite); com empresas que nos ajudam a operar (pagamentos, envio de SMS e e-mail, notificações e hospedagem), sempre com obrigação de sigilo; e com autoridades, quando a lei exigir."
+   },
+   {
+    "h": "4. Permissões do celular",
+    "p": "Câmera: para ler o QR Code de chegada, tirar fotos do serviço e da verificação de identidade. Microfone: para áudios no chat, chamadas de voz e vídeo dentro do app e busca por voz (a fala vira texto para encontrar o serviço). Localização: só com o app aberto, para achar profissionais perto e acompanhar o atendimento. Notificações: para avisar sobre pedidos, mensagens e pagamentos. Você pode negar ou tirar cada permissão nas configurações do celular."
+   },
+   {
+    "h": "5. Pagamentos",
+    "p": "Os pagamentos e saques são processados pelo Asaas, instituição de pagamento autorizada. O OPUS não guarda o número completo do seu cartão."
+   },
+   {
+    "h": "6. Por quanto tempo guardamos",
+    "p": "Enquanto a conta existir e pelo prazo exigido por lei (por exemplo, registros de acesso e dados fiscais). Depois disso, os dados são apagados ou tornados anônimos."
+   },
+   {
+    "h": "7. Seus direitos (LGPD)",
+    "p": "Você pode ver, corrigir, baixar uma cópia ou pedir para apagar seus dados, além de revogar consentimentos. Use Perfil → Meus dados, ou fale com o suporte. Algumas informações podem ser mantidas quando a lei obrigar."
+   },
+   {
+    "h": "8. Segurança dos dados",
+    "p": "Usamos conexão criptografada, senhas protegidas, confirmação por código e avisos de acesso em aparelho novo. Mesmo assim, nenhum sistema é 100% seguro; avise-nos se notar algo estranho."
+   },
+   {
+    "h": "9. Menores de idade",
+    "p": "O OPUS não é destinado a menores de 18 anos e não coleta dados deles de propósito."
+   },
+   {
+    "h": "10. Contato do encarregado de dados",
+    "p": "Fale com o suporte pelo app (Perfil → Suporte) e escreva \"Privacidade\" na mensagem. Respondemos dentro dos prazos da LGPD."
+   }
+  ]
+ }
+}

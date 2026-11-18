@@ -34,6 +34,7 @@ public class AdminAccountController {
   private final AuthenticationService authenticationService;
   private final SecurityService security;
   private final WalletService walletService;
+  private final br.com.personalfighters.service.AccountEraseService eraser;
 
   private static ResponseEntity<?> bad(String m) { return ResponseEntity.badRequest().body(Map.of("message", m)); }
 
@@ -66,47 +67,8 @@ public class AdminAccountController {
   }
 
   private ResponseEntity<?> eraseById(Long id) {
-
-    Long open = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE (customer_id = ? OR professional_id = ?) AND status NOT IN ('DONE','REVIEWED','CANCELLED','BLOCKED')", Long.class, id, id);
-    if (open != null && open > 0) return bad("A conta tem " + open + " pedido(s) em andamento. Cancele antes de apagar.");
-    try {
-      BigDecimal avail = walletService.available(id);
-      if (avail != null && avail.compareTo(BigDecimal.ONE) >= 0) return bad("A conta ainda tem R$ " + avail.setScale(2, java.math.RoundingMode.DOWN).toPlainString().replace('.', ',') + " na carteira. Faça o saque antes.");
-    } catch (Exception ignored) { }
-
-    String tag = "excluido-" + id;
-    Timestamp now = Timestamp.valueOf(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
-    jdbc.update("UPDATE user_ SET name = 'Conta excluída', surname = NULL, email = ?, username = ?, cpf = ?, cnpj = NULL, cnpj_name = NULL, cnpj_verified_at = NULL, " +
-            "phone_number = NULL, phone_verified = FALSE, birthday = NULL, avatar_url = NULL, latitude = NULL, longitude = NULL, full_address = NULL, " +
-            "pix_key = NULL, pix_key_type = NULL, document_url = NULL, doc_front_url = NULL, doc_back_url = NULL, doc_selfie_url = NULL, " +
-            "google_sub = NULL, apple_sub = NULL, email_marketing = FALSE, password = ?, active = FALSE, deleted_at = ? WHERE id = ?",
-        tag + "@excluido.opus", tag, ("x" + id), passwordEncoder.encode(UUID.randomUUID().toString()), now, id);
-    int removed = 0;
-    for (String sql : new String[]{
-        "DELETE FROM identity_verification_ WHERE user_id = ?",
-        "DELETE FROM user_device_ WHERE user_id = ?",
-        "DELETE FROM favorite_ WHERE user_id = ? OR professional_id = ?",
-        "DELETE FROM follow_ WHERE user_id = ? OR professional_id = ?",
-        "DELETE FROM post_video_ WHERE post_id IN (SELECT id FROM post_ WHERE professional_id = ?)",
-        "DELETE FROM post_ WHERE professional_id = ?",
-        "DELETE FROM support_state_ WHERE user_id = ?",
-        "DELETE FROM data_export_token_ WHERE user_id = ?",
-        "DELETE FROM bank_account_ WHERE user_id = ?",
-        "DELETE FROM bankdata_ WHERE professional_id = ?",
-        "DELETE FROM address_ WHERE user_id = ?",
-        "DELETE FROM credit_card_ WHERE user_id = ?",
-        "DELETE FROM photo_ WHERE user_id = ?",
-        "DELETE FROM user_records_ WHERE user_id = ?",
-        "DELETE FROM password_reset_ WHERE user_id = ?",
-        "DELETE FROM email_log_ WHERE user_id = ?",
-        "DELETE FROM product__professional WHERE professional_id = ?"}) {
-      try { removed += sql.chars().filter(c -> c == '?').count() == 2 ? jdbc.update(sql, id, id) : jdbc.update(sql, id); }
-      catch (Exception e) { log.debug("Exclusão pelo administrador: {} ({})", sql, e.getMessage()); }
-    }
-    try { jdbc.update("UPDATE professional_ SET is_online = FALSE WHERE id = (SELECT professional_id FROM user_ WHERE id = ?)", id); } catch (Exception ignored) { }
-    authenticationService.revokeAll(id);
-    security.event(id, "ACCOUNT_DELETED", "Conta apagada pelo administrador a pedido da pessoa");
-    log.info("LGPD: conta {} apagada pelo administrador", id);
-    return ResponseEntity.ok(Map.of("ok", true, "id", id, "removed", removed));
+    String err = eraser.erase(id, "Conta apagada pelo administrador a pedido da pessoa");
+    if (err != null) return bad(err);
+    return ResponseEntity.ok(Map.of("ok", true, "id", id, "removed", eraser.lastRemoved));
   }
 }

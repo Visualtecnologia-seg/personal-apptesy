@@ -55,6 +55,7 @@ public class ProtectionFilter extends OncePerRequestFilter {
         || (path.startsWith("/search") && !allow(ip, "search", 120, MIN))
         || ("POST".equals(m) && path.equals("/messages") && !allow(ip, "msg", 60, MIN))
         || ("POST".equals(m) && path.equals("/partners/lead") && !allow(ip, "lead", 5, HOUR))
+        || ("POST".equals(m) && path.startsWith("/excluir-conta") && !allow(ip, "erase", 5, HOUR))
         || ("POST".equals(m) && path.startsWith("/showcase/") && !allow(ip, "showclick", 30, MIN))
         || (("PUT".equals(m) || "POST".equals(m)) && path.startsWith("/pro/showcase") && !allow(ip, "showedit", 30, 10 * MIN))
         || ("POST".equals(m) && isUpload(req) && !allow(ip, "upload", 40, 10 * MIN))) {
