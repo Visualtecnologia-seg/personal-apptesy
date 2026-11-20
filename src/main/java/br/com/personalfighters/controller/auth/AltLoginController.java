@@ -138,11 +138,11 @@ public class AltLoginController {
     User user = (User) userDetailsService.loadUserByUsername(username);
     if (user.getActive() != null && !user.getActive()) return PhoneVerificationController.bad("Conta desativada. Fale com o suporte.");
     try {
-      securityService.registerDevice(user, req.getHeader("X-Device-Id"), req.getHeader("X-Device-Name"), req.getRemoteAddr());
+      securityService.registerDevice(user, req.getHeader("X-Device-Id"), req.getHeader("X-Device-Name"), br.com.personalfighters.config.ProtectionFilter.clientIp(req));
     } catch (Exception e) { log.warn("Aparelho não registrado: {}", e.getMessage()); }
     try {
       jdbc.update("INSERT INTO login_history_ (user_id, ip_address, user_agent, success, created_at) VALUES (?, ?, ?, TRUE, NOW())",
-          user.getId(), req.getRemoteAddr(), Objects.toString(req.getHeader("User-Agent"), "").substring(0, Math.min(200, Objects.toString(req.getHeader("User-Agent"), "").length())));
+          user.getId(), br.com.personalfighters.config.ProtectionFilter.clientIp(req), Objects.toString(req.getHeader("User-Agent"), "").substring(0, Math.min(200, Objects.toString(req.getHeader("User-Agent"), "").length())));
     } catch (Exception ignored) { }
     return ResponseEntity.ok(Map.of("token", authenticationService.addAuthentication(user)));
   }

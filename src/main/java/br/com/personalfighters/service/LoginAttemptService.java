@@ -70,6 +70,54 @@ public class LoginAttemptService {
     return email == null ? "" : email.toLowerCase().trim();
   }
 
+  // ── Trava da conta inteira (somando todos os aparelhos/redes) ─────────────────
+  // Mais folgada que a do aparelho: segura ataque espalhado em muitas redes, mas
+  // não deixa um estranho trancar a conta do dono (o celular já conhecido da conta passa).
+  private static final int WIDE_MAX = 20;
+  private static final long WIDE_WINDOW_MS = 60 * 60_000L, WIDE_BLOCK_MS = 15 * 60_000L;
+  private final ConcurrentHashMap<String, long[]> wide = new ConcurrentHashMap<>(); // {início, erros, travadoAté}
+  private final ConcurrentHashMap<String, Long> lastAlert = new ConcurrentHashMap<>();
+
+  /** Erro somado na conta. Devolve true se a conta acabou de ser travada agora. */
+  public synchronized boolean wideFailed(String account) {
+    long now = System.currentTimeMillis();
+    long[] w = wide.computeIfAbsent(normalize(account), k -> new long[]{now, 0, 0});
+    if (now - w[0] > WIDE_WINDOW_MS) { w[0] = now; w[1] = 0; }
+    if (w[2] > now) return false;
+    if (++w[1] >= WIDE_MAX) { w[2] = now + WIDE_BLOCK_MS; w[0] = now; w[1] = 0; return true; }
+    return false;
+  }
+
+  public boolean wideBlocked(String account) {
+    long[] w = wide.get(normalize(account));
+    return w != null && w[2] > System.currentTimeMillis();
+  }
+
+  public int wideSeconds(String account) {
+    long[] w = wide.get(normalize(account));
+    return w == null ? 0 : (int) Math.max(0, (w[2] - System.currentTimeMillis()) / 1000L);
+  }
+
+  public void wideReset(String account) { wide.remove(normalize(account)); }
+
+  /** E-mail de alerta de senha errada: no máximo 1 por dia para a mesma conta. */
+  public boolean alertAllowed(String account) {
+    long now = System.currentTimeMillis();
+    Long last = lastAlert.get(normalize(account));
+    if (last != null && now - last < FORGET_MS) return false;
+    lastAlert.put(normalize(account), now);
+    return true;
+  }
+
+  /** Limpa contadores velhos a cada hora. */
+  @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 3_600_000)
+  public void cleanup() {
+    long now = System.currentTimeMillis();
+    cache.entrySet().removeIf(e -> e.getValue().blockedAt == 0 && now - e.getValue().lastFail > FORGET_MS);
+    wide.entrySet().removeIf(e -> e.getValue()[2] < now && now - e.getValue()[0] > WIDE_WINDOW_MS);
+    lastAlert.entrySet().removeIf(e -> now - e.getValue() > FORGET_MS);
+  }
+
   static class AttemptInfo {
     int count = 0;
     long blockedAt = 0;

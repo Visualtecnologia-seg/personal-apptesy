@@ -13,7 +13,6 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Códigos de 6 números (SMS ou e-mail) e comprovantes assinados.
@@ -49,17 +48,16 @@ public class CodeStore {
   public String check(String channel, String target, String code) {
     String c = code == null ? "" : code.replaceAll("\\D", "");
     if (c.length() != 6) return "Digite o código de 6 números.";
-    List<Map<String, Object>> rows = jdbc.queryForList("SELECT code_hash, expires_at, attempts FROM verify_code_ WHERE channel = ? AND target = ?", channel, target);
-    if (rows.isEmpty()) return "Peça um código primeiro.";
-    Map<String, Object> r = rows.get(0);
-    if (((Timestamp) r.get("expires_at")).toLocalDateTime().isBefore(LocalDateTime.now()) || ((Number) r.get("attempts")).intValue() >= 5) {
+    // Conta a tentativa ANTES de conferir, num passo só: várias tentativas ao mesmo tempo não furam o limite de 5
+    List<String> rows = jdbc.queryForList("UPDATE verify_code_ SET attempts = attempts + 1 WHERE channel = ? AND target = ? AND attempts < 5 AND expires_at > NOW() RETURNING code_hash",
+        String.class, channel, target);
+    if (rows.isEmpty()) {
+      Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM verify_code_ WHERE channel = ? AND target = ?", Integer.class, channel, target);
+      if (exists == null || exists == 0) return "Peça um código primeiro.";
       burn(channel, target);
       return "Código vencido. Peça um novo.";
     }
-    if (!BC.matches(c, (String) r.get("code_hash"))) {
-      jdbc.update("UPDATE verify_code_ SET attempts = attempts + 1 WHERE channel = ? AND target = ?", channel, target);
-      return "Código incorreto.";
-    }
+    if (!BC.matches(c, rows.get(0))) return "Código incorreto.";
     burn(channel, target);
     return null;
   }

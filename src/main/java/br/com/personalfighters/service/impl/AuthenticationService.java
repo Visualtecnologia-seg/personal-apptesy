@@ -61,6 +61,7 @@ public class AuthenticationService {
   public void revokeAll(Long userId) {
     jdbc.update("UPDATE user_ SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?", userId);
     VERSIONS.remove(userId);
+    jdbc.update("DELETE FROM bio_token_ WHERE user_id = ?", userId); // digital salva nos celulares também deixa de valer
   }
 
   public static String getUsernameFromToken(String token) {

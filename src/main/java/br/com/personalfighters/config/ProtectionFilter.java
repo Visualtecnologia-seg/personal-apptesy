@@ -66,7 +66,7 @@ public class ProtectionFilter extends OncePerRequestFilter {
         || ("POST".equals(m) && (path.equals("/auth/phone/verify") || path.equals("/auth/phone/login")) && !allow(ip, "smsv", 30, HOUR))
         || ("POST".equals(m) && path.equals("/auth/email/send") && !allow(ip, "mail", 8, HOUR))
         || ("POST".equals(m) && path.equals("/auth/email/verify") && !allow(ip, "mailv", 30, HOUR))
-        || ("POST".equals(m) && (path.equals("/auth/google") || path.equals("/auth/apple")) && !allow(ip, "google", 30, HOUR))
+        || ("POST".equals(m) && (path.equals("/auth/google") || path.equals("/auth/apple") || path.equals("/auth/bio/login")) && !allow(ip, "google", 30, HOUR))
         || ("POST".equals(m) && (path.equals("/auth") || path.equals("/panel-auth/login") || path.equals("/panel-auth/2fa")) && !allow(ip, "login", 30, 10 * MIN))
         || (path.startsWith("/search") && !allow(ip, "search", 120, MIN))
         || ("POST".equals(m) && path.equals("/messages") && !allow(ip, "msg", 60, MIN))
@@ -158,7 +158,7 @@ public class ProtectionFilter extends OncePerRequestFilter {
   }
 
   /** IP real do aparelho (o servidor fica atrás do Cloudflare/Render). */
-  private static String clientIp(HttpServletRequest r) {
+  public static String clientIp(HttpServletRequest r) {
     String cf = r.getHeader("CF-Connecting-IP");
     if (cf != null && !cf.isBlank()) return cf.trim();
     String xf = r.getHeader("X-Forwarded-For");

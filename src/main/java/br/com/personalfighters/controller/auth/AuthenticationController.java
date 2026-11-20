@@ -73,16 +73,14 @@ public class AuthenticationController {
     }
     String ip    = getClientIp(request);
     String ua    = request.getHeader("User-Agent");
+    // Trava por aparelho/rede: quem erra a senha é que fica bloqueado, não o dono da conta
+    String devKey = email + "|" + ip;
+    String acct = "acct:" + email;
+    boolean knownDevice = knownDevice(email, request.getHeader("X-Device-Id"));
 
     // ── 1. Verificar bloqueio por tentativas ─────────────────────────────────
-    if (loginAttemptService.isBlocked(email)) {
-      int seconds = loginAttemptService.getSecondsRemaining(email);
-      return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
-          "error", "Conta bloqueada temporariamente.",
-          "message", "Muitas tentativas falhadas. Tente novamente em " + seconds + " segundo(s).",
-          "secondsRemaining", seconds
-      ));
-    }
+    if (loginAttemptService.isBlocked(devKey)) return blocked(loginAttemptService.getSecondsRemaining(devKey));
+    if (!knownDevice && loginAttemptService.wideBlocked(acct)) return blocked(loginAttemptService.wideSeconds(acct));
 
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null) {
@@ -93,36 +91,32 @@ public class AuthenticationController {
     try {
       authenticate(email, authenticationRequest.getPassword());
     } catch (Exception e) {
-      int level = loginAttemptService.loginFailed(email);
+      int level = loginAttemptService.loginFailed(devKey);
+      boolean wideNow = loginAttemptService.wideFailed(acct);
       // Guardar histórico de falha (silencioso se user não existe)
       try {
         User failedUser = (User) userDetailsService.loadUserByUsername(email);
         saveHistory(failedUser, ip, ua, false);
-        // A partir do 2º bloqueio seguido, avisa o dono da conta por e-mail
-        if (level >= 2 && failedUser.getEmail() != null)
+        // Muitas senhas erradas: avisa o dono por e-mail (no máximo 1 vez por dia)
+        if ((level >= 2 || wideNow) && failedUser.getEmail() != null && loginAttemptService.alertAllowed(email))
           emailService.sendSecurityAlert(failedUser.getEmail(), failedUser.getName(), "Tentativas de entrar na sua conta OPUS",
               "Alguém está errando a sua senha",
-              "Bloqueamos o acesso por alguns minutos depois de várias senhas erradas. Se não foi você, troque a sua senha no app (Perfil → Segurança).");
+              "Bloqueamos por alguns minutos quem estava errando a sua senha. Você continua entrando normalmente pelo seu celular. Se não foi você, troque a sua senha no app (Perfil → Segurança).");
       } catch (Exception ignored) {}
 
-      if (loginAttemptService.isBlocked(email)) {
-        int seconds = loginAttemptService.getSecondsRemaining(email);
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
-            "error", "Conta bloqueada.",
-            "message", "Muitas senhas erradas. Tente de novo em " + Math.max(1, (seconds + 59) / 60) + " minuto(s).",
-            "secondsRemaining", seconds
-        ));
-      }
-      int remaining = 5 - loginAttemptService.getAttemptCount(email);
-      throw new Exception("Credenciais inválidas." +
-          (remaining > 0 ? " " + remaining + " tentativa(s) restante(s)." : ""));
+      if (loginAttemptService.isBlocked(devKey)) return blocked(loginAttemptService.getSecondsRemaining(devKey));
+      int remaining = 5 - loginAttemptService.getAttemptCount(devKey);
+      String msg = "Login ou senha incorretos." + (remaining > 0 && remaining < 5 ? " " + remaining + " tentativa(s) restante(s)." : "");
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", msg, "message", msg));
     }
 
     // ── 3. Sucesso: limpar tentativas, guardar histórico, devolver token ──────
-    loginAttemptService.loginSucceeded(email);
+    loginAttemptService.loginSucceeded(devKey);
+    loginAttemptService.wideReset(acct);
     final User user = (User) userDetailsService.loadUserByUsername(email);
     saveHistory(user, ip, ua, true);
-    if (user.getActive() != null && !user.getActive()) throw new Exception("Credenciais inválidas.");
+    if (user.getActive() != null && !user.getActive())
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Login ou senha incorretos.", "message", "Login ou senha incorretos."));
     try { securityService.registerDevice(user, request.getHeader("X-Device-Id"), request.getHeader("X-Device-Name"), ip); }
     catch (Exception e) { log.warn("Aparelho do login não registrado: {}", e.getMessage()); }
     final String token = authenticationService.addAuthentication(user);
@@ -158,6 +152,7 @@ public class AuthenticationController {
     String invalid = br.com.personalfighters.util.PasswordRules.check(data.getNewPassword());
     if (invalid != null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, invalid);
     jdbc.update("UPDATE user_ SET password = ? WHERE id = ?", enc.encode(data.getNewPassword()), user.getId());
+    jdbc.update("DELETE FROM bio_token_ WHERE user_id = ?", user.getId()); // senha nova: a digital é ativada de novo
     emailAutomation.passwordChanged(user.getId());
     return true;
   }
@@ -195,20 +190,16 @@ public class AuthenticationController {
     if (invalid != null) return ResponseEntity.badRequest().body(Map.of("message", invalid));
     User user = findQuiet(login);
     if (user == null) return ResponseEntity.badRequest().body(Map.of("message", "Código inválido ou vencido. Peça um novo."));
-    List<Map<String, Object>> r = jdbc.queryForList("SELECT code_hash, expires_at, attempts FROM password_reset_ WHERE user_id = ?", user.getId());
-    if (r.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "Código inválido ou vencido. Peça um novo."));
-    Map<String, Object> row = r.get(0);
-    int attempts = ((Number) row.get("attempts")).intValue();
-    boolean expired = ((java.sql.Timestamp) row.get("expires_at")).toLocalDateTime().isBefore(java.time.LocalDateTime.now());
-    if (expired || attempts >= 5) {
+    // Conta a tentativa ANTES de conferir, num passo só (tentativas em paralelo não passam do limite de 5)
+    List<String> r = jdbc.queryForList("UPDATE password_reset_ SET attempts = attempts + 1 WHERE user_id = ? AND attempts < 5 AND expires_at > NOW() RETURNING code_hash",
+        String.class, user.getId());
+    if (r.isEmpty()) {
       // mantém a linha (conta quantos códigos já saíram hoje), só invalida o código
       jdbc.update("UPDATE password_reset_ SET code_hash = 'x', expires_at = NOW() - interval '1 minute' WHERE user_id = ?", user.getId());
       return ResponseEntity.badRequest().body(Map.of("message", "Código inválido ou vencido. Peça um novo."));
     }
-    if (code.length() != 6 || !new BCryptPasswordEncoder().matches(code, (String) row.get("code_hash"))) {
-      jdbc.update("UPDATE password_reset_ SET attempts = attempts + 1 WHERE user_id = ?", user.getId());
+    if (code.length() != 6 || !new BCryptPasswordEncoder().matches(code, r.get(0)))
       return ResponseEntity.badRequest().body(Map.of("message", "Código incorreto. Confira o e-mail."));
-    }
     jdbc.update("DELETE FROM password_reset_ WHERE user_id = ?", user.getId());
     jdbc.update("UPDATE user_ SET password = ? WHERE id = ?", new BCryptPasswordEncoder().encode(pass), user.getId());
     authenticationService.revokeAll(user.getId()); // derruba os logins antigos
@@ -253,8 +244,24 @@ public class AuthenticationController {
   }
 
   private String getClientIp(HttpServletRequest request) {
-    String xff = request.getHeader("X-Forwarded-For");
-    if (xff != null && !xff.isEmpty()) return xff.split(",")[0].trim();
-    return request.getRemoteAddr();
+    return br.com.personalfighters.config.ProtectionFilter.clientIp(request); // IP real (Cloudflare), não o que o aparelho diz
+  }
+
+  private static ResponseEntity<?> blocked(int seconds) {
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+        "error", "Conta bloqueada.",
+        "message", "Muitas senhas erradas. Tente de novo em " + Math.max(1, (seconds + 59) / 60) + " minuto(s).",
+        "secondsRemaining", seconds
+    ));
+  }
+
+  /** Celular que já entrou nesta conta antes (o dono não fica trancado por ataque de fora). */
+  private boolean knownDevice(String username, String deviceId) {
+    if (username == null || deviceId == null || deviceId.isBlank()) return false;
+    String dev = deviceId.trim().length() > 80 ? deviceId.trim().substring(0, 80) : deviceId.trim();
+    try {
+      Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM user_device_ d JOIN user_ u ON u.id = d.user_id WHERE u.username = ? AND d.device_id = ?", Integer.class, username, dev);
+      return n != null && n > 0;
+    } catch (Exception e) { return false; }
   }
 }

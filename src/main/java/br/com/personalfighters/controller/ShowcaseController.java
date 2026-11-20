@@ -184,10 +184,11 @@ public class ShowcaseController {
   private final Map<String, Long> seen = new ConcurrentHashMap<>();
 
   @GetMapping("/showcase/{userId}")
-  public Map<String, Object> publicShowcase(@PathVariable Long userId, @RequestHeader(value = "X-Forwarded-For", required = false) String ip) {
+  public Map<String, Object> publicShowcase(@PathVariable Long userId, javax.servlet.http.HttpServletRequest req) {
+    String ip = br.com.personalfighters.config.ProtectionFilter.clientIp(req); // IP real, não o que o aparelho diz
     Map<String, Object> out = publicData(jdbc, userId);
     // conta visita (no máximo 1 por pessoa/hora)
-    String key = userId + "|" + (ip == null ? "" : ip.split(",")[0].trim());
+    String key = userId + "|" + ip;
     long nowMs = System.currentTimeMillis();
     Long last = seen.get(key);
     if (last == null || nowMs - last > 3_600_000L) {
