@@ -36,6 +36,7 @@ public class User implements UserDetails, Serializable {
   private String username;
 
   @JsonView(Views.User.Security.class)
+  @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY) // a senha (mesmo criptografada) nunca sai do servidor
   private String password;
 
   private String name;

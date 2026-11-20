@@ -253,7 +253,7 @@ public class UserController {
   @JsonView(Views.FirstLevel.class)
   public Object findByEmail(@PathVariable String email) {
     if (!br.com.personalfighters.util.Redactor.isAdmin() && !email.equalsIgnoreCase(String.valueOf(me().getEmail()))) throw denied();
-    return userService.findByEmail(email);
+    return redactor.strip(userService.findByEmail(email), me().getId());
   }
 
   @PreAuthorize("hasRole('ROLE_ADMIN')")
@@ -294,7 +294,7 @@ public class UserController {
     if (me == null || !me.getId().equals(id)) {
       throw new org.springframework.security.access.AccessDeniedException("Você só pode enviar a sua própria verificação.");
     }
-    return userService.requestVerification(id, payload);
+    return redactor.strip(userService.requestVerification(id, payload), me().getId());
   }
 
   @PreAuthorize("hasRole('ROLE_ADMIN')")
@@ -303,7 +303,7 @@ public class UserController {
   @ApiOperation(value = "Marca o utilizador como verificado (documentos aprovados).")
   public Object verifyUser(@PathVariable Long id,
                            @RequestParam(required = false) String documentUrl) {
-    return userService.verifyUser(id, documentUrl);
+    return redactor.strip(userService.verifyUser(id, documentUrl), me().getId());
   }
 
   @PreAuthorize("hasRole('ROLE_ADMIN')")
@@ -313,7 +313,7 @@ public class UserController {
   public Object rejectVerification(@PathVariable Long id,
                                    @RequestBody(required = false) java.util.Map<String, String> body) {
     String reason = body != null ? body.getOrDefault("reason", "") : "";
-    return userService.rejectVerification(id, reason);
+    return redactor.strip(userService.rejectVerification(id, reason), me().getId());
   }
 
   @GetMapping("/{id}/verification-status")
@@ -338,7 +338,7 @@ public class UserController {
                                @RequestParam double lat,
                                @RequestParam double lng) {
     selfOrAdmin(id);
-    return userService.updateLocation(id, lat, lng);
+    return redactor.strip(userService.updateLocation(id, lat, lng), me().getId());
   }
 
   @GetMapping("/professionals/nearby")
@@ -367,7 +367,7 @@ public class UserController {
       java.util.Set<Long> boosted = new java.util.HashSet<>(proGrowthController.boostedIds());
       out.sort((a, b) -> Boolean.compare(boosted.contains(b.getId()), boosted.contains(a.getId())));
     } catch (Exception ignored) { }
-    return out;
+    return redactor.strip(out, me().getId()); // nunca devolve CPF, e-mail, senha ou endereço de ninguém
   }
 
 
