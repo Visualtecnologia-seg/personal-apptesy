@@ -77,12 +77,14 @@ public class ProtectionController {
   }
 
   @GetMapping("/alerts/count")
+  @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_ADMIN')") // SOS de outras pessoas: só a equipe
   public ResponseEntity<Map<String, Long>> alertsCount() {
     long count = protectionRepo.findByActiveTrue().size();
     return ResponseEntity.ok(Map.of("count", count));
   }
 
   @GetMapping("/alerts")
+  @org.springframework.security.access.prepost.PreAuthorize("hasRole('ROLE_ADMIN')") // SOS de outras pessoas: só a equipe
   public ResponseEntity<List<Map<String, Object>>> alerts() {
     List<ProtectionSession> active = protectionRepo.findByActiveTrue();
     active.sort(Comparator.comparingInt(ProtectionSession::getLevel).reversed());
@@ -120,11 +122,8 @@ public class ProtectionController {
     Map<String, Object> info = new LinkedHashMap<>();
     info.put("id", u.getId());
     info.put("name", (u.getName() != null ? u.getName() : "") + (u.getSurname() != null ? " " + u.getSurname() : ""));
-    info.put("email", u.getEmail());
     info.put("phone", u.getPhoneNumber());
-    info.put("cpf", u.getCpf());
     info.put("gender", u.getGender());
-    info.put("birthday", u.getBirthday());
     info.put("avatarUrl", u.getAvatarUrl());
     info.put("verified", u.getVerified());
     info.put("fullAddress", u.getFullAddress());

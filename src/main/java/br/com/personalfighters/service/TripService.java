@@ -28,6 +28,10 @@ public class TripService {
   /** Linha reta × 1,3 ≈ distância pelas ruas. */
   public static final double ROAD_FACTOR = 1.3;
   public static final double AVG_SPEED_KMH = 30.0;
+  /** Velocidade máxima possível na cidade/estrada para contar km rodados. */
+  public static final double MAX_SPEED_KMH = 90.0;
+  /** Ponto de saída a mais que isso do cliente não vale para a taxa. */
+  public static final double MAX_START_KM = 80.0;
 
   private final JdbcTemplate jdbc;
 
@@ -60,6 +64,20 @@ public class TripService {
     }
     double traveled = 0;
     if (dLat != null && pLat != null) traveled = km(dLat, dLng, pLat, pLng);
+    // O GPS vem do celular do profissional: só conta o que é fisicamente possível
+    // (antes dava para "sair de Brasília" e "estar no Rio" 2 segundos depois e ficar com o valor todo)
+    boolean suspicious = false;
+    if (traveled > 0 && r.get("departed_at") != null) {
+      double hours = Math.max(0, (System.currentTimeMillis() - ((java.sql.Timestamp) r.get("departed_at")).getTime()) / 3_600_000.0);
+      double possible = hours * MAX_SPEED_KMH + 0.5;
+      if (traveled > possible) { suspicious = true; traveled = possible; }
+    }
+    if (traveled > 0 && dLat != null && cLat != null) {
+      double startToClient = km(dLat, dLng, cLat, cLng);
+      if (startToClient > MAX_START_KM) { suspicious = true; traveled = 0; }           // "saiu" longe demais do cliente
+      else traveled = Math.min(traveled, startToClient * ROAD_FACTOR + 1);             // não roda mais que o caminho até o cliente
+    }
+    if (suspicious) out.put("gpsSuspicious", true);
     out.put("traveledKm", round1(traveled));
     out.put("cancelFee", fee(r.get("departed_at") != null, traveled, (BigDecimal) r.get("service_value")));
     return out;
@@ -84,6 +102,11 @@ public class TripService {
         : BigDecimal.ZERO;
     BigDecimal refund = paid.subtract(fee).max(BigDecimal.ZERO);
     jdbc.update("UPDATE order_ SET cancel_fee = ?, client_refund = ? WHERE id = ?", fee, refund, order.getId());
+    if (Boolean.TRUE.equals(t.get("gpsSuspicious")) && order.getProfessional() != null) {
+      // vai para o alerta do painel: GPS do profissional "pulou" neste pedido
+      jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) VALUES (?, 'GPS_SUSPEITO', ?, NOW())",
+          order.getProfessional().getId(), "Pedido #" + order.getId().toString().substring(0, 8) + ": localização impossível no deslocamento; taxa de cancelamento limitada");
+    }
     return fee;
   }
 

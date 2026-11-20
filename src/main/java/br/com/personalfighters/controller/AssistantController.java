@@ -96,8 +96,10 @@ public class AssistantController {
     for (Map<String, Object> v : q("SELECT v.user_id, v.submitted_at, u.name FROM identity_verification_ v JOIN user_ u ON u.id = v.user_id WHERE v.status = 'PENDING' ORDER BY v.submitted_at"))
       items.add(item("VERIFY", "Documento para aprovar", Objects.toString(v.get("name")), v.get("submitted_at"), "verif", null, false));
     // ── Segurança: comportamento estranho ──
-    for (Map<String, Object> e : q("SELECT e.kind, e.detail, e.created_at, u.name, u.id FROM security_event_ e JOIN user_ u ON u.id = e.user_id WHERE e.kind IN ('NOT_ME','WITHDRAW_HELD') AND e.created_at > ? ORDER BY e.id DESC LIMIT 10", ts(now().minusDays(3))))
-      items.add(item("SECURITY", "NOT_ME".equals(e.get("kind")) ? "🚨 \"Não fui eu\": possível conta invadida" : "🚨 Saque tentado logo após trocar a chave PIX",
+    for (Map<String, Object> e : q("SELECT e.kind, e.detail, e.created_at, u.name, u.id FROM security_event_ e JOIN user_ u ON u.id = e.user_id WHERE e.kind IN ('NOT_ME','WITHDRAW_HELD','GPS_SUSPEITO') AND e.created_at > ? ORDER BY e.id DESC LIMIT 10", ts(now().minusDays(3))))
+      items.add("GPS_SUSPEITO".equals(e.get("kind"))
+          ? item("SECURITY", "📍 GPS impossível no deslocamento", e.get("name") + " · " + e.get("detail"), e.get("created_at"), "user", e.get("id"), true)
+          : item("SECURITY", "NOT_ME".equals(e.get("kind")) ? "🚨 \"Não fui eu\": possível conta invadida" : "🚨 Saque tentado logo após trocar a chave PIX",
           e.get("name") + " · conta desconectada e saques segurados por 24 h", e.get("created_at"), "user", e.get("id"), true));
     for (Map<String, Object> e : q("SELECT c.changed_at, u.name, u.id, c.old_key_end, c.new_key_end FROM pix_key_change_ c JOIN user_ u ON u.id = c.user_id WHERE COALESCE(c.old_key_end, '') <> '' AND c.changed_at > ? ORDER BY c.id DESC LIMIT 10", ts(now().minusDays(2))))
       items.add(item("SECURITY", "Chave PIX trocada", e.get("name") + " · ••••" + e.get("old_key_end") + " → ••••" + e.get("new_key_end") + " · saque liberado só depois de 24 h", e.get("changed_at"), "user", e.get("id"), false));

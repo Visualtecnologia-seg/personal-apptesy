@@ -62,12 +62,12 @@ public class MarketController {
         String name = Objects.toString(m.get("name"), "").trim();
         if (name.isEmpty()) continue;
         jdbc.update("INSERT INTO order_material_ (id, order_id, name, qty, unit, price, buyer, position, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
-            UUID.randomUUID(), id, name.length() > 140 ? name.substring(0, 140) : name, num(m.get("qty"), "1"), str(m.get("unit"), 20),
-            num(m.get("price"), "0"), "PRO", pos++, now());
+            UUID.randomUUID(), id, name.length() > 140 ? name.substring(0, 140) : name, clamp(num(m.get("qty"), "1"), "0.01", "10000", "1"), str(m.get("unit"), 20),
+            clamp(num(m.get("price"), "0"), "0", "100000", "0"), "PRO", pos++, now());
       }
     }
     Object w = b.get("warrantyDays");
-    if (w != null) jdbc.update("UPDATE order_ SET warranty_days = ? WHERE id = ?", num(w, "0").intValue(), id);
+    if (w != null) jdbc.update("UPDATE order_ SET warranty_days = ? WHERE id = ?", Math.max(0, Math.min(3650, num(w, "0").intValue())), id);
     jdbc.update("UPDATE order_ SET materials_status = ? WHERE id = ?", pos > 0 ? "SENT" : null, id);
     if (pos > 0) notificationService.sendToUser(o.getCustomer(), false,
         firstName(o.getProfessional()) + " mandou a lista de materiais. Escolha quem compra cada item: você, o profissional ou se você já tem.");
@@ -136,7 +136,7 @@ public class MarketController {
     if (o == null || !isPro(o, me)) return bad("Pedido não encontrado.");
     String desc = str(b.get("description"), 140);
     BigDecimal v = num(b.get("value"), "0");
-    if (desc == null || v.compareTo(BigDecimal.ONE) < 0) return bad("Diga o que é e o valor (mínimo R$ 1).");
+    if (desc == null || v.compareTo(BigDecimal.ONE) < 0 || v.compareTo(new BigDecimal("100000")) > 0) return bad("Diga o que é e o valor (de R$ 1 a R$ 100.000).");
     UUID extra = createCharge(o, desc, v.setScale(2, RoundingMode.HALF_UP));
     notificationService.sendToUser(o.getCustomer(), false, firstName(o.getProfessional()) + " enviou uma cobrança: " + desc + ". O valor fica guardado no cofre até você aprovar o serviço.");
     return ResponseEntity.ok(Map.of("extraId", extra));
@@ -268,6 +268,12 @@ public class MarketController {
   }
 
   // ───────────── utilitários ─────────────
+
+  /** Quantidade e preço de material nunca negativos (nem absurdos). Fora da faixa vira o padrão. */
+  private static BigDecimal clamp(BigDecimal v, String min, String max, String def) {
+    if (v == null || v.compareTo(new BigDecimal(min)) < 0 || v.compareTo(new BigDecimal(max)) > 0) return new BigDecimal(def);
+    return v.setScale(2, java.math.RoundingMode.HALF_UP);
+  }
 
   private static BigDecimal num(Object o, String def) {
     try { return new BigDecimal(Objects.toString(o, def).replace(',', '.').trim()); } catch (Exception e) { return new BigDecimal(def); }

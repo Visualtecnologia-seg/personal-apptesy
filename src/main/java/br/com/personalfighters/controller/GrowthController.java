@@ -80,6 +80,9 @@ public class GrowthController {
     if (sessions < 2 || sessions > 60) return bad("O pacote precisa ter de 2 a 60 aulas.");
     BigDecimal price;
     try { price = new BigDecimal(Objects.toString(b.get("price"), "").replace(',', '.')).setScale(2, RoundingMode.HALF_UP); } catch (Exception e) { return bad("Preço inválido."); }
+    // Preço mínimo por aula do pacote (antes, sem valor/hora cadastrado, aceitava zero ou negativo)
+    if (price.compareTo(new BigDecimal("5").multiply(BigDecimal.valueOf(sessions))) < 0 || price.compareTo(new BigDecimal("100000")) > 0)
+      return bad("O pacote precisa custar pelo menos R$ 5 por aula.");
     BigDecimal rate = hourlyRate(me.getId());
     if (rate != null && rate.signum() > 0) {
       BigDecimal full = rate.multiply(BigDecimal.valueOf((long) sessions * hours));
@@ -205,7 +208,7 @@ public class GrowthController {
   // ───────────── Cupons ─────────────
 
   @PostMapping("/orders/{id}/coupon")
-  public ResponseEntity<?> applyCoupon(@PathVariable UUID id, @RequestBody Map<String, Object> b) {
+  public synchronized ResponseEntity<?> applyCoupon(@PathVariable UUID id, @RequestBody Map<String, Object> b) {
     User me = userService.findAuthUser();
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || o.getCustomer() == null || !o.getCustomer().getId().equals(me.getId())) return bad("Pedido não encontrado.");
@@ -227,10 +230,12 @@ public class GrowthController {
     BigDecimal fee = o.getTotalCost().subtract(o.getServiceValue() != null ? o.getServiceValue() : Pricing.serviceFromTotal(o.getTotalCost()));
     // O desconto sai da taxa OPUS e, se passar dela, fica no máximo em 90% do pedido (o profissional nunca perde)
     disc = disc.min(o.getTotalCost().multiply(new BigDecimal("0.9"))).setScale(2, RoundingMode.HALF_UP);
+    // Baixa do uso de forma atômica: se o limite acabou no meio do caminho, não aplica
+    int took = jdbc.update("UPDATE coupon_ SET used = used + 1 WHERE code = ? AND active = TRUE AND (max_uses IS NULL OR used < max_uses)", code);
+    if (took == 0) return bad("Este cupom já foi todo usado.");
     o.setDiscountAmount(disc);
     orderRepository.save(o);
     jdbc.update("UPDATE order_ SET coupon_code = ? WHERE id = ?", code, id);
-    jdbc.update("UPDATE coupon_ SET used = used + 1 WHERE code = ?", code);
     jdbc.update("INSERT INTO coupon_use_ (code, user_id, order_id, discount, used_at) VALUES (?, ?, ?, ?, ?)", code, me.getId(), id, disc, Timestamp.valueOf(LocalDateTime.now()));
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("code", code);
@@ -296,7 +301,7 @@ public class GrowthController {
     try {
       int pts = settings.getInt(SettingsService.REFERRAL_POINTS);
       for (Map<String, Object> r : jdbc.queryForList("SELECT r.referred_id, r.referrer_id FROM referral_ r WHERE r.rewarded_at IS NULL AND EXISTS " +
-          "(SELECT 1 FROM order_ o WHERE o.customer_id = r.referred_id AND o.status IN ('DONE','REVIEWED'))")) {
+          "(SELECT 1 FROM order_ o WHERE o.customer_id = r.referred_id AND o.status IN ('DONE','REVIEWED') AND COALESCE(o.service_value, o.total_cost, 0) >= 100 AND o.package_purchase_id IS NULL)")) {
         Long referred = ((Number) r.get("referred_id")).longValue(), referrer = ((Number) r.get("referrer_id")).longValue();
         int n = jdbc.update("UPDATE referral_ SET rewarded_at = ? WHERE referred_id = ? AND rewarded_at IS NULL", Timestamp.valueOf(LocalDateTime.now()), referred);
         if (n == 0) continue;

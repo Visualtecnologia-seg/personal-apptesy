@@ -160,6 +160,10 @@
             <groupId>com.github.javafaker</groupId>
             <artifactId>javafaker</artifactId>
             <version>1.0.2</version>
+            <exclusions>
+                <!-- versão antiga (android) do snakeyaml: usa a do Spring Boot -->
+                <exclusion><groupId>org.yaml</groupId><artifactId>snakeyaml</artifactId></exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>

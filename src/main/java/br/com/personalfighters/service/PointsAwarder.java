@@ -24,6 +24,7 @@ public class PointsAwarder {
 
   private final PointsRepository pointsRepository;
   private final OrderRepository orderRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   public void award(Order order) {
     try {
@@ -31,6 +32,9 @@ public class PointsAwarder {
       if (Boolean.TRUE.equals(order.getPointsAwarded())) return;
       BigDecimal service = order.getServiceValue() != null ? order.getServiceValue() : order.getTotalCost();
       if (service == null || service.compareTo(MIN_SERVICE_FOR_POINTS) < 0) return;
+      // Marca primeiro, de forma atômica: concluir o pedido duas vezes ao mesmo tempo não dá pontos em dobro
+      int first = jdbc.update("UPDATE order_ SET points_awarded = TRUE WHERE id = ? AND COALESCE(points_awarded, FALSE) = FALSE", order.getId());
+      if (first == 0) return;
       pointsRepository.save(Points.builder()
           .user(order.getCustomer())
           .amount(POINTS_PER_SERVICE)

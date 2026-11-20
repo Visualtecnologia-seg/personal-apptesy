@@ -143,7 +143,8 @@ public class UserController {
   @PutMapping
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Atualiza um usuário.")
-  public Object update(@RequestBody User user, @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken) {
+  public Object update(@RequestBody User user, @RequestHeader(value = "X-Phone-Token", required = false) String phoneToken,
+                       @RequestHeader(value = "X-Email-Token", required = false) String emailToken) {
     String[] phoneChange = null;
     if (!br.com.personalfighters.util.Redactor.isAdmin()) {
       // Cada um só altera a própria conta, e nunca o próprio cargo, verificação ou documentos.
@@ -213,13 +214,20 @@ public class UserController {
       if (user.getGender() == null) user.setGender(cur.getGender());
     }
     String oldEmail = br.com.personalfighters.util.Redactor.isAdmin() ? null : me().getEmail();
-    if (oldEmail != null && user.getEmail() != null && !oldEmail.equalsIgnoreCase(user.getEmail()) && br.com.personalfighters.util.DisposableEmail.is(user.getEmail()))
-      throw badReq("Use um e-mail pessoal. E-mails temporários não são aceitos.");
+    if (oldEmail != null && user.getEmail() != null && !user.getEmail().isBlank() && !oldEmail.equalsIgnoreCase(user.getEmail().trim())) {
+      String newEmail = user.getEmail().trim().toLowerCase();
+      if (br.com.personalfighters.util.DisposableEmail.is(newEmail)) throw badReq("Use um e-mail pessoal. E-mails temporários não são aceitos.");
+      // Trocar o e-mail exige o código enviado ao e-mail NOVO (antes trocava sem confirmar e abria brecha para "conta armadilha")
+      if (!newEmail.equals(codes.fromProof("email", emailToken))) throw badReq("Confirme o novo e-mail com o código que enviamos para ele.");
+      Integer taken = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE LOWER(email) = ? AND id <> ?", Integer.class, newEmail, me().getId());
+      if (taken != null && taken > 0) throw badReq("Este e-mail já está em outra conta.");
+      user.setEmail(newEmail);
+    }
     User saved = userService.update(user);
-    // trocou o e-mail: precisa confirmar de novo
+    // trocou o e-mail (já confirmado pelo código): avisa o e-mail antigo
     if (oldEmail != null && saved.getEmail() != null && !oldEmail.equalsIgnoreCase(saved.getEmail()))
     {
-      jdbc.update("UPDATE user_ SET email_verified = FALSE WHERE id = ?", saved.getId());
+      jdbc.update("UPDATE user_ SET email_verified = TRUE WHERE id = ?", saved.getId());
       emailAutomation.emailChanged(saved.getId(), oldEmail, saved.getEmail());
     }
     if (phoneChange != null) {

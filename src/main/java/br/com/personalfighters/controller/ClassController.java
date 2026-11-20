@@ -242,6 +242,11 @@ public class ClassController {
   @GetMapping("/classes/{id}/room")
   public ResponseEntity<?> poll(@PathVariable UUID id, @RequestParam(defaultValue = "0") long after) {
     User me = userService.findAuthUser();
+    // Só o professor e quem pagou a vaga veem a sala (lista de alunos e batimentos)
+    Map<String, Object> c = classRow(id);
+    if (c == null) return bad("Aula não encontrada.");
+    boolean host = me.getId().equals(((Number) c.get("professional_id")).longValue());
+    if (!host && count("SELECT COUNT(*) FROM class_enrollment_ WHERE class_id = ? AND user_id = ? AND status = 'PAID'", id, me.getId()) == 0) return bad("Garanta a sua vaga para entrar na sala.");
     jdbc.update("UPDATE room_member_ SET last_seen = ? WHERE class_id = ? AND user_id = ?", Timestamp.valueOf(LocalDateTime.now()), id, me.getId());
     return ResponseEntity.ok(room(id, me, after));
   }
@@ -256,6 +261,7 @@ public class ClassController {
     try { to = Long.parseLong(Objects.toString(b.get("to"), "")); } catch (Exception e) { return bad("Destino inválido."); }
     String payload = Objects.toString(b.get("payload"), "");
     if (payload.length() > 100_000) return bad("Sinal grande demais.");
+    if (count("SELECT COUNT(*) FROM room_member_ WHERE class_id = ? AND user_id = ?", id, to) == 0) return bad("Essa pessoa não está na sala.");
     jdbc.update("INSERT INTO room_signal_ (class_id, from_user, to_user, kind, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         id, me.getId(), to, kind, payload, Timestamp.valueOf(LocalDateTime.now()));
     return ResponseEntity.ok(Map.of("ok", true));

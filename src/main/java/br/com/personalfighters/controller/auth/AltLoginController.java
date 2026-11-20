@@ -71,7 +71,7 @@ public class AltLoginController {
     if (!allowed.contains(String.valueOf(claims.getAudience()))) return PhoneVerificationController.bad("Conta Apple não confirmada.");
     String sub = claims.getSubject();
     String email = Objects.toString(claims.get("email"), "").toLowerCase();
-    List<String> found = jdbc.queryForList("SELECT username FROM user_ WHERE (apple_sub = ? OR (? <> '' AND LOWER(email) = ?)) AND username NOT LIKE 'painel:%' ORDER BY (apple_sub = ?) DESC LIMIT 1",
+    List<String> found = jdbc.queryForList("SELECT username FROM user_ WHERE (apple_sub = ? OR (? <> '' AND LOWER(email) = ? AND email_verified = TRUE)) AND username NOT LIKE 'painel:%' ORDER BY (apple_sub = ?) DESC LIMIT 1",
         String.class, sub, email, email, sub);
     if (!found.isEmpty()) {
       jdbc.update("UPDATE user_ SET apple_sub = COALESCE(apple_sub, ?) WHERE username = ?", sub, found.get(0));
@@ -119,7 +119,7 @@ public class AltLoginController {
     }
     String sub = String.valueOf(info.get("sub"));
     String email = String.valueOf(info.get("email")).toLowerCase();
-    List<String> found = jdbc.queryForList("SELECT username FROM user_ WHERE (google_sub = ? OR LOWER(email) = ?) AND username NOT LIKE 'painel:%' ORDER BY (google_sub = ?) DESC LIMIT 1",
+    List<String> found = jdbc.queryForList("SELECT username FROM user_ WHERE (google_sub = ? OR (LOWER(email) = ? AND email_verified = TRUE)) AND username NOT LIKE 'painel:%' ORDER BY (google_sub = ?) DESC LIMIT 1",
         String.class, sub, email, sub);
     if (!found.isEmpty()) {
       jdbc.update("UPDATE user_ SET google_sub = COALESCE(google_sub, ?), email_verified = TRUE WHERE username = ?", sub, found.get(0));

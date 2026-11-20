@@ -98,6 +98,16 @@ public class AsaasWebhookController {
               order.getPixPaid(), err == null ? "feito" : "PENDENTE: " + err);
           return ResponseEntity.ok().build();
         }
+        // Confere o valor pago com o valor da cobrança (pagamento a menor não libera o pedido)
+        java.math.BigDecimal paidValue = null;
+        try { paidValue = new java.math.BigDecimal(String.valueOf(payment.get("value"))); } catch (Exception ignored) { }
+        if (paidValue != null && transaction.getTotalPaid() != null && paidValue.compareTo(transaction.getTotalPaid().subtract(new java.math.BigDecimal("0.01"))) < 0) {
+          String err = asaasService.refundPix(asaasPaymentId, null);
+          transaction.setPaymentStatus(err == null ? PaymentStatus.REFUNDED : PaymentStatus.PENDING_REFUND);
+          transactionRepository.save(transaction);
+          log.warn("Pagamento {} do pedido {} veio menor (R$ {} de R$ {}): estornado {}", asaasPaymentId, order.getId(), paidValue, transaction.getTotalPaid(), err == null ? "" : "PENDENTE: " + err);
+          return ResponseEntity.ok().build();
+        }
         transaction.setPaymentStatus(PaymentStatus.PAID);
         transactionRepository.save(transaction);
 

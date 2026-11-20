@@ -93,18 +93,24 @@ public class AuthenticationController {
     try {
       authenticate(email, authenticationRequest.getPassword());
     } catch (Exception e) {
-      loginAttemptService.loginFailed(email);
+      int level = loginAttemptService.loginFailed(email);
       // Guardar histórico de falha (silencioso se user não existe)
       try {
         User failedUser = (User) userDetailsService.loadUserByUsername(email);
         saveHistory(failedUser, ip, ua, false);
+        // A partir do 2º bloqueio seguido, avisa o dono da conta por e-mail
+        if (level >= 2 && failedUser.getEmail() != null)
+          emailService.sendSecurityAlert(failedUser.getEmail(), failedUser.getName(), "Tentativas de entrar na sua conta OPUS",
+              "Alguém está errando a sua senha",
+              "Bloqueamos o acesso por alguns minutos depois de várias senhas erradas. Se não foi você, troque a sua senha no app (Perfil → Segurança).");
       } catch (Exception ignored) {}
 
       if (loginAttemptService.isBlocked(email)) {
+        int seconds = loginAttemptService.getSecondsRemaining(email);
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
             "error", "Conta bloqueada.",
-            "message", "Conta bloqueada por 60 segundos após 5 tentativas falhadas.",
-            "secondsRemaining", 60
+            "message", "Muitas senhas erradas. Tente de novo em " + Math.max(1, (seconds + 59) / 60) + " minuto(s).",
+            "secondsRemaining", seconds
         ));
       }
       int remaining = 5 - loginAttemptService.getAttemptCount(email);

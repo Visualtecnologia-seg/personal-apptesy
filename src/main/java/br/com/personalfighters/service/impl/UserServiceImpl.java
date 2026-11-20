@@ -253,35 +253,35 @@ public class UserServiceImpl implements UserService {
   @Override
   public User requestVerification(Long id, java.util.Map<String, String> payload) {
     User user = findById(id);
-    if (payload.containsKey("fullName") && !payload.get("fullName").isBlank()) {
-      user.setName(payload.get("fullName"));
+    if (payload.containsKey("fullName") && !payload.get("fullName").isBlank() && (user.getName() == null || user.getName().isBlank())) {
+      String n = payload.get("fullName").trim();
+      user.setName(n.length() > 80 ? n.substring(0, 80) : n);
     }
     if (payload.containsKey("birthday") && !payload.get("birthday").isBlank()) {
-      try {
+      if (user.getBirthday() == null) try {
         user.setBirthday(java.time.LocalDate.parse(payload.get("birthday")));
       } catch (Exception ignored) {}
     }
-    if (payload.containsKey("cpf") && !payload.get("cpf").isBlank()) {
-      user.setCpf(payload.get("cpf").replaceAll("[^0-9]", ""));
-    }
-    if (payload.containsKey("phoneNumber") && !payload.get("phoneNumber").isBlank()) {
-      user.setPhoneNumber(payload.get("phoneNumber"));
-    }
+    // CPF e celular NÃO mudam por aqui (antes dava para trocar o CPF e desviar os saques PIX).
+    // CPF é fixo desde o cadastro; celular só muda pelo perfil, com código.
     if (payload.containsKey("fullAddress") && !payload.get("fullAddress").isBlank()) {
-      user.setFullAddress(payload.get("fullAddress"));
+      String a = payload.get("fullAddress").trim();
+      user.setFullAddress(a.length() > 300 ? a.substring(0, 300) : a);
     }
-    if (payload.containsKey("docFrontUrl") && !payload.get("docFrontUrl").isBlank()) {
-      user.setDocFrontUrl(payload.get("docFrontUrl"));
-    }
-    if (payload.containsKey("docBackUrl") && !payload.get("docBackUrl").isBlank()) {
-      user.setDocBackUrl(payload.get("docBackUrl"));
-    }
-    if (payload.containsKey("docSelfieUrl") && !payload.get("docSelfieUrl").isBlank()) {
-      user.setDocSelfieUrl(payload.get("docSelfieUrl"));
-    }
+    // Documentos: só arquivos enviados ao próprio servidor (nada de link de fora)
+    String f = safeDoc(payload.get("docFrontUrl")), b = safeDoc(payload.get("docBackUrl")), sf = safeDoc(payload.get("docSelfieUrl"));
+    if (f != null) user.setDocFrontUrl(f);
+    if (b != null) user.setDocBackUrl(b);
+    if (sf != null) user.setDocSelfieUrl(sf);
     user.setVerificationStatus("PENDING");
     user.setVerified(false);
     return userRepository.save(user);
+  }
+
+  private static String safeDoc(String u) {
+    if (u == null || u.isBlank()) return null;
+    u = u.trim();
+    return u.startsWith("/") && !u.startsWith("//") && u.length() <= 300 && u.matches("[A-Za-z0-9/_.?=&-]+") ? u : null;
   }
 
   private CustomerPagarmeRequest convertToCustomerToPagarme(User user) {

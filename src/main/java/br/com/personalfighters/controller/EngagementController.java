@@ -40,6 +40,7 @@ public class EngagementController {
   private final UrgentRequestRepository urgentRepository;
   public static volatile BigDecimal MIN_ORDER_FOR_REDEEM = new BigDecimal("100");
   private final WarrantyClaimRepository warrantyRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   // ═════════════════════════════ PONTOS ═════════════════════════════
 
@@ -77,6 +78,8 @@ public class EngagementController {
   @Transactional
   public ResponseEntity<?> redeem(@PathVariable UUID orderId) {
     User me = userService.findAuthUser();
+    // Um resgate por pessoa de cada vez (antes, resgates ao mesmo tempo usavam os mesmos pontos várias vezes)
+    jdbc.queryForList("SELECT pg_advisory_xact_lock(?)", 7_700_000_000L + me.getId());
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) return bad("Pedido não encontrado.");
     if (order.getCustomer() == null || !order.getCustomer().getId().equals(me.getId())) return bad("Este pedido não é seu.");
@@ -138,7 +141,7 @@ public class EngagementController {
     me.setLatitude(lat);
     me.setLongitude(lng);
     userRepository.save(me);
-    return ResponseEntity.ok(urgentView(u, null));
+    return ResponseEntity.ok(urgentView(u, null, true));
   }
 
   @GetMapping("/urgent/me")
@@ -150,7 +153,7 @@ public class EngagementController {
             u.setStatus("EXPIRED");
             urgentRepository.save(u);
           }
-          return ResponseEntity.ok((Object) urgentView(u, null));
+          return ResponseEntity.ok((Object) urgentView(u, null, true));
         })
         .orElse(ResponseEntity.ok((Object) Map.of("status", "NONE")));
   }
@@ -163,13 +166,16 @@ public class EngagementController {
     if (!"OPEN".equals(u.getStatus())) return bad("Este chamado não está mais aberto.");
     u.setStatus("CANCELLED");
     urgentRepository.save(u);
-    return ResponseEntity.ok(urgentView(u, null));
+    return ResponseEntity.ok(urgentView(u, null, true));
   }
 
   /** Lista para o profissional: chamados abertos perto dele. */
   @GetMapping("/urgent/nearby")
   public List<Map<String, Object>> nearbyUrgent(@RequestParam double lat, @RequestParam double lng) {
     User me = userService.findAuthUser();
+    // Só profissional verificado vê chamados urgentes (antes qualquer conta via o endereço de quem pediu ajuda)
+    if (me.getRole() == null || !me.getRole().contains(Role.PROFESSIONAL) || !Boolean.TRUE.equals(me.getVerified())) return List.of();
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return List.of();
     me.setLatitude(lat);
     me.setLongitude(lng);
     userRepository.save(me);
@@ -179,7 +185,7 @@ public class EngagementController {
         .map(u -> new AbstractMap.SimpleEntry<>(u, distanceKm(lat, lng, u.getLatitude(), u.getLongitude())))
         .filter(e -> e.getValue() <= URGENT_RADIUS_KM)
         .sorted(Comparator.comparingDouble(e -> e.getValue()))
-        .map(e -> urgentView(e.getKey(), e.getValue()))
+        .map(e -> urgentView(e.getKey(), e.getValue(), false))
         .collect(Collectors.toList());
   }
 
@@ -193,20 +199,23 @@ public class EngagementController {
     if (won == 0) return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Outro profissional já aceitou este chamado."));
     UrgentRequest u = urgentRepository.findById(id).orElseThrow();
     log.info("Chamado urgente {} aceito pelo profissional {}", id, me.getId());
-    return ResponseEntity.ok(urgentView(u, null));
+    return ResponseEntity.ok(urgentView(u, null, true));
   }
 
-  private Map<String, Object> urgentView(UrgentRequest u, Double distance) {
+  private Map<String, Object> urgentView(UrgentRequest u, Double distance) { return urgentView(u, distance, true); }
+
+  /** full = false: lista para profissionais que ainda não aceitaram — só o bairro, sem número e sem nome. */
+  private Map<String, Object> urgentView(UrgentRequest u, Double distance, boolean full) {
     Map<String, Object> m = new LinkedHashMap<>();
     m.put("id", u.getId());
     m.put("status", u.getStatus());
     m.put("categoryName", u.getCategoryName());
     m.put("description", u.getDescription());
-    m.put("address", u.getAddress());
+    m.put("address", full ? u.getAddress() : areaOnly(u.getAddress()));
     m.put("createdAt", u.getCreatedAt());
     m.put("expiresAt", u.getExpiresAt());
     if (distance != null) m.put("distanceKm", Math.round(distance * 10.0) / 10.0);
-    userRepository.findById(u.getCustomerId()).ifPresent(c -> m.put("customerName", firstName(c.getName())));
+    if (full) userRepository.findById(u.getCustomerId()).ifPresent(c -> m.put("customerName", firstName(c.getName())));
     if (u.getTakenBy() != null) {
       userRepository.findById(u.getTakenBy()).ifPresent(p -> {
         Map<String, Object> pro = new LinkedHashMap<>();
@@ -224,6 +233,20 @@ public class EngagementController {
       });
     }
     return m;
+  }
+
+  /** "Rua X, 123 - Bairro, Cidade" → "Bairro, Cidade" (sem rua e número). */
+  static String areaOnly(String a) {
+    if (a == null) return null;
+    String[] parts = a.split("\\s+-\\s+|,");
+    StringBuilder b = new StringBuilder();
+    for (int i = 1; i < parts.length; i++) {
+      String p = parts[i].replaceAll("\\d", "").trim();
+      if (p.isEmpty()) continue;
+      if (b.length() > 0) b.append(", ");
+      b.append(p);
+    }
+    return b.length() > 0 ? b.toString() : "Perto de você";
   }
 
   // ═════════════════════════════ GARANTIA ═════════════════════════════

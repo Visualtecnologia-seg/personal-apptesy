@@ -13,6 +13,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 1) Limite de pedidos por aparelho/rede (IP): segura robôs no cadastro, "esqueci a senha",
@@ -28,6 +30,20 @@ public class ProtectionFilter extends OncePerRequestFilter {
   private final Map<String, Window> hits = new ConcurrentHashMap<>();
 
   private static final long MIN = 60_000L, HOUR = 3_600_000L;
+  private static final long MB = 1024L * 1024L;
+
+  // Envios grandes ao mesmo tempo derrubavam o servidor (memória de 512 MB): no máximo 2 médios e 1 muito grande por vez
+  private final Semaphore bigUploads = new Semaphore(2);
+  private final Semaphore hugeUploads = new Semaphore(1);
+
+  /** Tamanho máximo do envio por endereço. */
+  static long maxBody(String m, String path) {
+    if (!"POST".equals(m) && !"PUT".equals(m) && !"PATCH".equals(m)) return 64 * 1024;
+    if (path.matches("/posts/[^/]+/video")) return 62 * MB;                            // vídeo (60 MB)
+    if (path.equals("/posts") || path.matches("/orders/[^/]+/(finish|problem)")) return 26 * MB; // até 6 fotos
+    if (path.matches("/chat/[^/]+/audio") || path.matches("/sos/[^/]+/audio")) return 6 * MB;
+    return 10 * MB;                                                                   // uma foto e o resto
+  }
 
   @Override
   protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
@@ -65,6 +81,58 @@ public class ProtectionFilter extends OncePerRequestFilter {
       return;
     }
 
+    // Tamanho do envio: recusa antes de ler (inclusive envio "picotado" sem tamanho declarado)
+    long limit = maxBody(m, path);
+    long declared = req.getContentLengthLong();
+    if (declared > limit) { tooBig(res); return; }
+    HttpServletRequest body = declared < 0 && !"GET".equals(m) && !"HEAD".equals(m) ? new LimitedRequest(req, limit) : req;
+    Semaphore gate = declared > 20 * MB || declared < 0 && limit > 20 * MB ? hugeUploads : declared > 4 * MB ? bigUploads : null;
+    if (gate != null) {
+      boolean got;
+      try { got = gate.tryAcquire(25, TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); got = false; }
+      if (!got) {
+        res.setStatus(503);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("{\"message\":\"Muitos envios ao mesmo tempo. Tente de novo em instantes.\"}");
+        return;
+      }
+    }
+    try {
+      headers(path, res);
+      chain.doFilter(body, res);
+    } finally {
+      if (gate != null) gate.release();
+    }
+  }
+
+  private static void tooBig(HttpServletResponse res) throws IOException {
+    res.setStatus(413);
+    res.setContentType("application/json;charset=UTF-8");
+    res.getWriter().write("{\"message\":\"O arquivo é grande demais. Tente uma foto ou vídeo menor.\"}");
+  }
+
+  /** Corta a leitura quando passa do limite (envio sem tamanho declarado). */
+  private static final class LimitedRequest extends javax.servlet.http.HttpServletRequestWrapper {
+    private final long limit;
+    LimitedRequest(HttpServletRequest r, long limit) { super(r); this.limit = limit; }
+    @Override public javax.servlet.ServletInputStream getInputStream() throws IOException {
+      javax.servlet.ServletInputStream in = super.getInputStream();
+      return new javax.servlet.ServletInputStream() {
+        long n = 0;
+        private void count(long k) throws IOException { n += k; if (n > limit) throw new IOException("Envio grande demais"); }
+        @Override public int read() throws IOException { int b = in.read(); if (b >= 0) count(1); return b; }
+        @Override public int read(byte[] b, int off, int len) throws IOException { int k = in.read(b, off, len); if (k > 0) count(k); return k; }
+        @Override public boolean isFinished() { return in.isFinished(); }
+        @Override public boolean isReady() { return in.isReady(); }
+        @Override public void setReadListener(javax.servlet.ReadListener l) { in.setReadListener(l); }
+      };
+    }
+    @Override public java.io.BufferedReader getReader() throws IOException {
+      return new java.io.BufferedReader(new java.io.InputStreamReader(getInputStream(), getCharacterEncoding() == null ? "UTF-8" : getCharacterEncoding()));
+    }
+  }
+
+  private static void headers(String path, HttpServletResponse res) {
     if (isMedia(path)) {
       // Foto/vídeo/áudio enviado por usuário: nunca executa nada, mesmo aberto direto no navegador
       res.setHeader("Content-Security-Policy", "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox");
@@ -76,7 +144,6 @@ public class ProtectionFilter extends OncePerRequestFilter {
           "frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'");
       res.setHeader("Referrer-Policy", "no-referrer");
     }
-    chain.doFilter(req, res);
   }
 
   private static boolean isUpload(HttpServletRequest r) {

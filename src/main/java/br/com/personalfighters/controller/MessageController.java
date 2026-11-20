@@ -25,6 +25,7 @@ public class MessageController {
   private final MessageService messageService;
   private final br.com.personalfighters.service.UserService userService;
   private final br.com.personalfighters.repository.OrderRepository orderRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
   // Só o cliente e o profissional do pedido (ou o administrador) leem e escrevem nesse chat.
   private static org.springframework.web.server.ResponseStatusException denied() {
@@ -42,6 +43,8 @@ public class MessageController {
   private String roleInMessage(UUID messageId) {
     return roleIn(messageService.findById(messageId).getOrderId());
   }
+  static final String SECURITY_NOTICE = "⚠️ Aviso de Segurança — Esta prestação de serviço está sendo gravada por áudio a partir deste momento, conforme os termos de uso da plataforma Profissional Opus. A gravação destina-se exclusivamente a fins de segurança e proteção de ambas as partes.";
+
   private void need(String role, String who) { if (!"ADMIN".equals(role) && !who.equals(role)) throw denied(); }
 
   @GetMapping
@@ -60,6 +63,36 @@ public class MessageController {
       message.setSenderId(userService.findAuthUser().getId()); // ninguém escreve em nome de outro
       message.setSenderRole(role);
       if ("QUOTE".equals(message.getMessageType()) && !"PROFESSIONAL".equals(role)) throw denied(); // orçamento só o profissional manda
+      // Só o sistema escreve avisos "do OPUS"; usuário manda texto, foto e (pela outra rota) áudio
+      String type = message.getMessageType() == null ? "TEXT" : message.getMessageType().toUpperCase();
+      br.com.personalfighters.entity.User me = userService.findAuthUser();
+      if ("SYSTEM".equals(type) && jdbc.queryForObject("SELECT COUNT(*) FROM protection_session_ WHERE order_id = ? AND user_id = ? AND active = TRUE", Long.class, message.getOrderId(), me.getId()) > 0) {
+        // Único aviso "do sistema" que o app manda: o de gravação de segurança, com o texto oficial (não dá para escrever outro)
+        message.setText(SECURITY_NOTICE);
+        message.setSenderName("Sistema de Segurança");
+      } else {
+        if (!java.util.Set.of("TEXT", "IMAGE", "QUOTE").contains(type)) type = "TEXT";
+        String nm = ((me.getName() == null ? "" : me.getName()) + (me.getSurname() == null ? "" : " " + me.getSurname())).trim();
+        message.setSenderName(nm.isEmpty() ? null : nm); // nome de quem escreveu (ninguém se passa pelo OPUS)
+      }
+      message.setMessageType(type);
+      if ("IMAGE".equals(type)) {
+        String img = message.getImageUrl() == null ? "" : message.getImageUrl();
+        int comma = img.indexOf(',');
+        boolean dataImg = img.length() <= 6_000_000 && comma > 0 && comma < 40
+            && img.substring(0, comma + 1).matches("data:image/(jpeg|jpg|png|webp);base64,")
+            && img.substring(comma + 1).chars().allMatch(ch -> Character.isLetterOrDigit(ch) && ch < 128 || ch == '+' || ch == '/' || ch == '=' || ch == '\n' || ch == '\r');
+        if (!dataImg) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie a foto pelo app.");
+      } else {
+        message.setImageUrl(null); // texto e orçamento não levam link de imagem de fora
+      }
+      if ("SYSTEM".equals(type)) message.setImageUrl(null);
+      if (!"QUOTE".equals(type)) {
+        // campos de orçamento só existem em orçamento
+        message.setQuoteStatus(null); message.setQuoteAmount(null); message.setQuoteTotalCost(null); message.setQuoteServiceCost(null);
+        message.setQuoteMaterialsCost(null); message.setCounterOfferAmount(null); message.setCounterOfferStatus(null); message.setCounterOfferNote(null);
+      }
+      if (message.getText() != null && message.getText().length() > 4000) message.setText(message.getText().substring(0, 4000));
     }
     if ("QUOTE".equals(message.getMessageType())) normalizeQuote(message);
     try {
@@ -122,8 +155,14 @@ public class MessageController {
   public Message counterOffer(@PathVariable UUID id,
                               @RequestBody Map<String, Object> body) {
     need(roleInMessage(id), "CUSTOMER");
-    BigDecimal amount = new BigDecimal(body.getOrDefault("amount", "0").toString());
+    BigDecimal amount;
+    try { amount = new BigDecimal(body.getOrDefault("amount", "0").toString().replace(',', '.')).setScale(2, java.math.RoundingMode.HALF_UP); }
+    catch (Exception e) { throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Valor inválido."); }
+    // Contraproposta precisa ser um valor de verdade (antes aceitava -500 e o pedido ficava com total negativo)
+    if (amount.compareTo(BigDecimal.ONE) < 0 || amount.compareTo(new BigDecimal("100000")) > 0)
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "A contraproposta precisa ser entre R$ 1 e R$ 100.000.");
     String note = body.getOrDefault("note", "").toString();
+    if (note.length() > 500) note = note.substring(0, 500);
     return messageService.counterOffer(id, amount, note);
   }
 

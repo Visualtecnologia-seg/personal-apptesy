@@ -38,10 +38,17 @@ public class WalletService {
     User pro = order.getProfessional();
     if (pro == null) return;
     BigDecimal amount = order.getServiceValue();
-    Optional<Transaction> tx = transactionRepository.findTransactionByOrderId(order.getId());
+    // Usa a cobrança que foi PAGA de fato (não outra cobrança do mesmo pedido criada depois com outro valor)
+    Optional<Transaction> tx = transactionRepository.findAllByOrderId(order.getId()).stream()
+        .filter(t -> t.getPaymentStatus() == br.com.personalfighters.model.PaymentStatus.PAID)
+        .reduce((a, b) -> b);
+    if (tx.isEmpty()) tx = transactionRepository.findTransactionByOrderId(order.getId());
     if (tx.isPresent() && tx.get().getProfessionalValue() != null && tx.get().getProfessionalValue().signum() > 0) {
       amount = tx.get().getProfessionalValue();
     }
+    // Nunca libera mais do que entrou na cobrança paga
+    if (tx.isPresent() && tx.get().getTotalPaid() != null && tx.get().getTotalPaid().signum() > 0 && amount != null && amount.compareTo(tx.get().getTotalPaid()) > 0)
+      amount = tx.get().getTotalPaid();
     if (amount == null || amount.signum() <= 0) return;
     // Etapas já liberadas saem do valor final
     BigDecimal staged = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind = 'STAGE'", BigDecimal.class, order.getId());
@@ -49,10 +56,10 @@ public class WalletService {
     if (amount.signum() <= 0) return;
     Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM wallet_entry_ WHERE order_id = ? AND kind = 'CREDIT'", Integer.class, order.getId());
     if (exists != null && exists > 0) return;
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at) VALUES (?, ?, 'CREDIT', ?, ?, 'DONE', ?, ?)",
+    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'CREDIT', ?, ?, 'DONE', ?, ?, ?)",
         UUID.randomUUID(), pro.getId(), amount, order.getId(),
         "Serviço de " + (order.getCustomer() != null && order.getCustomer().getName() != null ? order.getCustomer().getName().trim().split("\\s+")[0] : "cliente"),
-        Timestamp.valueOf(now()));
+        Timestamp.valueOf(now()), testMoney(order));
     emailAutomation.walletCredit(pro.getId(), amount, serviceName(order));
     tx.ifPresent(t -> {
       t.setProfessionalIsPaid(true);
@@ -67,9 +74,16 @@ public class WalletService {
   public void creditStage(Order order, int idx, BigDecimal amount) {
     User pro = order.getProfessional();
     if (pro == null || amount == null || amount.signum() <= 0) return;
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at) VALUES (?, ?, 'STAGE', ?, ?, 'DONE', ?, ?)",
-        UUID.randomUUID(), pro.getId(), amount, order.getId(), "Etapa " + idx + " aprovada", Timestamp.valueOf(now()));
+    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'STAGE', ?, ?, 'DONE', ?, ?, ?)",
+        UUID.randomUUID(), pro.getId(), amount, order.getId(), "Etapa " + idx + " aprovada", Timestamp.valueOf(now()), testMoney(order));
     emailAutomation.walletCredit(pro.getId(), amount, "Etapa " + idx + " de " + serviceName(order));
+  }
+
+  /** Pedido pago com PIX simulado (ou pagamento ainda em modo de teste)? */
+  private boolean testMoney(Order order) {
+    if (asaasService.isTestMode()) return true;
+    Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM transaction_ WHERE order_id = ? AND asaas_payment_id LIKE 'TESTE-%'", Integer.class, order.getId());
+    return n != null && n > 0;
   }
 
   private static String serviceName(Order o) {
@@ -79,8 +93,10 @@ public class WalletService {
   }
 
   public BigDecimal available(Long proId) {
-    BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND status = 'DONE'", BigDecimal.class, proId);
-    BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status <> 'FAILED'", BigDecimal.class, proId);
+    // Com o pagamento de verdade ligado, o dinheiro do modo de teste não conta (nunca vira saque real)
+    String real = asaasService.isTestMode() ? "" : " AND test = FALSE";
+    BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND status = 'DONE'" + real, BigDecimal.class, proId);
+    BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status <> 'FAILED'" + real, BigDecimal.class, proId);
     return (in == null ? BigDecimal.ZERO : in).subtract(out == null ? BigDecimal.ZERO : out);
   }
 
@@ -123,8 +139,8 @@ public class WalletService {
     if (amount.compareTo(available(pro.getId())) > 0) throw new IllegalArgumentException("Saldo insuficiente.");
     UUID id = UUID.randomUUID();
     String dest = docKey != null ? mask(docKey) : toBank ? bank.get("bank_name") + " " + mask(java.util.Objects.toString(bank.get("account"), "")) : mask(pro.getPixKey());
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', ?, ?, ?)",
-        id, pro.getId(), amount, toBank ? "Saque na conta" : "Saque PIX", dest, Timestamp.valueOf(now()));
+    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at, test) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', ?, ?, ?, ?)",
+        id, pro.getId(), amount, toBank ? "Saque na conta" : "Saque PIX", dest, Timestamp.valueOf(now()), asaasService.isTestMode());
     boolean ok;
     try {
       ok = docKey != null ? asaasService.transferPixToOwnDoc(pro, docKey, amount, "Saque OPUS")
