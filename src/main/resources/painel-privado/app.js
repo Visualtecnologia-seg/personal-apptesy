@@ -329,6 +329,7 @@ window.__boot = () => { if (token) start(); else { $('loginBox').classList.remov
   const av = (n, size) => { const c = AVC[(String(n || '').charCodeAt(0) || 0) % AVC.length].split(':'); return `<span class="av" style="background:${c[0]};color:${c[1]}${size ? `;width:${size}px;height:${size}px;border-radius:${Math.round(size / 3)}px;font-size:${Math.round(size / 2.6)}px` : ''}">${ini(n)}</span>`; };
   const money0 = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   const mins = m => m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min';
+  const ja = v => JSON.stringify(v).replace(/'/g, '&#39;').replace(/</g, '\\u003c');
   const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
   const ICN = {
     spark: '<path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
@@ -398,7 +399,7 @@ window.__boot = () => { if (token) start(); else { $('loginBox').classList.remov
   window.closeAssistant = () => { const b = $('aiBox'); if (b) { b.classList.add('hidden'); $('aiShade').classList.add('hidden'); } };
   window.aiTab = t => { $('aiChat').classList.toggle('hidden', t !== 'chat'); $('aiFoot').classList.toggle('hidden', t !== 'chat'); $('aiAvisos').classList.toggle('hidden', t !== 'avisos'); $('tabChat').classList.toggle('on', t === 'chat'); $('tabAvisos').classList.toggle('on', t === 'avisos'); if (t === 'avisos') paintNotifs(); else setTimeout(() => $('aiq').focus(), 50); };
   window.askFromBox = () => { const q = $('aiq').value.trim(); if (!q) return; $('aiq').value = ''; askAI(q); };
-  const actBtns = acts => (acts || []).map(a => `<button class="chipb" onclick='aiGo(${JSON.stringify(a.go)},${JSON.stringify(a.arg || null)})'>${esc(a.label)}</button>`).join('');
+  const actBtns = acts => (acts || []).map(a => `<button class="chipb" onclick='aiGo(${ja(a.go)},${ja(a.arg || null)})'>${esc(a.label)}</button>`).join('');
   async function loadSummary() {
     const box = $('aiChat');
     box.innerHTML = `<div class="sumbox"><div class="sumh">Resumo de agora · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div><div id="sumtxt" class="muted">Carregando…</div><div class="row" id="sumacts" style="margin-top:10px"></div></div>
@@ -437,7 +438,7 @@ window.__boot = () => { if (token) start(); else { $('loginBox').classList.remov
     const n = notifs.count || 0;
     ['bcount', 'bcount2'].forEach(id => { const el = $(id); if (el) { el.textContent = n; el.style.display = n ? 'inline-flex' : 'none'; } });
     const box = $('aiAvisos'); if (!box) return;
-    box.innerHTML = (notifs.items || []).map(i => { const k = NK[i.kind] || NK.SUPPORT; return `<button class="ntf ${i.urgent ? 'urg' : ''}" onclick='aiGo(${JSON.stringify(i.go)},${JSON.stringify(i.arg || null)})'><i style="background:${k[1]}">${I(k[0], 18, k[2])}</i><span style="flex:1;text-align:left"><b>${esc(i.title)}</b><span>${esc(i.sub || '')}</span></span><small>${i.at ? fmt(i.at) : ''}</small></button>`; }).join('') || '<div class="muted" style="padding:20px;text-align:center">Nenhum aviso agora. Tudo em dia.</div>';
+    box.innerHTML = (notifs.items || []).map(i => { const k = NK[i.kind] || NK.SUPPORT; return `<button class="ntf ${i.urgent ? 'urg' : ''}" onclick='aiGo(${ja(i.go)},${ja(i.arg || null)})'><i style="background:${k[1]}">${I(k[0], 18, k[2])}</i><span style="flex:1;text-align:left"><b>${esc(i.title)}</b><span>${esc(i.sub || '')}</span></span><small>${i.at ? fmt(i.at) : ''}</small></button>`; }).join('') || '<div class="muted" style="padding:20px;text-align:center">Nenhum aviso agora. Tudo em dia.</div>';
   }
   let siren = null, sirenCtx = null, sosSeen = {}, sosShownId = null, titleTimer = null, baseTitle = document.title;
   function startSiren(loud) {

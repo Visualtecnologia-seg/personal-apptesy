@@ -125,9 +125,10 @@ public class ShowcaseController {
   }
 
   @DeleteMapping("/pro/showcase/items/{id}")
-  public Map<String, Object> deleteItem(@PathVariable Long id) {
-    jdbc.update("DELETE FROM pro_reco_ WHERE id = ? AND user_id = ?", id, pro().getId());
-    return Map.of("ok", true);
+  public ResponseEntity<?> deleteItem(@PathVariable Long id) {
+    int n = jdbc.update("DELETE FROM pro_reco_ WHERE id = ? AND user_id = ?", id, pro().getId());
+    if (n == 0) return ResponseEntity.notFound().build();
+    return ResponseEntity.ok(Map.of("ok", true));
   }
 
   /** Coloca uma indicação em destaque no topo do perfil (só uma por vez). */
