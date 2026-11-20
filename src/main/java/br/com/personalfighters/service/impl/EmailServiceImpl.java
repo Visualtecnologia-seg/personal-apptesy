@@ -189,6 +189,15 @@ public class EmailServiceImpl implements EmailService {
       h.setTo(to);
       h.setSubject(subject);
       h.setText(text, html);
+      // Logo e imagens vão dentro do e-mail: o servidor pode estar "dormindo" quando a pessoa abre a mensagem
+      java.util.regex.Matcher m = java.util.regex.Pattern.compile("cid:email-([a-z0-9_-]+\\.(?:png|jpg))").matcher(html);
+      java.util.Set<String> done = new java.util.HashSet<>();
+      while (m.find()) {
+        String f = m.group(1);
+        if (!done.add(f)) continue;
+        org.springframework.core.io.ClassPathResource r = new org.springframework.core.io.ClassPathResource("static/email/" + f);
+        if (r.exists()) h.addInline("email-" + f, r, f.endsWith(".png") ? "image/png" : "image/jpeg");
+      }
       if (fileName != null && file != null) h.addAttachment(fileName, new org.springframework.core.io.ByteArrayResource(file), mime);
       emailSender.send(msg);
     } catch (Exception e) {

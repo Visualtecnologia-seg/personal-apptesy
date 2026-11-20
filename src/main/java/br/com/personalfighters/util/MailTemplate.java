@@ -216,11 +216,11 @@ public class MailTemplate {
         .append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;\">")
         // topo
         .append("<tr><td style=\"background:").append(pro ? "#0A1F1A" : NAVY).append(";padding:20px 28px;\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\"><tr>")
-        .append("<td style=\"background:#ffffff;border-radius:10px;width:40px;height:40px;text-align:center;vertical-align:middle;\"><img src=\"").append(b).append("/email/logo.png\" width=\"30\" height=\"30\" alt=\"OPUS\" style=\"display:block;margin:5px auto;\"></td>")
+        .append("<td style=\"background:#ffffff;border-radius:10px;width:40px;height:40px;text-align:center;vertical-align:middle;\"><img src=\"cid:email-logo.png\" width=\"30\" height=\"30\" alt=\"OPUS\" style=\"display:block;margin:5px auto;\"></td>")
         .append("<td style=\"padding-left:12px;").append(FONT).append("font-size:15px;font-weight:700;letter-spacing:4px;color:#ffffff;\">").append(pro ? "OPUS PRO" : "OPUS").append("</td>")
         .append("</tr></table></td></tr>");
     if (hero != null) {
-      h.append("<tr><td><img src=\"").append(b).append("/email/").append(esc(hero)).append("\" width=\"600\" alt=\"\" style=\"display:block;width:100%;max-width:600px;height:auto;\"></td></tr>");
+      h.append("<tr><td><img src=\"cid:email-").append(esc(hero)).append("\" width=\"600\" alt=\"\" style=\"display:block;width:100%;max-width:600px;height:auto;\"></td></tr>");
     }
     h.append("<tr><td style=\"padding:32px 28px 12px;\">");
     if (kicker != null) h.append("<div style=\"").append(FONT).append("font-size:12px;font-weight:700;letter-spacing:2px;color:").append(accent()).append(";margin-bottom:10px;\">").append(esc(kicker.toUpperCase())).append("</div>");
