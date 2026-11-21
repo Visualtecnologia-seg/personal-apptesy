@@ -20,7 +20,8 @@
         <spring-security.version>5.8.16</spring-security.version>
         <postgresql.version>42.7.14</postgresql.version>
         <jackson-bom.version>2.17.2</jackson-bom.version>
-        <snakeyaml.version>1.33</snakeyaml.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <logback.version>1.2.13</logback.version>
         <java.version>14</java.version>
         <spring-boot.run.jvmArguments>-Duser.timezone="America/Sao_Paulo"</spring-boot.run.jvmArguments>
     </properties>
@@ -136,6 +137,7 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- AWS SDK -->
