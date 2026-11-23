@@ -44,7 +44,12 @@ public class AsaasServiceImpl implements AsaasService {
   private final br.com.personalfighters.service.PayoutService payoutService;
 
   private WebClient buildClient() {
+    // Tempo-limite: uma chamada sem resposta não pode travar o servidor (nem os saques)
+    reactor.netty.http.client.HttpClient http = reactor.netty.http.client.HttpClient.create()
+        .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
+        .responseTimeout(java.time.Duration.ofSeconds(40));
     return WebClient.builder()
+        .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(http))
         .baseUrl(asaasBaseUrl)
         .defaultHeader("access_token", asaasApiKey)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -171,6 +176,12 @@ public class AsaasServiceImpl implements AsaasService {
 
   @Override
   public boolean transferToProfessional(User professional, BigDecimal value, String description) {
+    try { return transferToProfessional(professional, value, description, null); }
+    catch (UncertainTransfer e) { log.error("Transferência sem resposta (conferir no Asaas): {}", e.getMessage()); return false; }
+  }
+
+  @Override
+  public boolean transferToProfessional(User professional, BigDecimal value, String description, String ref) {
     if (professional == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
     if (isTestMode()) {
       log.info("Modo de teste: transferência de R$ {} para {} apenas registrada", value, professional.getId());
@@ -186,17 +197,17 @@ public class AsaasServiceImpl implements AsaasService {
     body.put("pixAddressKey", professional.getPixKey());
     body.put("pixAddressKeyType", professional.getPixKeyType() != null ? professional.getPixKeyType() : "CPF");
     body.put("description", description);
-    try {
-      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block();
-      return true;
-    } catch (Exception e) {
-      log.error("Erro ao transferir PIX avulso: {}", e.getMessage());
-      return false;
-    }
+    return sendTransfer(body, ref);
   }
 
   @Override
   public boolean transferPixToOwnDoc(User professional, String docDigits, BigDecimal value, String description) {
+    try { return transferPixToOwnDoc(professional, docDigits, value, description, null); }
+    catch (UncertainTransfer e) { log.error("Transferência sem resposta (conferir no Asaas): {}", e.getMessage()); return false; }
+  }
+
+  @Override
+  public boolean transferPixToOwnDoc(User professional, String docDigits, BigDecimal value, String description, String ref) {
     if (professional == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
     String type = payoutService.ownDocType(professional, docDigits);
     if (type == null) {
@@ -212,17 +223,17 @@ public class AsaasServiceImpl implements AsaasService {
     body.put("pixAddressKey", br.com.personalfighters.service.PayoutService.digits(docDigits));
     body.put("pixAddressKeyType", type);
     body.put("description", description);
-    try {
-      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block();
-      return true;
-    } catch (Exception e) {
-      log.error("Erro ao transferir PIX: {}", e.getMessage());
-      return false;
-    }
+    return sendTransfer(body, ref);
   }
 
   @Override
   public boolean transferToBank(User professional, Map<String, Object> bank, BigDecimal value, String description) {
+    try { return transferToBank(professional, bank, value, description, null); }
+    catch (UncertainTransfer e) { log.error("Transferência sem resposta (conferir no Asaas): {}", e.getMessage()); return false; }
+  }
+
+  @Override
+  public boolean transferToBank(User professional, Map<String, Object> bank, BigDecimal value, String description, String ref) {
     if (professional == null || bank == null || value == null || value.compareTo(BigDecimal.ZERO) <= 0) return false;
     if (!payoutService.bankOk(professional, bank)) {
       log.warn("Transferência recusada: a conta bancária do profissional {} não está no CPF nem no CNPJ dele", professional.getId());
@@ -245,12 +256,26 @@ public class AsaasServiceImpl implements AsaasService {
     body.put("bankAccount", bankBody);
     body.put("operationType", "PIX");
     body.put("description", description);
+    return sendTransfer(body, ref);
+  }
+
+  /**
+   * Envia a transferência. Erro claro do Asaas (4xx: dados recusados) → false (não saiu).
+   * Sem resposta, tempo esgotado ou erro do lado deles (5xx) → UncertainTransfer: pode ter saído.
+   */
+  private boolean sendTransfer(Map<String, Object> body, String ref) {
+    if (ref != null) body.put("externalReference", ref);
     try {
-      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block();
+      buildClient().post().uri("/transfers").bodyValue(body).retrieve().bodyToMono(Map.class).block(java.time.Duration.ofSeconds(45));
       return true;
+    } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+      if (e.getStatusCode().is4xxClientError()) {
+        log.error("Transferência recusada pelo Asaas ({}): {}", e.getRawStatusCode(), e.getResponseBodyAsString());
+        return false;
+      }
+      throw new UncertainTransfer("Asaas respondeu " + e.getRawStatusCode() + (ref == null ? "" : " ref " + ref));
     } catch (Exception e) {
-      log.error("Erro ao transferir para conta bancária: {}", e.getMessage());
-      return false;
+      throw new UncertainTransfer("sem resposta do Asaas: " + e.getMessage() + (ref == null ? "" : " ref " + ref));
     }
   }
 

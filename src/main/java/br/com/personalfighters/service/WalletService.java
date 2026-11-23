@@ -70,6 +70,40 @@ public class WalletService {
     });
   }
 
+  /**
+   * Dinheiro devolvido ao cliente depois de já ter ido para o profissional (etapas, crédito ou extras):
+   * desconta da carteira dele (fica negativa se ele já sacou e é compensada nos próximos serviços).
+   * Antes o cliente recebia de volta e o profissional ficava com o valor: o OPUS pagava duas vezes.
+   */
+  public void reverseOrder(Order order, String why) {
+    User pro = order.getProfessional();
+    if (pro == null) return;
+    BigDecimal got = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind IN ('CREDIT','STAGE','EXTRA') AND status = 'DONE'", BigDecimal.class, order.getId());
+    // extras antigos, pagos por PIX direto (antes da carteira)
+    BigDecimal extras = jdbc.queryForObject("SELECT COALESCE(SUM(x.service_value),0) FROM order_extra_ x WHERE x.order_id = ? AND x.released = TRUE " +
+        "AND NOT EXISTS (SELECT 1 FROM wallet_entry_ w WHERE w.ref = 'extra-' || x.id::text)", BigDecimal.class, order.getId());
+    BigDecimal back = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind = 'REVERSAL'", BigDecimal.class, order.getId());
+    BigDecimal due = (got == null ? BigDecimal.ZERO : got).add(extras == null ? BigDecimal.ZERO : extras).subtract(back == null ? BigDecimal.ZERO : back);
+    if (due.signum() <= 0) return;
+    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'REVERSAL', ?, ?, 'DONE', ?, ?, ?)",
+        UUID.randomUUID(), pro.getId(), due, order.getId(), "Devolvido ao cliente: " + why, Timestamp.valueOf(now()), testMoney(order));
+    log.warn("Pedido {}: R$ {} descontado da carteira do profissional {} ({})", order.getId(), due, pro.getId(), why);
+  }
+
+  /**
+   * Crédito avulso na carteira com identificador único (ref): o mesmo crédito nunca entra duas vezes,
+   * mesmo com pedidos ao mesmo tempo. kind: EXTRA (orçamento extra), TRIP (taxa de deslocamento), CLASS (aula em grupo).
+   */
+  public boolean creditOnce(Long proId, String kind, BigDecimal amount, UUID orderId, String description, boolean test, String ref) {
+    if (proId == null || amount == null || amount.signum() <= 0) return false;
+    int n = jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test, ref) VALUES (?, ?, ?, ?, ?, 'DONE', ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        UUID.randomUUID(), proId, kind, amount, orderId, description, Timestamp.valueOf(now()), test || asaasService.isTestMode(), ref);
+    return n == 1;
+  }
+
+  /** Dinheiro do modo de teste (pago com PIX simulado) neste pedido? Nunca vira dinheiro real. */
+  public boolean isTestMoney(Order order) { return testMoney(order); }
+
   /** Libera uma etapa do serviço para a carteira (pagamento por etapas). */
   public void creditStage(Order order, int idx, BigDecimal amount) {
     User pro = order.getProfessional();
@@ -83,7 +117,10 @@ public class WalletService {
   private boolean testMoney(Order order) {
     if (asaasService.isTestMode()) return true;
     Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM transaction_ WHERE order_id = ? AND asaas_payment_id LIKE 'TESTE-%'", Integer.class, order.getId());
-    return n != null && n > 0;
+    if (n != null && n > 0) return true;
+    // aula de pacote: o pacote foi pago com PIX simulado?
+    Integer p = jdbc.queryForObject("SELECT COUNT(*) FROM order_ o JOIN package_purchase_ pp ON pp.id = o.package_purchase_id WHERE o.id = ? AND (pp.pix_payment_id IS NULL OR pp.pix_payment_id LIKE 'TESTE-%')", Integer.class, order.getId());
+    return p != null && p > 0;
   }
 
   private static String serviceName(Order o) {
@@ -95,8 +132,8 @@ public class WalletService {
   public BigDecimal available(Long proId) {
     // Com o pagamento de verdade ligado, o dinheiro do modo de teste não conta (nunca vira saque real)
     String real = asaasService.isTestMode() ? "" : " AND test = FALSE";
-    BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND status = 'DONE'" + real, BigDecimal.class, proId);
-    BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status <> 'FAILED'" + real, BigDecimal.class, proId);
+    BigDecimal in = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE','CLASS','EXTRA','TRIP') AND status = 'DONE'" + real, BigDecimal.class, proId);
+    BigDecimal out = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('WITHDRAW','REVERSAL') AND status <> 'FAILED'" + real, BigDecimal.class, proId);
     return (in == null ? BigDecimal.ZERO : in).subtract(out == null ? BigDecimal.ZERO : out);
   }
 
@@ -106,7 +143,14 @@ public class WalletService {
    * Saque do próprio profissional: na chave PIX (CPF ou CNPJ conferido) ou na conta bancária no CPF/CNPJ dele.
    * Retorna o status final (DONE ou FAILED).
    */
-  public synchronized String withdraw(User pro, BigDecimal amount, String to) {
+  private final java.util.concurrent.ConcurrentHashMap<Long, Object> locks = new java.util.concurrent.ConcurrentHashMap<>();
+
+  public String withdraw(User pro, BigDecimal amount, String to) {
+    // Um saque por profissional de cada vez (antes, um saque travado segurava os saques de todo mundo)
+    synchronized (locks.computeIfAbsent(pro.getId(), k -> new Object())) { return doWithdraw(pro, amount, to); }
+  }
+
+  private String doWithdraw(User pro, BigDecimal amount, String to) {
     if (amount == null || amount.compareTo(BigDecimal.ONE) < 0) throw new IllegalArgumentException("O saque mínimo é R$ 1,00.");
     boolean toBank = "BANK".equalsIgnoreCase(to);
     // PIX_CPF / PIX_CNPJ: a chave é o próprio documento (sem trocar a chave guardada)
@@ -142,10 +186,18 @@ public class WalletService {
     jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at, test) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', ?, ?, ?, ?)",
         id, pro.getId(), amount, toBank ? "Saque na conta" : "Saque PIX", dest, Timestamp.valueOf(now()), asaasService.isTestMode());
     boolean ok;
+    String ref = "saque-" + id; // o Asaas não repete uma transferência com o mesmo identificador
     try {
-      ok = docKey != null ? asaasService.transferPixToOwnDoc(pro, docKey, amount, "Saque OPUS")
-          : toBank ? asaasService.transferToBank(pro, bank, amount, "Saque OPUS")
-          : asaasService.isTestMode() || asaasService.transferToProfessional(pro, amount, "Saque OPUS");
+      ok = docKey != null ? asaasService.transferPixToOwnDoc(pro, docKey, amount, "Saque OPUS", ref)
+          : toBank ? asaasService.transferToBank(pro, bank, amount, "Saque OPUS", ref)
+          : asaasService.isTestMode() || asaasService.transferToProfessional(pro, amount, "Saque OPUS", ref);
+    } catch (AsaasService.UncertainTransfer e) {
+      // Pode ter saído: o valor NÃO volta para o saldo até a equipe conferir no Asaas (antes voltava e dava para sacar de novo)
+      log.error("Saque {} do profissional {} sem confirmação: {}", id, pro.getId(), e.getMessage());
+      jdbc.update("UPDATE wallet_entry_ SET status = 'REVIEW' WHERE id = ?", id);
+      jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) VALUES (?, 'SAQUE_CONFERIR', ?, NOW())",
+          pro.getId(), "Saque de R$ " + amount + " sem resposta do Asaas (ref " + ref + "): conferir se saiu");
+      return "REVIEW";
     } catch (Exception e) {
       log.error("Saque do profissional {} falhou: {}", pro.getId(), e.getMessage());
       ok = false;

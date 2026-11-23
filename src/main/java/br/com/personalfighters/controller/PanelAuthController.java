@@ -124,16 +124,21 @@ public class PanelAuthController implements ApplicationRunner {
     Ticket t = tickets.get(Objects.toString(b.get("ticket"), ""));
     if (t == null || t.exp < System.currentTimeMillis()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "O tempo acabou. Entre com login e senha de novo."));
     String key = PREFIX + t.login;
-    if (loginAttemptService.isBlocked(key)) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", "Muitas tentativas. Tente de novo em " + loginAttemptService.getSecondsRemaining(key) + " segundos."));
-    String code = Objects.toString(b.get("code"), "").trim();
-    boolean ok = checkCode(t.userId, code, true);
+    boolean ok;
+    // Um código por vez em cada tentativa de login (vários ao mesmo tempo passavam do limite de 5)
+    synchronized (t) {
+      if (t.tries >= 5 || !tickets.containsKey(Objects.toString(b.get("ticket"), ""))) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "O tempo acabou. Entre com login e senha de novo."));
+      if (loginAttemptService.isBlocked(key)) return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", "Muitas tentativas. Tente de novo em " + loginAttemptService.getSecondsRemaining(key) + " segundos."));
+      String code = Objects.toString(b.get("code"), "").trim();
+      ok = checkCode(t.userId, code, true);
+      if (!ok) { t.tries++; loginAttemptService.loginFailed(key); }
+      else tickets.remove(Objects.toString(b.get("ticket"), ""));
+    }
     if (!ok) {
-      loginAttemptService.loginFailed(key);
-      if (++t.tries >= 5) tickets.remove(Objects.toString(b.get("ticket"), ""));
+      if (t.tries >= 5) tickets.remove(Objects.toString(b.get("ticket"), ""));
       log.warn("Painel: código de 2 etapas errado para {}", t.login);
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Código incorreto. Confira no Google Authenticator."));
     }
-    tickets.remove(Objects.toString(b.get("ticket"), ""));
     loginAttemptService.loginSucceeded(key);
     User u = userRepository.findById(t.userId).orElseThrow();
     return ResponseEntity.ok(Map.of("token", authenticationService.addAuthentication(u), "login", t.login, "twoFactor", true));

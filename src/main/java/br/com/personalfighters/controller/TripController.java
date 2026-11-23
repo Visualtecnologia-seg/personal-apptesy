@@ -42,6 +42,7 @@ public class TripController {
   private final ExtrasService extrasService;
   private final CompletionService completionService;
   private final TransactionService transactionService;
+  private final br.com.personalfighters.service.WalletService walletService;
   private final JdbcTemplate jdbc;
 
   // ───────────── Deslocamento ─────────────
@@ -267,6 +268,7 @@ public class TripController {
           : BigDecimal.ZERO;
       jdbc.update("UPDATE order_ SET dispute_resolution = ?, client_refund = ? WHERE id = ?", resolution, paid, id);
       try { transactionService.refundPayment(o); } catch (Exception e) { log.warn("Reembolso não registrado: {}", e.getMessage()); }
+      walletService.reverseOrder(o, "disputa decidida a favor do cliente"); // o que já tinha ido para o profissional volta
       notificationService.sendToUser(o.getCustomer(), false, "A equipe OPUS decidiu a seu favor. O valor pago será devolvido.");
       if (o.getProfessional() != null) notificationService.sendToUser(o.getProfessional(), true, "A disputa foi decidida a favor do cliente. Motivo: " + note);
     } else {

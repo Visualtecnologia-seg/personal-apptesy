@@ -29,6 +29,14 @@ public interface AsaasService {
   /** Transferência PIX avulsa para o profissional (orçamento extra, taxa de cancelamento). */
   boolean transferToProfessional(br.com.personalfighters.entity.User professional, java.math.BigDecimal value, String description);
 
+  /** Igual, com identificador único (o Asaas não repete a mesma transferência). Lança UncertainTransfer quando não dá para saber se saiu. */
+  boolean transferToProfessional(br.com.personalfighters.entity.User professional, java.math.BigDecimal value, String description, String ref);
+  boolean transferPixToOwnDoc(br.com.personalfighters.entity.User professional, String docDigits, java.math.BigDecimal value, String description, String ref);
+  boolean transferToBank(br.com.personalfighters.entity.User professional, java.util.Map<String, Object> bank, java.math.BigDecimal value, String description, String ref);
+
+  /** A transferência pode ter saído (sem resposta do Asaas): não devolve o saldo, vai para conferência. */
+  class UncertainTransfer extends RuntimeException { public UncertainTransfer(String m) { super(m); } }
+
   /** PIX para o CPF ou o CNPJ conferido do próprio profissional (a chave é o documento). */
   boolean transferPixToOwnDoc(br.com.personalfighters.entity.User professional, String docDigits, java.math.BigDecimal value, String description);
 

@@ -251,7 +251,8 @@ public class AssistantController {
     StringBuilder s = new StringBuilder("Há **" + d.size() + " disputa(s) aberta(s)**:");
     List<Map<String, Object>> acts = new ArrayList<>();
     for (Map<String, Object> i : d) { s.append("\n• ").append(i.get("title")).append(" — ").append(i.get("sub")); if (acts.size() < 3) acts.add(act("Abrir " + String.valueOf(i.get("sub")).split(" · ")[0], "pedidos", i.get("arg"))); }
-    s.append("\nSe ninguém decidir no prazo, o valor ").append("true".equalsIgnoreCase(settings.get(SettingsService.DISPUTE_TIMEOUT_REFUND)) ? "volta para o cliente." : "vai para o profissional.");
+    int rule = settings.getInt(SettingsService.DISPUTE_TIMEOUT_REFUND);
+    s.append(rule == 1 ? "\nSe ninguém decidir no prazo, o valor volta para o cliente." : rule == 0 ? "\nSe ninguém decidir no prazo, o valor vai para o profissional." : "\nO dinheiro fica guardado até você decidir.");
     return reply(s.toString(), acts);
   }
 
@@ -431,8 +432,8 @@ public class AssistantController {
 
   private Map<String, Object> explain(String t) {
     int h = Math.max(1, settings.getInt(SettingsService.DISPUTE_TIMEOUT_HOURS));
-    boolean refund = "true".equalsIgnoreCase(settings.get(SettingsService.DISPUTE_TIMEOUT_REFUND));
-    if (has(t, " disputa", " 2h", " 2 h", " prazo")) return reply("Quando o cliente abre uma disputa, o dinheiro fica **travado por até " + h + " h**. Você decide em Pedidos (liberar ao profissional ou devolver ao cliente). Se ninguém decidir no prazo, o valor " + (refund ? "**volta para o cliente**" : "**vai para o profissional**") + ". Você muda isso em Configurações.", List.of(act("Abrir Configurações", "config", null)));
+    int rule = settings.getInt(SettingsService.DISPUTE_TIMEOUT_REFUND);
+    if (has(t, " disputa", " 2h", " 2 h", " prazo")) return reply("Quando o cliente abre uma disputa, o dinheiro fica **travado por até " + h + " h**. Você decide em Pedidos (liberar ao profissional ou devolver ao cliente). " + (rule == 1 ? "Se ninguém decidir no prazo, o valor **volta para o cliente**." : rule == 0 ? "Se ninguém decidir no prazo, o valor **vai para o profissional**." : "O sistema **nunca decide sozinho**: o valor fica guardado até você decidir.") + " Você muda isso em Configurações.", List.of(act("Abrir Configurações", "config", null)));
     if (has(t, " etapa")) return reply("No **pagamento por etapas**, o profissional divide um serviço grande (ex.: 30/40/30). O cliente paga tudo no cofre; a cada etapa o profissional marca \"Terminei\", o cliente aprova e só aquela parte vai para a carteira dele. A última parte sai com o código no final.", List.of());
     if (has(t, " cofre", " pagamento", " pago", " pix")) return reply("O cliente paga por PIX o serviço + 5% de taxa. O dinheiro fica **guardado no cofre da OPUS** até o cliente conferir o serviço e mostrar o código. Aí o valor do serviço vai para a carteira do profissional, que saca por PIX quando quiser. A taxa fica com a OPUS.", List.of(act("Abrir Financeiro", "fin", null)));
     if (has(t, " sos", " emergencia")) return reply("Quando alguém toca no **SOS**, o app avisa o contato de confiança, grava áudio, manda a localização e o painel toma a tela com uma sirene até alguém clicar em \"Estou acompanhando\". Enquanto o SOS estiver ativo, a liberação automática do pagamento daquele pedido fica pausada.", List.of(act("Abrir SOS", "sos", null)));

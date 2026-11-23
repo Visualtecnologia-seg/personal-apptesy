@@ -262,6 +262,10 @@ public class OrderController {
     if (!"DONE".equals(order.getStatus().name())) {
       return Map.of("error", "Disputas só podem ser abertas em serviços já concluídos.");
     }
+    // Depois que o dinheiro foi para o profissional, problema vira garantia (a equipe analisa), nunca estorno automático
+    if (Boolean.TRUE.equals(order.getPixReleased())) {
+      return Map.of("error", "O pagamento deste serviço já foi liberado. Use a Garantia de 30 dias no pedido: nossa equipe analisa.");
+    }
 
     String reason = body.getOrDefault("reason", "Sem motivo informado").trim();
     if (reason.isBlank()) {

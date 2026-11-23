@@ -61,6 +61,8 @@ public class OrderServiceImpl implements OrderService {
   private final br.com.personalfighters.service.PointsAwarder pointsAwarder;
   private final br.com.personalfighters.service.TripService tripService;
   private final br.com.personalfighters.service.AsaasService asaasService;
+  @org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired private br.com.personalfighters.service.WalletService walletService;
+  @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate lockJdbc;
 
   private final ZoneId zoneId = ZoneId.of("America/Sao_Paulo");
 
@@ -232,6 +234,8 @@ public class OrderServiceImpl implements OrderService {
   @Override
   @Transactional
   public void cancelOrder(Order o, Role role) {
+    // Um cancelamento por vez neste pedido (dois juntos devolviam e pagavam a taxa duas vezes)
+    lockJdbc.queryForList("SELECT id FROM order_ WHERE id = ? FOR UPDATE", o.getId());
     Order order = orderRepository.findById(o.getId()).orElseThrow();
     Status st0 = order.getStatus();
     if (st0 == Status.CANCELLED) return;
@@ -252,7 +256,9 @@ public class OrderServiceImpl implements OrderService {
         if (fee.signum() > 0) {
           if (Boolean.TRUE.equals(order.getPixPaid())) {
             // a taxa sai do valor pago pelo cliente (o resto é devolvido)
-            if (asaasService.transferToProfessional(order.getProfessional(), fee, "Taxa de deslocamento #" + order.getId().toString().substring(0, 8))) keep = fee;
+            // vai para a carteira, uma única vez por pedido (antes era PIX direto e repetia com dois cancelamentos juntos)
+            if (walletService.creditOnce(order.getProfessional().getId(), "TRIP", fee, order.getId(), "Taxa de deslocamento #" + order.getId().toString().substring(0, 8),
+                walletService.isTestMoney(order), "trip-" + order.getId())) keep = fee;
           }
           notificationService.sendToUser(order.getProfessional(), true,
               "O cliente cancelou depois que você saiu. Você recebe R$ " + fee.setScale(2) + " pelo deslocamento.");

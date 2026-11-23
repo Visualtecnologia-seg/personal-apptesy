@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ProtectionFilter extends OncePerRequestFilter {
 
+  private static final org.springframework.web.util.UrlPathHelper PATHS = new org.springframework.web.util.UrlPathHelper();
+
   private static final class Window { long start; int count; }
   private final Map<String, Window> hits = new ConcurrentHashMap<>();
 
@@ -47,13 +49,17 @@ public class ProtectionFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
-    String path = req.getRequestURI();
+    String raw = req.getRequestURI();
+    // Caminho do jeito que o servidor entende (decodificado, sem ";..."): "/%61uth" e "/auth;x" contam como "/auth".
+    // Antes as travas olhavam o endereço cru e o disfarce furava todos os limites de tentativas.
+    String path = PATHS.getPathWithinApplication(req);
     String m = req.getMethod();
+    if (raw.indexOf(';') >= 0 || raw.matches(".*%(2[eE]|25|00).*")) { res.sendError(400); return; }
     String ip = clientIp(req);
 
     // Endereço da API com barra no fim ("/x/") ou caracteres de desvio: recusa (evita furar travas por variação do caminho)
     if (path.length() > 1 && path.endsWith("/") && !(path.startsWith("/painel/") || path.startsWith("/app/") || path.startsWith("/static/"))
-        || path.contains("//") || path.contains("\\") || path.contains("%2f") || path.contains("%2F") || path.contains("%5c") || path.contains("%5C")) {
+        || raw.contains("//") || raw.contains("\\") || raw.contains("%2f") || raw.contains("%2F") || raw.contains("%5c") || raw.contains("%5C") || path.contains("\\")) {
       res.sendError(404);
       return;
     }

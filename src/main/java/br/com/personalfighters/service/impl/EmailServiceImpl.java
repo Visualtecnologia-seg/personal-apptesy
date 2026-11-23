@@ -161,16 +161,29 @@ public class EmailServiceImpl implements EmailService {
     return u != null && !u.isBlank() && p != null && !p.isBlank();
   }
 
+  /** No máximo 15 e-mails por hora para o mesmo endereço: ninguém usa o OPUS para lotar a caixa de alguém (nem a fila de envio). */
+  private final java.util.concurrent.ConcurrentHashMap<String, long[]> perRecipient = new java.util.concurrent.ConcurrentHashMap<>();
+  private boolean allowed(String to) {
+    long now = System.currentTimeMillis();
+    if (perRecipient.size() > 50_000) perRecipient.entrySet().removeIf(e -> now - e.getValue()[0] > 3_600_000L);
+    long[] w = perRecipient.computeIfAbsent(to.trim().toLowerCase(), k -> new long[]{now, 0});
+    synchronized (w) {
+      if (now - w[0] > 3_600_000L) { w[0] = now; w[1] = 0; }
+      if (++w[1] > 15) { log.warn("E-mail para {} não enviado: limite por hora", to.replaceAll("(^.).*(@.*$)", "$1***$2")); return false; }
+      return true;
+    }
+  }
+
   @Override
   public void send(String to, String subject, MailTemplate t) {
-    if (to == null || !to.contains("@")) return;
+    if (to == null || !to.contains("@") || !allowed(to)) return;
     final String html = t.html(), text = t.text();
     pool.execute(() -> deliver(to, subject, html, text, null, null, null));
   }
 
   @Override
   public void send(String to, String subject, MailTemplate t, String fileName, byte[] file, String mime) {
-    if (to == null || !to.contains("@")) return;
+    if (to == null || !to.contains("@") || !allowed(to)) return;
     final String html = t.html(), text = t.text();
     pool.execute(() -> deliver(to, subject, html, text, fileName, file, mime));
   }

@@ -15,6 +15,8 @@ import java.util.UUID;
 @Table(name = "message_")
 public class Message {
 
+  @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY) // o número nunca vem do celular
+
   @Id
   @GeneratedValue
   @Setter(AccessLevel.NONE)

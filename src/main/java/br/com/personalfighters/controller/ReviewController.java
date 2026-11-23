@@ -59,6 +59,21 @@ public class ReviewController {
       throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Só dá para avaliar depois que o serviço termina.");
     if ((client && Boolean.TRUE.equals(o.getClientReviewed())) || (pro && Boolean.TRUE.equals(o.getProReviewed())))
       throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você já avaliou este pedido.");
+    // Nunca reaproveita o número de outra avaliação (antes dava para sobrescrever a avaliação de outra pessoa)
+    review.setRevealed(false);
+    review.setTipAmount(null);
+    // Notas de 1 a 5 (antes 1.000.000 ou negativa mudavam a nota do profissional)
+    review.setCat1(stars(review.getCat1()));
+    review.setCat2(stars(review.getCat2()));
+    review.setCat3(stars(review.getCat3()));
+    review.setCat4(stars(review.getCat4()));
+    review.setRating(review.getRating() == null ? null : (int) Math.round(stars(review.getRating().doubleValue())));
+    if (review.getRating() == null && review.getCat1() == null && review.getCat2() == null && review.getCat3() == null && review.getCat4() == null)
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Dê uma nota de 1 a 5.");
+    if (review.getComment() != null && review.getComment().length() > 1000) review.setComment(review.getComment().substring(0, 1000));
+    // Fotos/vídeos só do próprio servidor (link de fora rastreava quem abria)
+    review.setMediaUrls(ownMedia(review.getMediaUrls()));
+    if (review.getMediaUrls() == null) review.setMediaType(null);
     review.setOrder(o);
     review.setReviewer(me);
     review.setCustomer(o.getCustomer());
@@ -91,6 +106,22 @@ public class ReviewController {
   @ResponseStatus(HttpStatus.OK)
   public void delete(@PathVariable Long id) {
     reviewService.delete(id);
+  }
+
+  private static Double stars(Double v) {
+    if (v == null || v.isNaN() || v.isInfinite()) return null;
+    return Math.max(1.0, Math.min(5.0, v));
+  }
+
+  /** Só caminhos de fotos/vídeos enviados ao próprio servidor, no máximo 6. */
+  static String ownMedia(String raw) {
+    if (raw == null || raw.isBlank()) return null;
+    java.util.List<String> ok = new java.util.ArrayList<>();
+    for (String u : raw.split("[,|\\s]+")) {
+      String t = u.trim();
+      if (t.matches("/posts/(photos|videos)/[0-9a-fA-F-]{36}") && ok.size() < 6) ok.add(t);
+    }
+    return ok.isEmpty() ? null : String.join(",", ok);
   }
 
   /** Até 6 elogios, cada um curto e só com letras/números/acentos. */

@@ -161,6 +161,17 @@ public class UserController {
       user.setDocFrontUrl(cur.getDocFrontUrl());
       user.setDocBackUrl(cur.getDocBackUrl());
       user.setDocSelfieUrl(cur.getDocSelfieUrl());
+      // Identidade conferida: depois de verificado, nome, sobrenome e nascimento só mudam pelo suporte
+      // (antes dava para trocar de nome e continuar com o selo, e usar o nome novo para aprovar o CNPJ de outra pessoa)
+      if (Boolean.TRUE.equals(cur.getVerified()) || "PENDING".equalsIgnoreCase(String.valueOf(cur.getVerificationStatus()))) {
+        user.setName(cur.getName());
+        user.setSurname(cur.getSurname());
+        user.setBirthday(cur.getBirthday());
+      } else if (user.getName() != null && !user.getName().equals(cur.getName())) {
+        String full = (user.getName() + (user.getSurname() == null ? "" : " " + user.getSurname())).trim();
+        String problem = fullNameProblem(full);
+        if (problem != null) throw badReq(problem);
+      }
       // Sem esses blocos no envio, mantém os atuais (antes um envio incompleto apagava o perfil profissional)
       if (user.getProfessional() == null || cur.getProfessional() == null) user.setProfessional(cur.getProfessional());
       else {

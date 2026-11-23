@@ -92,6 +92,7 @@ public class WalletController {
     }
     try {
       String status = walletService.withdraw(me, amount, Objects.toString(body.get("to"), "PIX"));
+      if ("REVIEW".equals(status)) return bad("O banco demorou para responder. Estamos conferindo se o saque saiu; o valor fica reservado até a confirmação (em até 1 dia útil).");
       if (!"DONE".equals(status)) return bad("O banco não aceitou o saque agora. O valor continua na sua carteira. Tente de novo mais tarde.");
       return ResponseEntity.ok(Map.of("status", status, "available", walletService.available(me.getId())));
     } catch (IllegalArgumentException e) {
@@ -101,7 +102,7 @@ public class WalletController {
 
   private BigDecimal sum(Long pro, LocalDateTime from, LocalDateTime to) {
     BigDecimal v = jdbc.queryForObject(
-        "SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE') AND created_at >= ? AND created_at < ?",
+        "SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE professional_id = ? AND kind IN ('CREDIT','STAGE','CLASS') AND created_at >= ? AND created_at < ?",
         BigDecimal.class, pro, Timestamp.valueOf(from), Timestamp.valueOf(to));
     return v == null ? BigDecimal.ZERO : v;
   }

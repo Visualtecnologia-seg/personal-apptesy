@@ -95,6 +95,9 @@ public class LegalPagesController {
             "SELECT id, name, email FROM user_ WHERE LOWER(email) = ? AND deleted_at IS NULL AND username NOT LIKE 'painel:%' LIMIT 1", e);
         if (!u.isEmpty()) {
           long id = ((Number) u.get(0).get("id")).longValue();
+          // No máximo 1 pedido a cada 10 minutos por conta (antes dava para lotar o e-mail de qualquer pessoa)
+          Integer recent = jdbc.queryForObject("SELECT COUNT(*) FROM account_delete_token_ WHERE user_id = ? AND expires_at > ?", Integer.class, id, Timestamp.valueOf(LocalDateTime.now(Z).plusMinutes(50)));
+          if (recent != null && recent > 0) throw new IllegalStateException("pedido repetido em menos de 10 minutos");
           byte[] raw = new byte[32];
           new SecureRandom().nextBytes(raw);
           String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);

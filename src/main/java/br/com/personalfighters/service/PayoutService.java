@@ -135,11 +135,13 @@ public class PayoutService {
     if (!"ATIVA".equalsIgnoreCase(situacao.trim())) throw new IllegalArgumentException("Este CNPJ não está ativo na Receita Federal.");
     String razao = j.path("razao_social").asText("");
     String name = norm(u.getName());
-    boolean mine = digits(razao).contains(cpf) || (!name.isEmpty() && norm(razao).equals(name));
+    // Nome igual só vale para conta com identidade já conferida (o nome dela não muda mais pelo app)
+    boolean verified = Boolean.TRUE.equals(u.getVerified());
+    boolean mine = digits(razao).contains(cpf) || (verified && !name.isEmpty() && norm(razao).equals(name));
     if (!mine) {
       for (JsonNode s : j.path("qsa")) {
         String partnerDoc = digits(s.path("cnpj_cpf_do_socio").asText(""));
-        boolean nameOk = !name.isEmpty() && norm(s.path("nome_socio").asText("")).equals(name);
+        boolean nameOk = verified && !name.isEmpty() && norm(s.path("nome_socio").asText("")).equals(name);
         // A Receita mostra o CPF do sócio escondido (***123456**): os 6 do meio têm que bater
         boolean docOk = partnerDoc.length() == 6 ? cpf.substring(3, 9).equals(partnerDoc) : partnerDoc.equals(cpf);
         if (nameOk && docOk) { mine = true; break; }

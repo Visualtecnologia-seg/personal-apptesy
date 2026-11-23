@@ -34,6 +34,7 @@ public class DisputeTimeoutSchedule {
   private final ExtrasService extrasService;
   private final SettingsService settings;
   private final JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.WalletService walletService;
 
   @Scheduled(fixedRate = 300_000, initialDelay = 90_000)
   public void tick() {
@@ -43,7 +44,11 @@ public class DisputeTimeoutSchedule {
 
   private void timeouts() {
     int hours = Math.max(1, settings.getInt(SettingsService.DISPUTE_TIMEOUT_HOURS));
-    boolean refund = settings.getInt(SettingsService.DISPUTE_TIMEOUT_REFUND) != 0;
+    int rule = settings.getInt(SettingsService.DISPUTE_TIMEOUT_REFUND);
+    // 2 (padrão) = o sistema nunca decide sozinho: o dinheiro fica guardado até a equipe decidir.
+    // (Antes, 2 h sem decisão devolvia ao cliente: dava serviço de graça e até devolvia pedido já pago ao profissional.)
+    if (rule != 0 && rule != 1) return;
+    boolean refund = rule == 1;
     LocalDateTime cutoff = completionService.now().minusHours(hours);
     List<Map<String, Object>> rows = jdbc.queryForList(
         "SELECT id FROM order_ WHERE dispute_status = 'OPEN' AND disputed_at IS NOT NULL AND disputed_at < ?", Timestamp.valueOf(cutoff));
@@ -51,6 +56,8 @@ public class DisputeTimeoutSchedule {
       UUID id = (UUID) r.get("id");
       Order o = orderRepository.findById(id).orElse(null);
       if (o == null) continue;
+      // Pagamento já liberado ao profissional: nunca devolve sozinho (o OPUS pagaria duas vezes)
+      if (Boolean.TRUE.equals(o.getPixReleased())) continue;
       String note = "Sem decisão da equipe em " + hours + "h (regra automática)";
       if (refund) {
         o.setDisputeStatus("RESOLVED_CLIENT");
@@ -61,6 +68,7 @@ public class DisputeTimeoutSchedule {
             : BigDecimal.ZERO;
         jdbc.update("UPDATE order_ SET dispute_resolution = ?, client_refund = ? WHERE id = ?", "Sistema · " + note, paid, id);
         try { transactionService.refundPayment(o); } catch (Exception e) { log.warn("Reembolso automático não registrado: {}", e.getMessage()); }
+        walletService.reverseOrder(o, "disputa sem decisão no prazo");
         notificationService.sendToUser(o.getCustomer(), false, "O problema que você relatou não foi analisado a tempo, então o valor pago será devolvido a você.");
         if (o.getProfessional() != null) notificationService.sendToUser(o.getProfessional(), true,
             "O problema relatado pelo cliente não foi analisado em " + hours + "h e o valor voltou para ele. Fale com o suporte se discordar.");

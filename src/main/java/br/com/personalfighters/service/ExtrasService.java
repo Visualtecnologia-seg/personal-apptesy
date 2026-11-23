@@ -29,6 +29,7 @@ public class ExtrasService {
   private final AsaasService asaasService;
   private final MessageRepository messageRepository;
   private final NotificationService notificationService;
+  @org.springframework.context.annotation.Lazy @org.springframework.beans.factory.annotation.Autowired private WalletService walletService;
 
   /** O pedido já foi pago? Então um novo orçamento aceito é "extra". */
   public boolean isExtra(Order order) {
@@ -84,14 +85,15 @@ public class ExtrasService {
     return true;
   }
 
-  /** Na liberação do pagamento principal, libera também os extras pagos. */
+  /** Na liberação do pagamento principal, libera também os extras pagos (para a carteira, uma única vez cada). */
   public void release(Order order) {
     List<Map<String, Object>> rows = jdbc.queryForList(
-        "SELECT id, service_value FROM order_extra_ WHERE order_id = ? AND status = 'PAID' AND released = FALSE", order.getId());
+        "SELECT id, service_value, pix_payment_id FROM order_extra_ WHERE order_id = ? AND status = 'PAID' AND released = FALSE", order.getId());
     for (Map<String, Object> r : rows) {
-      boolean ok = asaasService.transferToProfessional(order.getProfessional(), (BigDecimal) r.get("service_value"),
-          "Extra do serviço #" + order.getId().toString().substring(0, 8));
-      if (ok) jdbc.update("UPDATE order_extra_ SET released = TRUE WHERE id = ?", r.get("id"));
+      if (jdbc.update("UPDATE order_extra_ SET released = TRUE WHERE id = ? AND released = FALSE", r.get("id")) != 1) continue;
+      boolean test = String.valueOf(r.get("pix_payment_id")).startsWith("TESTE-");
+      walletService.creditOnce(order.getProfessional() == null ? null : order.getProfessional().getId(), "EXTRA", (BigDecimal) r.get("service_value"),
+          order.getId(), "Extra do serviço #" + order.getId().toString().substring(0, 8), test, "extra-" + r.get("id"));
     }
     jdbc.update("UPDATE order_extra_ SET status = 'CANCELLED' WHERE order_id = ? AND status = 'PENDING_PAYMENT'", order.getId());
   }

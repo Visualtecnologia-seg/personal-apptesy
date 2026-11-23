@@ -38,7 +38,7 @@ public class SettingsService implements ApplicationRunner {
   public static final String PACKAGE_MAX_DISCOUNT = "package_max_discount";
   /** Horas que um problema relatado pode ficar travado sem decisão. */
   public static final String DISPUTE_TIMEOUT_HOURS = "dispute_timeout_hours";
-  /** 1 = sem decisão no prazo, devolve ao cliente; 0 = libera ao profissional. */
+  /** 2 = o sistema nunca decide sozinho (padrão); 1 = sem decisão no prazo, devolve ao cliente; 0 = libera ao profissional. */
   public static final String DISPUTE_TIMEOUT_REFUND = "dispute_timeout_refund";
 
   private final JdbcTemplate jdbc;
@@ -112,7 +112,7 @@ public class SettingsService implements ApplicationRunner {
     m.put(BIRTHDAY_COUPON_PERCENT, "15");
     m.put(PACKAGE_MAX_DISCOUNT, "30");
     m.put(DISPUTE_TIMEOUT_HOURS, "2");
-    m.put(DISPUTE_TIMEOUT_REFUND, "1");
+    m.put(DISPUTE_TIMEOUT_REFUND, "2");
     return m;
   }
 }

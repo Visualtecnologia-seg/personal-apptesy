@@ -157,8 +157,10 @@ public class GrowthController {
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || o.getCustomer() == null || !o.getCustomer().getId().equals(me.getId())) return bad("Pedido não encontrado.");
     if (o.getProfessional() == null || Boolean.TRUE.equals(o.getPixPaid())) return bad("Este pedido não pode usar pacote agora.");
+    // Com o pagamento de verdade ligado, pacote "pago" no modo de teste não vale (senão viraria dinheiro real para o profissional)
+    String realOnly = asaasService.isTestMode() ? "" : " AND pix_payment_id IS NOT NULL AND pix_payment_id NOT LIKE 'TESTE-%'";
     List<Map<String, Object>> r = jdbc.queryForList("SELECT id, sessions_total, sessions_used, service_value FROM package_purchase_ " +
-        "WHERE user_id = ? AND professional_id = ? AND status = 'PAID' AND sessions_used < sessions_total ORDER BY created_at LIMIT 1", me.getId(), o.getProfessional().getId());
+        "WHERE user_id = ? AND professional_id = ? AND status = 'PAID' AND sessions_used < sessions_total" + realOnly + " ORDER BY created_at LIMIT 1", me.getId(), o.getProfessional().getId());
     if (r.isEmpty()) return bad("Você não tem aulas sobrando em pacote com este profissional.");
     Map<String, Object> p = r.get(0);
     UUID pid = (UUID) p.get("id");

@@ -327,11 +327,21 @@ public class AdminController {
     out.put("withdrawn", money("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE kind = 'WITHDRAW' AND status = 'DONE' AND created_at >= ?", ts(month)));
     out.put("withdrawFailed", count("SELECT COUNT(*) FROM wallet_entry_ WHERE kind = 'WITHDRAW' AND status = 'FAILED' AND created_at >= ?", ts(month)));
     out.put("stagesReleased", money("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE kind = 'STAGE' AND created_at >= ?", ts(month)));
-    out.put("wallets", money("SELECT COALESCE(SUM(CASE WHEN kind IN ('CREDIT','STAGE') THEN amount WHEN status = 'DONE' THEN -amount ELSE 0 END),0) FROM wallet_entry_ WHERE status IN ('DONE','PENDING')"));
+    out.put("wallets", money("SELECT COALESCE(SUM(CASE WHEN kind IN ('CREDIT','STAGE','CLASS') THEN amount WHEN status IN ('DONE','REVIEW') THEN -amount ELSE 0 END),0) FROM wallet_entry_ WHERE status IN ('DONE','PENDING','REVIEW')"));
+    out.put("review", jdbc.queryForList("SELECT w.id, w.created_at AS at, w.amount AS value, w.pix_key AS dest, u.name AS person FROM wallet_entry_ w LEFT JOIN user_ u ON u.id = w.professional_id WHERE w.kind = 'WITHDRAW' AND w.status = 'REVIEW' ORDER BY w.created_at"));
     out.put("boosts", money("SELECT COALESCE(SUM(price),0) FROM pro_boost_ WHERE status IN ('PAID','ACTIVE') AND created_at >= ?", ts(month)));
     out.put("prevFee", money("SELECT COALESCE(SUM(o.total_cost - COALESCE(o.discount_amount,0) - COALESCE(o.service_value, o.total_cost/1.05)),0) FROM order_ o WHERE " + PAID + " AND o.status <> 'CANCELLED' AND o.created_at >= ? AND o.created_at < ?", ts(month.minusMonths(1)), ts(month)));
     out.put("wallet", jdbc.queryForList("SELECT w.created_at AS at, w.order_id AS \"orderId\", w.kind, w.status, w.amount AS value, u.name AS person FROM wallet_entry_ w LEFT JOIN user_ u ON u.id = w.professional_id ORDER BY w.created_at DESC LIMIT 40"));
     return out;
+  }
+
+  /** Saque sem resposta do banco: o administrador confere no Asaas e marca se saiu ou não (só então o valor volta ao saldo). */
+  @PostMapping("/wallet/{id}/review")
+  public Map<String, Object> reviewWithdraw(@PathVariable java.util.UUID id, @RequestBody Map<String, Object> body) {
+    boolean sent = Boolean.TRUE.equals(body.get("sent"));
+    int n = jdbc.update("UPDATE wallet_entry_ SET status = ? WHERE id = ? AND kind = 'WITHDRAW' AND status = 'REVIEW'", sent ? "DONE" : "FAILED", id);
+    if (n == 0) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Este saque não está em conferência.");
+    return Map.of("ok", true, "status", sent ? "DONE" : "FAILED");
   }
 
   @GetMapping(value = "/finance/export.csv")

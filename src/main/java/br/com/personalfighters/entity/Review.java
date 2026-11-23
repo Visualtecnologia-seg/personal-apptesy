@@ -16,6 +16,8 @@ import java.time.LocalDate;
 @JsonView(Views.FirstLevel.class)
 public class Review {
 
+  @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY) // o número nunca vem do celular
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Setter(AccessLevel.NONE)

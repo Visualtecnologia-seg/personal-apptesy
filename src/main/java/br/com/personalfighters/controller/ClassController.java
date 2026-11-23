@@ -127,7 +127,7 @@ public class ClassController {
     if (!"LIVE".equals(c.get("status"))) return bad("A aula não está ao vivo.");
     jdbc.update("UPDATE group_class_ SET status = 'DONE', ended_at = ? WHERE id = ?", Timestamp.valueOf(LocalDateTime.now()), id);
     jdbc.update("DELETE FROM room_member_ WHERE class_id = ?", id);
-    release(id, me);
+    // O dinheiro não sai na hora: vai para a carteira depois do horário da aula + 2 h (dá tempo de o aluno reclamar)
     for (Long uid : paidStudents(id)) notify(uid, false, "Aula encerrada. Veja o resumo do seu treino no app e avalie " + firstName(me) + ".");
     return one(id);
   }
@@ -151,7 +151,9 @@ public class ClassController {
     if (c == null) return bad("Aula não encontrada.");
     if (!List.of("OPEN", "CONFIRMED").contains(String.valueOf(c.get("status")))) return bad("As inscrições desta aula estão fechadas.");
     if (me.getId().equals(((Number) c.get("professional_id")).longValue())) return bad("Você é o professor desta aula.");
-    long taken = count("SELECT COUNT(*) FROM class_enrollment_ WHERE class_id = ? AND status IN ('PENDING','PAID') AND user_id <> ?", id, me.getId());
+    // Vaga sem pagar fica segura só por 15 minutos (antes contas falsas lotavam a turma sem pagar)
+    long taken = count("SELECT COUNT(*) FROM class_enrollment_ WHERE class_id = ? AND user_id <> ? AND (status = 'PAID' OR (status = 'PENDING' AND created_at > ?))",
+        id, me.getId(), Timestamp.valueOf(LocalDateTime.now().minusMinutes(15)));
     if (taken >= ((Number) c.get("max_students")).intValue()) return bad("A turma está cheia.");
     BigDecimal service = (BigDecimal) c.get("price");
     BigDecimal total = Pricing.clientTotal(service);
@@ -164,7 +166,7 @@ public class ClassController {
     } else {
       eid = (UUID) ex.get(0).get("id");
       if ("PAID".equals(ex.get(0).get("status"))) return ResponseEntity.ok(enrollment(eid));
-      jdbc.update("UPDATE class_enrollment_ SET status = 'PENDING', service_value = ?, client_total = ?, refunded = FALSE WHERE id = ?", service, total, eid);
+      jdbc.update("UPDATE class_enrollment_ SET status = 'PENDING', service_value = ?, client_total = ?, refunded = FALSE, created_at = ? WHERE id = ?", service, total, Timestamp.valueOf(LocalDateTime.now()), eid);
     }
     Map<String, Object> e = jdbc.queryForMap("SELECT pix_payment_id FROM class_enrollment_ WHERE id = ?", eid);
     if (e.get("pix_payment_id") == null) {
@@ -331,6 +333,10 @@ public class ClassController {
           Timestamp.valueOf(LocalDateTime.now().minusHours(4)))) {
         UUID id = (UUID) c.get("id");
         jdbc.update("UPDATE group_class_ SET status = 'DONE', ended_at = ? WHERE id = ?", Timestamp.valueOf(LocalDateTime.now()), id);
+      }
+      // Aula encerrada há tempo suficiente: libera para a carteira do professor
+      for (UUID id : jdbc.queryForList("SELECT id FROM group_class_ WHERE status = 'DONE' AND GREATEST(COALESCE(ended_at, starts_at), starts_at + (duration_min * interval '1 minute')) < ?",
+          UUID.class, Timestamp.valueOf(LocalDateTime.now().minusHours(CLASS_HOLD_HOURS)))) {
         release(id, null);
       }
       jdbc.update("DELETE FROM room_signal_ WHERE created_at < ?", Timestamp.valueOf(LocalDateTime.now().minusHours(6)));
@@ -349,13 +355,22 @@ public class ClassController {
     notify(((Number) c.get("professional_id")).longValue(), true, why + ": \"" + c.get("title") + "\" foi cancelada.");
   }
 
+  /** Horas depois do fim da aula até o dinheiro ir para a carteira do professor. */
+  static final int CLASS_HOLD_HOURS = 2;
+
+  /**
+   * Libera cada vaga paga uma única vez, para a CARTEIRA do professor (com as proteções de saque).
+   * Antes era PIX direto na hora de "encerrar": encerrando várias vezes juntas, pagava em dobro.
+   */
   private void release(UUID classId, User pro) {
     Map<String, Object> c = classRow(classId);
-    User professional = pro != null ? pro : userRepository.findById(((Number) c.get("professional_id")).longValue()).orElse(null);
-    for (Map<String, Object> e : jdbc.queryForList("SELECT id, service_value FROM class_enrollment_ WHERE class_id = ? AND status = 'PAID' AND released = FALSE", classId)) {
-      if (asaasService.transferToProfessional(professional, (BigDecimal) e.get("service_value"), "Aula em grupo " + classId.toString().substring(0, 8))) {
-        jdbc.update("UPDATE class_enrollment_ SET released = TRUE WHERE id = ?", e.get("id"));
-      }
+    Long proId = pro != null ? pro.getId() : ((Number) c.get("professional_id")).longValue();
+    for (Map<String, Object> e : jdbc.queryForList("SELECT id, service_value, pix_payment_id FROM class_enrollment_ WHERE class_id = ? AND status = 'PAID' AND released = FALSE", classId)) {
+      // trava atômica: só quem virar "released" de FALSE para TRUE credita
+      if (jdbc.update("UPDATE class_enrollment_ SET released = TRUE WHERE id = ? AND released = FALSE", e.get("id")) != 1) continue;
+      boolean test = asaasService.isTestMode() || String.valueOf(e.get("pix_payment_id")).startsWith("TESTE-");
+      jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'CLASS', ?, NULL, 'DONE', ?, ?, ?)",
+          UUID.randomUUID(), proId, e.get("service_value"), "Aula em grupo: " + c.get("title"), Timestamp.valueOf(LocalDateTime.now()), test);
     }
   }
 
