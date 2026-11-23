@@ -342,7 +342,7 @@ public class ShowcaseController {
     int comma = raw.indexOf(',');
     if (raw.startsWith("data:") && comma > 0) raw = raw.substring(comma + 1);
     byte[] d;
-    try { d = Base64.getMimeDecoder().decode(raw); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("Imagem inválida."); }
+    try { d = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); } catch (IllegalArgumentException e) { throw new IllegalArgumentException("Imagem inválida."); }
     if (d.length < 100) throw new IllegalArgumentException("Imagem inválida.");
     if (d.length > MAX_BYTES) throw new IllegalArgumentException("A foto é muito grande. Tente outra.");
     Img i = new Img();

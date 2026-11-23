@@ -13,6 +13,27 @@ public final class ImageQuality {
 
   private ImageQuality() {}
 
+  /**
+   * Abre a foto já reduzida (no máximo ~2.000 px), lendo antes só o tamanho declarado.
+   * Antes uma "foto-bomba" (0,5 MB no arquivo, 800 MB aberta) esgotava a memória do servidor.
+   */
+  static BufferedImage readSmall(byte[] bytes) throws java.io.IOException {
+    try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+      java.util.Iterator<javax.imageio.ImageReader> it = ImageIO.getImageReaders(in);
+      if (!it.hasNext()) return null;
+      javax.imageio.ImageReader r = it.next();
+      try {
+        r.setInput(in, true, true);
+        long w = r.getWidth(0), h = r.getHeight(0);
+        if (w <= 0 || h <= 0 || w * h > 60_000_000L) return null;     // acima de 60 megapixels: não abre
+        int step = (int) Math.max(1, Math.ceil(Math.max(w, h) / 2000.0));
+        javax.imageio.ImageReadParam p = r.getDefaultReadParam();
+        p.setSourceSubsampling(step, step, 0, 0);
+        return r.read(0, p);
+      } finally { r.dispose(); }
+    }
+  }
+
   public static Map<String, Object> check(String dataUrl, String kind) {
     Map<String, Object> out = new LinkedHashMap<>();
     List<String> issues = new ArrayList<>();
@@ -21,7 +42,7 @@ public final class ImageQuality {
       int comma = raw.indexOf(',');
       if (raw.startsWith("data:") && comma > 0) raw = raw.substring(comma + 1);
       byte[] bytes = Base64.getMimeDecoder().decode(raw);
-      BufferedImage img = ImageIO.read(new ByteArrayInputStream(bytes));
+      BufferedImage img = readSmall(bytes);
       if (img == null) {
         out.put("ok", false);
         out.put("issues", List.of("Não conseguimos abrir a foto. Tire outra."));

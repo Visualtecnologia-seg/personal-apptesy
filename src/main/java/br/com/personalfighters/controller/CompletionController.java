@@ -215,7 +215,7 @@ public class CompletionController {
         raw = raw.substring(comma + 1);
       }
       if (!type.startsWith("image/")) return false;
-      byte[] data = Base64.getMimeDecoder().decode(raw);
+      byte[] data = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); // sem GPS/dados escondidos
       if (data.length == 0 || data.length > MAX_PHOTO_BYTES) return false;
       jdbc.update("INSERT INTO order_photo_ (id, order_id, kind, content_type, data, created_at) VALUES (?, ?, ?, ?, ?, ?)",
           UUID.randomUUID(), orderId, kind, type, data, Timestamp.valueOf(LocalDateTime.now()));

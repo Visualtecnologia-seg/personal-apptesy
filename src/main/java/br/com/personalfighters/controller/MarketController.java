@@ -112,7 +112,7 @@ public class MarketController {
     int comma = raw.indexOf(',');
     if (raw.startsWith("data:") && comma > 0) { type = raw.substring(5, raw.indexOf(';') > 0 ? raw.indexOf(';') : comma); raw = raw.substring(comma + 1); }
     byte[] data;
-    try { data = Base64.getMimeDecoder().decode(raw); } catch (Exception e) { return bad("Foto inválida."); }
+    try { data = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); } catch (Exception e) { return bad("Foto inválida."); }
     if (data.length == 0 || data.length > 4 * 1024 * 1024) return bad("Foto grande demais.");
     jdbc.update("UPDATE order_material_ SET receipt = ?, receipt_type = ? WHERE id = ? AND order_id = ?", data, type, itemId, id);
     return ResponseEntity.ok(state(id));

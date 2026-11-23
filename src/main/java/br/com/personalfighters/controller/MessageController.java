@@ -84,6 +84,12 @@ public class MessageController {
             && img.substring(0, comma + 1).matches("data:image/(jpeg|jpg|png|webp);base64,")
             && img.substring(comma + 1).chars().allMatch(ch -> Character.isLetterOrDigit(ch) && ch < 128 || ch == '+' || ch == '/' || ch == '=' || ch == '\n' || ch == '\r');
         if (!dataImg) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie a foto pelo app.");
+        // tira GPS/modelo do celular escondidos na foto antes de guardar
+        try {
+          byte[] raw = java.util.Base64.getMimeDecoder().decode(img.substring(comma + 1));
+          byte[] clean = br.com.personalfighters.util.ImageMeta.strip(raw);
+          if (clean != raw) message.setImageUrl(img.substring(0, comma + 1) + java.util.Base64.getEncoder().encodeToString(clean));
+        } catch (IllegalArgumentException e) { throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie a foto pelo app."); }
       } else {
         message.setImageUrl(null); // texto e orçamento não levam link de imagem de fora
       }

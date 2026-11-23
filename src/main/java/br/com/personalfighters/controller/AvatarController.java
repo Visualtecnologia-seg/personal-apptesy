@@ -53,7 +53,7 @@ public class AvatarController {
     }
     byte[] data;
     try {
-      data = Base64.getMimeDecoder().decode(raw);
+      data = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); // sem GPS/dados escondidos
     } catch (IllegalArgumentException e) {
       return bad("Imagem inválida.");
     }

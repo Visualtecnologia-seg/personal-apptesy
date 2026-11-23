@@ -186,7 +186,7 @@ public class ProGrowthController {
     if (!raw.isEmpty()) {
       int c = raw.indexOf(',');
       if (raw.startsWith("data:") && c > 0) { type = raw.substring(5, raw.indexOf(';') > 0 ? raw.indexOf(';') : c); raw = raw.substring(c + 1); }
-      try { data = Base64.getMimeDecoder().decode(raw); } catch (Exception e) { return bad("Foto inválida."); }
+      try { data = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); } catch (Exception e) { return bad("Foto inválida."); }
       if (data.length > 5 * 1024 * 1024) return bad("Foto grande demais.");
     }
     jdbc.update("INSERT INTO pro_certificate_ (id, professional_id, title, number, photo, photo_type, status, created_at) VALUES (?,?,?,?,?,?,'PENDING',?)",
@@ -349,7 +349,7 @@ public class ProGrowthController {
     String title = Objects.toString(b.get("title"), "Treino").trim();
     String items = Objects.toString(b.get("items"), "").trim();
     if (client == 0 || items.isEmpty()) return bad("Escreva os exercícios.");
-    Long ok = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND customer_id = ?", Long.class, me.getId(), client);
+    Long ok = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND customer_id = ? AND status NOT IN ('OPEN','CANCELLED','BLOCKED','EXPIRED','REFUSED')", Long.class, me.getId(), client);
     if (ok == null || ok == 0) return bad("Só para alunos que já contrataram você.");
     UUID id = b.get("id") == null ? UUID.randomUUID() : UUID.fromString(b.get("id").toString());
     jdbc.update("DELETE FROM workout_plan_ WHERE id = ? AND professional_id = ?", id, me.getId());
@@ -363,7 +363,7 @@ public class ProGrowthController {
     User me = userService.findAuthUser();
     Long c = clientId == null ? me.getId() : clientId;
     if (clientId != null) {
-      Long ok = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND customer_id = ?", Long.class, me.getId(), clientId);
+      Long ok = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND customer_id = ? AND status NOT IN ('OPEN','CANCELLED','BLOCKED','EXPIRED','REFUSED')", Long.class, me.getId(), clientId);
       if (ok == null || ok == 0) return List.of();
     }
     return jdbc.queryForList("SELECT id, weight, waist, body_fat AS \"bodyFat\", note, measured_on AS \"date\" FROM student_measure_ WHERE client_id = ? ORDER BY measured_on", c);
@@ -373,7 +373,7 @@ public class ProGrowthController {
   public ResponseEntity<?> addMeasure(@RequestBody Map<String, Object> b) {
     User me = userService.findAuthUser();
     Long client = AreaService.bd(b.get("clientId"), "0").longValue();
-    Long ok = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND customer_id = ?", Long.class, me.getId(), client);
+    Long ok = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND customer_id = ? AND status NOT IN ('OPEN','CANCELLED','BLOCKED','EXPIRED','REFUSED')", Long.class, me.getId(), client);
     if (ok == null || ok == 0) return bad("Só para alunos que já contrataram você.");
     jdbc.update("INSERT INTO student_measure_ (id, professional_id, client_id, weight, waist, body_fat, note, measured_on, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
         UUID.randomUUID(), me.getId(), client, dec(b.get("weight")), dec(b.get("waist")), dec(b.get("bodyFat")), Objects.toString(b.get("note"), null), Date.valueOf(LocalDate.now(Z)), now());

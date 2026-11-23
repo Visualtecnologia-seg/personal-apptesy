@@ -335,7 +335,7 @@ public class SocialController {
         raw = raw.substring(comma + 1);
       }
       if (!type.startsWith("image/")) return false;
-      byte[] data = Base64.getMimeDecoder().decode(raw);
+      byte[] data = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); // sem GPS/dados escondidos
       if (data.length == 0 || data.length > MAX_PHOTO_BYTES) return false;
       jdbc.update("INSERT INTO post_photo_ (id, post_id, position, content_type, data) VALUES (?, ?, ?, ?, ?)",
           UUID.randomUUID(), postId, position, type, data);
