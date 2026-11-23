@@ -121,7 +121,7 @@ public class TripService {
   }
 
   public void location(UUID orderId, double lat, double lng) {
-    jdbc.update("UPDATE order_ SET pro_lat = ?, pro_lng = ?, pro_loc_at = ? WHERE id = ? AND departed_at IS NOT NULL",
+    jdbc.update("UPDATE order_ SET pro_lat = ?, pro_lng = ?, pro_loc_at = ? WHERE id = ? AND departed_at IS NOT NULL AND arrived_at IS NULL AND status IN ('CONFIRMED','AWAITING_PAYMENT')",
         lat, lng, new Timestamp(System.currentTimeMillis()), orderId);
   }
 

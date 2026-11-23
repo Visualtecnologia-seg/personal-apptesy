@@ -63,8 +63,41 @@ public class AccountEraseService {
         "DELETE FROM user_records_ WHERE user_id = ?",
         "DELETE FROM password_reset_ WHERE user_id = ?",
         "DELETE FROM email_log_ WHERE user_id = ?",
-        "DELETE FROM product__professional WHERE professional_id = ?"}) {
-      try { removed += sql.chars().filter(c -> c == '?').count() == 2 ? jdbc.update(sql, id, id) : jdbc.update(sql, id); }
+        "DELETE FROM product__professional WHERE professional_id = ?",
+        // LGPD: o que ainda ficava para trás depois de apagar (foto do rosto, saúde, corpo, voz, contatos de terceiros, acessos)
+        "DELETE FROM user_avatar_ WHERE user_id = ?",
+        "DELETE FROM health_profile_ WHERE user_id = ?",
+        "DELETE FROM health_sample_ WHERE user_id = ?",
+        "DELETE FROM student_measure_ WHERE client_id = ?",
+        "DELETE FROM workout_plan_ WHERE client_id = ?",
+        "DELETE FROM workout_ WHERE user_id = ?",
+        "DELETE FROM emergency_contact_ WHERE user_id = ?",
+        "DELETE FROM chat_audio_ WHERE sender_id = ?",
+        "DELETE FROM protection_audio_ WHERE session_id IN (SELECT id FROM protection_session_ WHERE user_id = ?)",
+        "DELETE FROM protection_consent_ WHERE user_id = ?",
+        "DELETE FROM login_history_ WHERE user_id = ?",
+        "DELETE FROM bio_token_ WHERE user_id = ?",
+        "DELETE FROM pix_key_change_ WHERE user_id = ?",
+        "DELETE FROM insurance_interest_ WHERE user_id = ?",
+        "DELETE FROM user_notice_ WHERE user_id = ?",
+        "DELETE FROM chat_read_ WHERE user_id = ?",
+        "DELETE FROM room_member_ WHERE user_id = ?",
+        "DELETE FROM post_like_ WHERE user_id = ?",
+        "DELETE FROM post_comment_ WHERE user_id = ?",
+        "DELETE FROM pro_cover_ WHERE user_id = ?",
+        "DELETE FROM pro_reco_ WHERE user_id = ?",
+        "DELETE FROM pro_showcase_stat_ WHERE user_id = ?",
+        "DELETE FROM pro_certificate_ WHERE professional_id = ?",
+        "DELETE FROM pro_course_ WHERE professional_id = ?",
+        "DELETE FROM pro_expense_ WHERE professional_id = ?",
+        "DELETE FROM pro_blocked_client_ WHERE client_id = ? OR professional_id = ?",
+        "DELETE FROM support_message_ WHERE user_id = ?",
+        "UPDATE urgent_request_ SET description = 'Pedido apagado', address = NULL, latitude = NULL, longitude = NULL WHERE customer_id = ?",
+        "UPDATE message_ SET image_url = NULL WHERE sender_id = ? AND image_url IS NOT NULL"}) {
+      try {
+        long q = sql.chars().filter(c -> c == '?').count();
+        removed += q == 2 ? jdbc.update(sql, id, id) : jdbc.update(sql, id);
+      }
       catch (Exception e) { log.debug("Exclusão: {} ({})", sql, e.getMessage()); }
     }
     try { jdbc.update("UPDATE professional_ SET is_online = FALSE WHERE id = (SELECT professional_id FROM user_ WHERE id = ?)", id); } catch (Exception ignored) { }

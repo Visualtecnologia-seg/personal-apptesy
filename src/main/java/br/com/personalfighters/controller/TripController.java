@@ -82,6 +82,11 @@ public class TripController {
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !(isPro(o, me) || isCustomer(o, me))) return bad("Pedido não encontrado.");
     Map<String, Object> t = tripService.trip(id);
+    // A localização do profissional só aparece no trajeto: depois que ele chega, ou o pedido acaba,
+    // o cliente não vê mais onde ele está nem de onde saiu (antes ficava visível para sempre — muitas vezes, a casa dele)
+    boolean onTheWay = (o.getStatus() == Status.AWAITING_PAYMENT || o.getStatus() == Status.CONFIRMED)
+        && jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE id = ? AND arrived_at IS NULL", Integer.class, id) > 0;
+    if (!onTheWay && !isPro(o, me)) { t.remove("proLat"); t.remove("proLng"); t.remove("proUpdatedAt"); t.remove("etaMin"); t.remove("distanceKm"); t.remove("near"); }
     t.put("professionalName", o.getProfessional() != null ? o.getProfessional().getName() : null);
     t.put("professionalId", o.getProfessional() != null ? o.getProfessional().getId() : null);
     t.put("status", o.getStatus());

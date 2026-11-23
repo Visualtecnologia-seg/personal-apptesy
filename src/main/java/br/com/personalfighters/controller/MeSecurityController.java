@@ -37,6 +37,7 @@ public class MeSecurityController {
   private static final ZoneId Z = ZoneId.of("America/Sao_Paulo");
   private final UserService userService;
   private final JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.AccountEraseService eraser;
   private final SecurityService security;
   private final AuthenticationService authenticationService;
   private final PasswordEncoder passwordEncoder;
@@ -153,28 +154,9 @@ public class MeSecurityController {
       BigDecimal avail = walletService.available(me.getId());
       if (avail != null && avail.compareTo(BigDecimal.ONE) >= 0) return bad("Você ainda tem R$ " + avail.setScale(2, java.math.RoundingMode.DOWN).toPlainString().replace('.', ',') + " para sacar. Saque antes de apagar a conta.");
     } catch (Exception ignored) { }
-    Long id = me.getId();
-    String tag = "excluido-" + id;
-    // Pedidos e pagamentos ficam guardados sem os dados pessoais (obrigação fiscal); o resto é apagado.
-    jdbc.update("UPDATE user_ SET name = 'Conta excluída', surname = NULL, email = ?, username = ?, cpf = ?, cnpj = NULL, cnpj_name = NULL, phone_number = NULL, birthday = NULL, avatar_url = NULL, " +
-        "latitude = NULL, longitude = NULL, full_address = NULL, pix_key = NULL, pix_key_type = NULL, document_url = NULL, doc_front_url = NULL, doc_back_url = NULL, doc_selfie_url = NULL, " +
-        "password = ?, active = FALSE, deleted_at = ? WHERE id = ?",
-        tag + "@excluido.opus", tag, "x" + id, passwordEncoder.encode(UUID.randomUUID().toString()), now(), id);
-    for (String sql : new String[]{
-        "DELETE FROM identity_verification_ WHERE user_id = ?",
-        "DELETE FROM user_device_ WHERE user_id = ?",
-        "DELETE FROM favorite_ WHERE user_id = ? OR professional_id = ?",
-        "DELETE FROM follow_ WHERE user_id = ? OR professional_id = ?",
-        "DELETE FROM post_video_ WHERE post_id IN (SELECT id FROM post_ WHERE professional_id = ?)",
-        "DELETE FROM post_ WHERE professional_id = ?",
-        "DELETE FROM support_state_ WHERE user_id = ?",
-        "DELETE FROM data_export_token_ WHERE user_id = ?"}) {
-      try { int n = sql.chars().filter(c -> c == '?').count() == 2 ? jdbc.update(sql, id, id) : jdbc.update(sql, id); }
-      catch (Exception e) { log.debug("Exclusão: {} ({})", sql, e.getMessage()); }
-    }
-    authenticationService.revokeAll(id);
-    security.event(id, "ACCOUNT_DELETED", "A pessoa apagou a conta");
-    log.info("LGPD: conta {} apagada a pedido da pessoa", id);
+    // Mesma exclusão completa do site e do painel (antes o app apagava bem menos: foto do rosto, saúde, voz, Google/Apple...)
+    String err = eraser.erase(me.getId(), "A pessoa apagou a conta pelo app");
+    if (err != null) return bad(err);
     return ResponseEntity.ok(Map.of("ok", true, "message", "Sua conta foi apagada. Os registros de pagamento ficam guardados sem os seus dados pessoais, como a lei exige."));
   }
 }
