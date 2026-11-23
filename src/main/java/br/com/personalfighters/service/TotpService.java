@@ -23,10 +23,19 @@ public class TotpService {
   private static final String B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   private static final SecureRandom RND = new SecureRandom();
   private final byte[] key;
+  /** Chave antiga (direto da JWT_SECRET): só para ler segredos salvos antes; ao usar, são regravados com a chave forte. */
+  private final byte[] legacy;
 
-  public TotpService(@Value("${jwt.secret}") String jwtSecret) {
-    try { key = Arrays.copyOf(MessageDigest.getInstance("SHA-256").digest(("opus-2fa:" + jwtSecret).getBytes(StandardCharsets.UTF_8)), 32); }
-    catch (Exception e) { throw new IllegalStateException(e); }
+  public TotpService(@Value("${jwt.secret}") String jwtSecret, org.springframework.jdbc.core.JdbcTemplate jdbc) {
+    try {
+      key = Arrays.copyOf(MessageDigest.getInstance("SHA-256").digest(("opus-2fa:" + br.com.personalfighters.util.AppSecret.effective(jwtSecret, jdbc)).getBytes(StandardCharsets.UTF_8)), 32);
+      legacy = Arrays.copyOf(MessageDigest.getInstance("SHA-256").digest(("opus-2fa:" + jwtSecret).getBytes(StandardCharsets.UTF_8)), 32);
+    } catch (Exception e) { throw new IllegalStateException(e); }
+  }
+
+  /** Segredo salvo com a chave antiga? Devolve o texto regravado com a chave forte (ou null se já está certo). */
+  public String upgrade(String stored) {
+    try { open(stored, key); return null; } catch (Exception e) { return encrypt(open(stored, legacy)); }
   }
 
   /** Novo segredo (20 bytes, em base32). */
@@ -86,10 +95,17 @@ public class TotpService {
   }
 
   public String decrypt(String stored) {
+    try { return open(stored, key); }
+    catch (Exception e) {
+      try { return open(stored, legacy); } catch (Exception e2) { throw new IllegalStateException(e2); }
+    }
+  }
+
+  private static String open(String stored, byte[] k) {
     try {
       byte[] all = Base64.getDecoder().decode(stored);
       Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-      c.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, all, 0, 12));
+      c.init(Cipher.DECRYPT_MODE, new SecretKeySpec(k, "AES"), new GCMParameterSpec(128, all, 0, 12));
       return new String(c.doFinal(all, 12, all.length - 12), StandardCharsets.UTF_8);
     } catch (Exception e) { throw new IllegalStateException(e); }
   }

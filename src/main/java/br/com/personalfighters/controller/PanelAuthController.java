@@ -163,7 +163,10 @@ public class PanelAuthController implements ApplicationRunner {
     if (digits.length() == 6) {
       long step = totp.verify(totp.decrypt((String) r.get("secret")), digits, ((Number) r.get("last_step")).longValue());
       if (step < 0) return false;
-      jdbc.update("UPDATE panel_2fa_ SET last_step = ? WHERE user_id = ?", step, userId);
+      // Um código por vez: o mesmo código não entra duas vezes nem com pedidos simultâneos
+      if (jdbc.update("UPDATE panel_2fa_ SET last_step = ? WHERE user_id = ? AND last_step < ?", step, userId, step) == 0) return false;
+      // Segredo salvo com a chave antiga: regrava com a chave forte
+      try { String up = totp.upgrade((String) r.get("secret")); if (up != null) jdbc.update("UPDATE panel_2fa_ SET secret = ? WHERE user_id = ?", up, userId); } catch (Exception ignored) { }
       return true;
     }
     if (allowRecovery && digits.length() == 8) {

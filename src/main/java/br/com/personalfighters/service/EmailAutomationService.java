@@ -54,7 +54,7 @@ public class EmailAutomationService {
   public EmailAutomationService(JdbcTemplate jdbc, EmailService email, @Value("${jwt.secret}") String secret) {
     this.jdbc = jdbc;
     this.email = email;
-    this.key = ("email-sair:" + secret).getBytes(StandardCharsets.UTF_8);
+    this.key = ("email-sair:" + br.com.personalfighters.util.AppSecret.effective(secret, jdbc)).getBytes(StandardCharsets.UTF_8);
   }
 
   // ---------- link para parar de receber ----------

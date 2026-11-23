@@ -28,7 +28,7 @@ public class CodeStore {
 
   public CodeStore(JdbcTemplate jdbc, @Value("${jwt.secret}") String secret) {
     this.jdbc = jdbc;
-    this.secret = secret;
+    this.secret = br.com.personalfighters.util.AppSecret.effective(secret, jdbc); // comprovantes de e-mail/celular com a chave forte
   }
 
   /** Gera e guarda um código novo; devolve o código, ou null se pediu rápido demais. */

@@ -43,36 +43,11 @@ public class AuthenticationService {
     this.jdbc = jdbc;
     // Chave fraca, curta ou que já apareceu em código público: quem souber fabricaria um login de administrador.
     // Nesse caso o servidor usa uma chave forte e aleatória, criada uma vez e guardada no banco.
-    if (weak(secret)) {
+    if (br.com.personalfighters.util.AppSecret.weak(secret))
       log.warn("JWT_SECRET fraca ou ausente: usando a chave forte guardada no banco. Troque a JWT_SECRET no Render por 64+ caracteres aleatórios.");
-      secret = storedSecret(jdbc);
-    }
+    secret = br.com.personalfighters.util.AppSecret.effective(secret, jdbc);
     try { KEY = MessageDigest.getInstance("SHA-512").digest(("opus-jwt:" + secret).getBytes(StandardCharsets.UTF_8)); }
     catch (Exception e) { throw new IllegalStateException(e); }
-  }
-
-  /** Menos de 32 caracteres, pouca variedade, ou palavras conhecidas do código antigo/de exemplo. */
-  static boolean weak(String s) {
-    if (s == null || s.trim().length() < 32) return true;
-    String l = s.toLowerCase();
-    for (String bad : new String[]{"blueshark", "personal", "fighter", "secret", "segredo", "changeme", "opus-jwt", "teste", "test", "123456", "password", "senha"})
-      if (l.contains(bad) && s.length() < 48) return true;
-    return s.chars().distinct().count() < 12;
-  }
-
-  private static String storedSecret(JdbcTemplate jdbc) {
-    try {
-      jdbc.execute("CREATE TABLE IF NOT EXISTS app_secret_ (name VARCHAR(40) PRIMARY KEY, value TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())");
-      byte[] raw = new byte[64];
-      new java.security.SecureRandom().nextBytes(raw);
-      jdbc.update("INSERT INTO app_secret_ (name, value) VALUES ('jwt', ?) ON CONFLICT (name) DO NOTHING", java.util.Base64.getEncoder().encodeToString(raw));
-      return jdbc.queryForObject("SELECT value FROM app_secret_ WHERE name = 'jwt'", String.class);
-    } catch (Exception e) {
-      // sem banco ainda: chave aleatória só desta execução (todos entram de novo depois de reiniciar)
-      byte[] raw = new byte[64];
-      new java.security.SecureRandom().nextBytes(raw);
-      return java.util.Base64.getEncoder().encodeToString(raw);
-    }
   }
 
   private long tokenVersion(Long userId) {
