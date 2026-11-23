@@ -45,7 +45,18 @@ public class UserController {
   @ResponseStatus(HttpStatus.OK)
   @ApiOperation(value = "Retorna a lista paginada dos usuários.")
   public Object findAll(User user, Pageable pageRequest) {
-    return redactor.strip(userService.findAll(user, pageRequest), me().getId());
+    if (br.com.personalfighters.util.Redactor.isAdmin()) return redactor.strip(userService.findAll(user, pageRequest), me().getId());
+    // Para o app: só a lista de profissionais verificados, sem filtros por e-mail/nome/usuário
+    // (os filtros com "%" serviam para descobrir o e-mail de qualquer pessoa, letra por letra)
+    int size = Math.max(1, Math.min(100, pageRequest == null ? 50 : pageRequest.getPageSize()));
+    int page = Math.max(0, pageRequest == null ? 0 : pageRequest.getPageNumber());
+    java.util.List<Long> ids = jdbc.queryForList(
+        "SELECT u.id FROM user_ u WHERE COALESCE(u.verified, FALSE) = TRUE AND COALESCE(u.active, TRUE) = TRUE AND NOT COALESCE(u.blocked, FALSE) " +
+            "AND u.deleted_at IS NULL AND u.username NOT LIKE 'painel:%' AND u.professional_id IS NOT NULL " +
+            "AND EXISTS (SELECT 1 FROM user_role r WHERE r.user_id = u.id AND r.role = 'PROFESSIONAL') ORDER BY u.id DESC LIMIT ? OFFSET ?", Long.class, size, page * size);
+    java.util.List<User> out = new java.util.ArrayList<>();
+    for (Long id : ids) { try { out.add(userService.findById(id)); } catch (Exception ignored) { } }
+    return java.util.Map.of("content", redactor.strip(out, me().getId()), "number", page, "size", size);
   }
 
   @GetMapping("/{id}")

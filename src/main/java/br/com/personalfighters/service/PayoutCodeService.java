@@ -10,7 +10,7 @@ public class PayoutCodeService {
 
   private static final long CODE_EXPIRY_MS = 15L * 60 * 1000; // 15 minutes
   private final ConcurrentHashMap<Long, CodeInfo> codes = new ConcurrentHashMap<>();
-  private final Random random = new Random();
+  private final Random random = new java.security.SecureRandom(); // código imprevisível
 
   public String generateCode(Long financeId) {
     String code = String.format("%06d", random.nextInt(1_000_000));
