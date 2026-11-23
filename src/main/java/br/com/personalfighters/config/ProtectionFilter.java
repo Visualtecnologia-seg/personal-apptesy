@@ -86,6 +86,8 @@ public class ProtectionFilter extends OncePerRequestFilter {
         || ("POST".equals(m) && path.equals("/messages") && !allow(ip, "msg", 60, MIN))
         || ("POST".equals(m) && path.equals("/partners/lead") && !allow(ip, "lead", 5, HOUR))
         || ("POST".equals(m) && path.startsWith("/excluir-conta") && !allow(ip, "erase", 5, HOUR))
+        || ("POST".equals(m) && path.matches("/orders/[^/]+/coupon") && !allow(ip, "coupon", 20, HOUR))          // ninguém fica chutando cupons
+        || ("POST".equals(m) && path.equals("/verifications/check-image") && !allow(ip, "imgcheck", 30, 10 * MIN)) // análise de foto pesa no servidor
         || ("POST".equals(m) && path.startsWith("/showcase/") && !allow(ip, "showclick", 30, MIN))
         || (("PUT".equals(m) || "POST".equals(m)) && path.startsWith("/pro/showcase") && !allow(ip, "showedit", 30, 10 * MIN))
         || ("POST".equals(m) && isUpload(req) && !allow(ip, "upload", 40, 10 * MIN))) {
@@ -102,8 +104,9 @@ public class ProtectionFilter extends OncePerRequestFilter {
     // Envios grandes: banco quase cheio → pausa; e cada pessoa tem uma cota por dia
     // (antes uma conta enchia o banco de 1 GB em menos de 1 minuto mandando fotos no chat e o app inteiro parava)
     long cost = declared >= 0 ? declared : (("POST".equals(m) || "PUT".equals(m) || "PATCH".equals(m)) ? Math.min(limit, 6 * MB) : 0);
-    if (cost > 256 * 1024 && !path.startsWith("/panel-auth") && !path.startsWith("/admin")) {
-      if (jdbc != null && br.com.personalfighters.util.StorageGuard.dbFull(jdbc)) {
+    // Todo envio conta na cota (não só os grandes): textos longos repetidos também enchiam o banco
+    if (cost > 0 && !path.startsWith("/panel-auth") && !path.startsWith("/admin") && !path.startsWith("/auth")) {
+      if (cost > 16 * 1024 && jdbc != null && br.com.personalfighters.util.StorageGuard.dbFull(jdbc)) {
         res.setStatus(507);
         res.setContentType("application/json;charset=UTF-8");
         res.getWriter().write("{\"message\":\"O envio de fotos e arquivos está pausado no momento. Tente mais tarde.\"}");

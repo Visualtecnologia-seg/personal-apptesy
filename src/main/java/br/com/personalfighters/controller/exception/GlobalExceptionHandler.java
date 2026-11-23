@@ -42,7 +42,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ErrorDetails> handleConstraintViolation(DataIntegrityViolationException exception, HttpServletRequest request) {
-    String message = "Email ou usuário já cadastrado. Tente com outros dados.";
+    String message = "Algum dado está grande demais ou repetido. Confira e tente de novo.";
     String cause = exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
     if (cause.contains("email")) message = "Este e-mail já está cadastrado.";
     else if (cause.contains("username")) message = "Este nome de usuário já está em uso.";

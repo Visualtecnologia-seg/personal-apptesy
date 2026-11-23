@@ -199,7 +199,7 @@ async function api(path, opts={}) {
   return data;
 }
 async function blob(path){ const r = await fetch(path,{headers:{Authorization:'Bearer '+token}}); if(!r.ok) throw new Error('Erro '+r.status); return URL.createObjectURL(await r.blob()); }
-function logout(){ token=null; try{sessionStorage.removeItem('opus_admin_token');}catch(e){} $('app').classList.add('hidden'); $('loginBox').classList.remove('hidden'); checkSetup(); }
+function logout(){ try{ if(token) fetch('/admin/me/logout',{method:'POST',headers:{'Authorization':'Bearer '+token}}).catch(function(){}); }catch(e){} token=null; try{sessionStorage.removeItem('opus_admin_token');}catch(e){} $('app').classList.add('hidden'); $('loginBox').classList.remove('hidden'); checkSetup(); }
 $('logout').onclick = logout;
 let setupMode = false;
 async function checkSetup(){ try { const r = await fetch('/panel-auth/status'); const d = await r.json(); setupMode = !!d.needsSetup; } catch(e){}

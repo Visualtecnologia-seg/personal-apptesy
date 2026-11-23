@@ -22,7 +22,7 @@ import java.util.Set;
 public class TwoFactorGate implements WebMvcConfigurer, HandlerInterceptor {
 
   private final JdbcTemplate jdbc;
-  private static final Set<String> ALLOWED = Set.of("/admin/me", "/admin/me/2fa", "/admin/me/2fa/setup", "/admin/me/2fa/enable");
+  private static final Set<String> ALLOWED = Set.of("/admin/me", "/admin/me/2fa", "/admin/me/2fa/setup", "/admin/me/2fa/enable", "/admin/me/logout");
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {

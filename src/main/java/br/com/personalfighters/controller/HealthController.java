@@ -72,12 +72,17 @@ public class HealthController {
         LocalDateTime at = time(m.get("at"));
         if (v == null || at == null) continue;
         jdbc.update("INSERT INTO health_sample_ (user_id, kind, value, at, source) VALUES (?, ?, ?, ?, ?)",
-            me.getId(), kind, v, Timestamp.valueOf(at), Objects.toString(m.get("source"), "health-connect"));
+            me.getId(), kind, v, Timestamp.valueOf(at), src(m.get("source")));
         saved++;
       }
     }
     jdbc.update("DELETE FROM health_sample_ WHERE user_id = ? AND at < ?", me.getId(), Timestamp.valueOf(LocalDateTime.now().minusDays(60)));
     return Map.of("saved", saved, "latest", latest(me.getId()));
+  }
+
+  private static String src(Object o) {
+    String s = Objects.toString(o, "health-connect").replaceAll("[^A-Za-z0-9 ._-]", "");
+    return s.isEmpty() ? "health-connect" : s.substring(0, Math.min(40, s.length()));
   }
 
   /** Registra um treino e devolve o resumo explicado em linguagem simples (Q3). */

@@ -178,6 +178,14 @@ public class PanelAuthController implements ApplicationRunner {
   }
 
   /** Quem está usando o painel agora (aparece no menu). */
+  /** Sair do painel derruba o acesso no servidor (antes só apagava no navegador e o acesso valia mais 12 h). */
+  @PostMapping("/admin/me/logout")
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
+  public Map<String, Object> logout() {
+    authenticationService.revokeAll(userService.findAuthUser().getId());
+    return Map.of("ok", true);
+  }
+
   @GetMapping("/admin/me")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public Map<String, Object> me() {
