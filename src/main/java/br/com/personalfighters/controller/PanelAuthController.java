@@ -96,15 +96,19 @@ public class PanelAuthController implements ApplicationRunner {
   }
 
   @PostMapping("/panel-auth/login")
-  public ResponseEntity<?> login(@RequestBody Map<String, Object> b) {
+  public ResponseEntity<?> login(@RequestBody Map<String, Object> b, javax.servlet.http.HttpServletRequest req) {
     String login = clean(b.get("login"));
-    String key = PREFIX + login;
-    if (loginAttemptService.isBlocked(key)) {
-      return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", "Muitas tentativas. Tente de novo em " + loginAttemptService.getSecondsRemaining(key) + " segundos."));
+    // Trava por rede: quem erra a senha fica bloqueado, não o administrador (antes um estranho trancava o painel)
+    String key = PREFIX + login + "|" + br.com.personalfighters.config.ProtectionFilter.clientIp(req);
+    String acct = "panelacct:" + login;
+    if (loginAttemptService.isBlocked(key) || loginAttemptService.wideBlocked(acct)) {
+      int sec = Math.max(loginAttemptService.getSecondsRemaining(key), loginAttemptService.wideSeconds(acct));
+      return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("message", "Muitas tentativas. Tente de novo em " + sec + " segundos."));
     }
-    User u = login.isEmpty() ? null : userRepository.findByUsername(key);
+    User u = login.isEmpty() ? null : userRepository.findByUsername(PREFIX + login);
     if (u == null || !u.isEnabled() || u.getPassword() == null || !passwordEncoder.matches(Objects.toString(b.get("password"), ""), u.getPassword())) {
       loginAttemptService.loginFailed(key);
+      loginAttemptService.wideFailed(acct);
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login ou senha incorretos."));
     }
     if (twoFactorOn(u.getId())) {
