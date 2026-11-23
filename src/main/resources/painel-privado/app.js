@@ -363,12 +363,12 @@ window.__boot = () => { if (token) start(); else { $('loginBox').classList.remov
     if (!sh) { document.body.insertAdjacentHTML('beforeend', '<div id="menuShade" class="menushade" onclick="toggleMenu(false)"></div>'); sh = $('menuShade'); }
     sh.classList.toggle('on', on);
   };
-  const st = document.createElement('style');
-  st.textContent = `.menubtn{display:none}
+  const stEl = document.createElement('style');
+  stEl.textContent = `.menubtn{display:none}
   @media(max-width:1000px){.menubtn{display:flex}aside{display:flex!important;position:fixed!important;left:0;top:0;bottom:0;z-index:60;transform:translateX(-105%);transition:transform .22s ease;box-shadow:none}aside.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.35)}
   .menushade{position:fixed;inset:0;background:rgba(2,6,23,.45);z-index:55;display:none}.menushade.on{display:block}
   .topbar .ask{min-width:0;flex:1}.topbar .ask input{min-width:0}.topbar .kbd{display:none}.topbar .tbtn.wide span{display:none}.topbar>div[style*="flex:1"]{display:none}.topbar{gap:8px}}`;
-  document.head.appendChild(st);
+  document.head.appendChild(stEl);
   if (typeof go === 'function') { const g = go; window.go = function (k) { toggleMenu(false); return g(k); }; }
 
   function topbar() {

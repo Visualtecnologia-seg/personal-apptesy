@@ -152,9 +152,10 @@ public class AuthenticationController {
     String invalid = br.com.personalfighters.util.PasswordRules.check(data.getNewPassword());
     if (invalid != null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, invalid);
     jdbc.update("UPDATE user_ SET password = ? WHERE id = ?", enc.encode(data.getNewPassword()), user.getId());
-    jdbc.update("DELETE FROM bio_token_ WHERE user_id = ?", user.getId()); // senha nova: a digital é ativada de novo
+    // Senha nova derruba todos os outros acessos (quem tinha roubado o login sai na hora) e a digital salva
+    authenticationService.revokeAll(user.getId());
     emailAutomation.passwordChanged(user.getId());
-    return true;
+    return Map.of("ok", true, "token", authenticationService.addAuthentication(user)); // este aparelho continua logado
   }
 
   @PostMapping("/forgot-password")

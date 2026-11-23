@@ -15,7 +15,7 @@ public final class StorageGuard {
 
   public static boolean dbFull(JdbcTemplate jdbc) {
     long now = System.currentTimeMillis();
-    if (now - checkedAt > 60_000) {
+    if (now - checkedAt > 15_000) {
       try {
         long max = Long.parseLong(System.getenv().getOrDefault("DB_MAX_MB", "900")) * 1024 * 1024;
         Long size = jdbc.queryForObject("SELECT pg_database_size(current_database())", Long.class);

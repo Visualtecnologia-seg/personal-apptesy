@@ -79,6 +79,7 @@ public class MessageController {
       if ("IMAGE".equals(type)) {
         String img = message.getImageUrl() == null ? "" : message.getImageUrl();
         int comma = img.indexOf(',');
+        if (br.com.personalfighters.util.StorageGuard.dbFull(jdbc)) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.INSUFFICIENT_STORAGE, "O envio de fotos está pausado no momento. Tente mais tarde.");
         boolean dataImg = img.length() <= 6_000_000 && comma > 0 && comma < 40
             && img.substring(0, comma + 1).matches("data:image/(jpeg|jpg|png|webp);base64,")
             && img.substring(comma + 1).chars().allMatch(ch -> Character.isLetterOrDigit(ch) && ch < 128 || ch == '+' || ch == '/' || ch == '=' || ch == '\n' || ch == '\r');

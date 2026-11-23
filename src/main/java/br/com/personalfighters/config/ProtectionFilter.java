@@ -26,6 +26,14 @@ import java.util.concurrent.TimeUnit;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ProtectionFilter extends OncePerRequestFilter {
 
+  /** Banco (para saber se está cheio). Opcional: sem ele, só a cota por pessoa vale. */
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+  /** Cota diária de envios grandes (fotos, vídeos, áudios) por pessoa ou rede. */
+  static final long DAILY_UPLOAD_BYTES = 350L * 1024 * 1024;
+  private final Map<String, long[]> uploads = new ConcurrentHashMap<>(); // {início do dia, bytes}
+
   private static final org.springframework.web.util.UrlPathHelper PATHS = new org.springframework.web.util.UrlPathHelper();
 
   private static final class Window { long start; int count; }
@@ -91,6 +99,23 @@ public class ProtectionFilter extends OncePerRequestFilter {
     long limit = maxBody(m, path);
     long declared = req.getContentLengthLong();
     if (declared > limit) { tooBig(res); return; }
+    // Envios grandes: banco quase cheio → pausa; e cada pessoa tem uma cota por dia
+    // (antes uma conta enchia o banco de 1 GB em menos de 1 minuto mandando fotos no chat e o app inteiro parava)
+    long cost = declared >= 0 ? declared : (("POST".equals(m) || "PUT".equals(m) || "PATCH".equals(m)) ? Math.min(limit, 6 * MB) : 0);
+    if (cost > 256 * 1024 && !path.startsWith("/panel-auth") && !path.startsWith("/admin")) {
+      if (jdbc != null && br.com.personalfighters.util.StorageGuard.dbFull(jdbc)) {
+        res.setStatus(507);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("{\"message\":\"O envio de fotos e arquivos está pausado no momento. Tente mais tarde.\"}");
+        return;
+      }
+      if (!spendUpload(uploadKey(req, ip), cost)) {
+        res.setStatus(429);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("{\"message\":\"Você atingiu o limite de envios de fotos e arquivos por hoje. Tente amanhã.\"}");
+        return;
+      }
+    }
     HttpServletRequest body = declared < 0 && !"GET".equals(m) && !"HEAD".equals(m) ? new LimitedRequest(req, limit) : req;
     Semaphore gate = declared > 20 * MB || declared < 0 && limit > 20 * MB ? hugeUploads : declared > 4 * MB ? bigUploads : null;
     if (gate != null) {
@@ -109,6 +134,36 @@ public class ProtectionFilter extends OncePerRequestFilter {
     } finally {
       if (gate != null) gate.release();
     }
+  }
+
+  /** Quem está enviando: a conta (pelo login) ou, sem login, a rede. */
+  private static String uploadKey(HttpServletRequest req, String ip) {
+    String h = req.getHeader("Authorization");
+    if (h != null && h.startsWith("Bearer ")) {
+      try { String u = br.com.personalfighters.service.impl.AuthenticationService.getUsernameFromToken(h.substring(7).trim()); if (u != null) return "u|" + u; }
+      catch (Exception ignored) { }
+    }
+    return "ip|" + ip;
+  }
+
+  /** Teto do servidor inteiro: no máximo 400 MB de envios por hora (o banco não enche entre uma conferência e outra). */
+  static final long HOURLY_UPLOAD_BYTES_ALL = 400L * 1024 * 1024;
+  private final long[] global = {0, 0};
+
+  private boolean spendUpload(String key, long bytes) {
+    long now = System.currentTimeMillis();
+    synchronized (global) {
+      if (now - global[0] > HOUR) { global[0] = now; global[1] = 0; }
+      if (global[1] + bytes > HOURLY_UPLOAD_BYTES_ALL) return false;
+    }
+    long[] w = uploads.computeIfAbsent(key, k -> new long[]{now, 0});
+    synchronized (w) {
+      if (now - w[0] > 24 * HOUR) { w[0] = now; w[1] = 0; }
+      if (w[1] + bytes > DAILY_UPLOAD_BYTES) return false;
+      w[1] += bytes;
+    }
+    synchronized (global) { global[1] += bytes; }
+    return true;
   }
 
   private static void tooBig(HttpServletResponse res) throws IOException {
@@ -187,5 +242,6 @@ public class ProtectionFilter extends OncePerRequestFilter {
   public void cleanup() {
     long now = System.currentTimeMillis();
     hits.entrySet().removeIf(e -> now - e.getValue().start > 2 * HOUR);
+    uploads.entrySet().removeIf(e -> now - e.getValue()[0] > 24 * HOUR);
   }
 }
