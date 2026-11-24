@@ -30,13 +30,26 @@ public class WalletService {
   private final SecurityService securityService;
   private final PayoutService payoutService;
   private final EmailAutomationService emailAutomation;
+  private final org.springframework.transaction.support.TransactionTemplate tx;
+
+  /** Trava o pedido no banco enquanto o dinheiro dele entra na carteira (dois pedidos ao mesmo tempo não pagam duas vezes). */
+  private <T> T lockedOrder(UUID orderId, java.util.function.Supplier<T> work) {
+    return tx.execute(st -> {
+      jdbc.queryForList("SELECT id FROM order_ WHERE id = ? FOR UPDATE", orderId);
+      return work.get();
+    });
+  }
 
   public static LocalDateTime now() { return LocalDateTime.now(ZoneId.of("America/Sao_Paulo")); }
 
   /** Coloca o valor do serviço na carteira do profissional (uma vez por pedido). */
   public void credit(Order order) {
+    if (order.getProfessional() == null) return;
+    lockedOrder(order.getId(), () -> { doCredit(order); return null; });
+  }
+
+  private void doCredit(Order order) {
     User pro = order.getProfessional();
-    if (pro == null) return;
     BigDecimal amount = order.getServiceValue();
     // Usa a cobrança que foi PAGA de fato (não outra cobrança do mesmo pedido criada depois com outro valor)
     Optional<Transaction> tx = transactionRepository.findAllByOrderId(order.getId()).stream()
@@ -56,10 +69,11 @@ public class WalletService {
     if (amount.signum() <= 0) return;
     Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM wallet_entry_ WHERE order_id = ? AND kind = 'CREDIT'", Integer.class, order.getId());
     if (exists != null && exists > 0) return;
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'CREDIT', ?, ?, 'DONE', ?, ?, ?)",
+    int n = jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test, ref) VALUES (?, ?, 'CREDIT', ?, ?, 'DONE', ?, ?, ?, ?) ON CONFLICT DO NOTHING",
         UUID.randomUUID(), pro.getId(), amount, order.getId(),
         "Serviço de " + (order.getCustomer() != null && order.getCustomer().getName() != null ? order.getCustomer().getName().trim().split("\\s+")[0] : "cliente"),
-        Timestamp.valueOf(now()), testMoney(order));
+        Timestamp.valueOf(now()), testMoney(order), "credit-" + order.getId());
+    if (n == 0) return;
     emailAutomation.walletCredit(pro.getId(), amount, serviceName(order));
     tx.ifPresent(t -> {
       t.setProfessionalIsPaid(true);
@@ -105,12 +119,25 @@ public class WalletService {
   public boolean isTestMoney(Order order) { return testMoney(order); }
 
   /** Libera uma etapa do serviço para a carteira (pagamento por etapas). */
-  public void creditStage(Order order, int idx, BigDecimal amount) {
+  public boolean creditStage(Order order, int idx, BigDecimal amount) {
     User pro = order.getProfessional();
-    if (pro == null || amount == null || amount.signum() <= 0) return;
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'STAGE', ?, ?, 'DONE', ?, ?, ?)",
-        UUID.randomUUID(), pro.getId(), amount, order.getId(), "Etapa " + idx + " aprovada", Timestamp.valueOf(now()), testMoney(order));
-    emailAutomation.walletCredit(pro.getId(), amount, "Etapa " + idx + " de " + serviceName(order));
+    if (pro == null || amount == null || amount.signum() <= 0) return false;
+    Boolean ok = lockedOrder(order.getId(), () -> {
+      // Depois que o valor final foi para a carteira (ou o pedido acabou/foi cancelado), etapa nenhuma paga mais nada
+      java.util.Map<String, Object> o = jdbc.queryForMap("SELECT status, COALESCE(pix_paid, FALSE) AS paid, COALESCE(pix_released, FALSE) AS released, service_value, dispute_status FROM order_ WHERE id = ?", order.getId());
+      String st = java.util.Objects.toString(o.get("status"), "");
+      if (!Boolean.TRUE.equals(o.get("paid")) || Boolean.TRUE.equals(o.get("released")) || "OPEN".equalsIgnoreCase(java.util.Objects.toString(o.get("dispute_status"), ""))
+          || !java.util.Set.of("AWAITING_PAYMENT", "IN_PROGRESS", "PENDING_CLIENT_CONFIRMATION").contains(st)) return false;
+      Integer credited = jdbc.queryForObject("SELECT COUNT(*) FROM wallet_entry_ WHERE order_id = ? AND kind = 'CREDIT'", Integer.class, order.getId());
+      if (credited != null && credited > 0) return false;
+      BigDecimal staged = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind = 'STAGE'", BigDecimal.class, order.getId());
+      BigDecimal cap = o.get("service_value") == null ? BigDecimal.ZERO : (BigDecimal) o.get("service_value");
+      if (staged.add(amount).compareTo(cap) > 0) return false;
+      return jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test, ref) VALUES (?, ?, 'STAGE', ?, ?, 'DONE', ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+          UUID.randomUUID(), pro.getId(), amount, order.getId(), "Etapa " + idx + " aprovada", Timestamp.valueOf(now()), testMoney(order), "stage-" + order.getId() + "-" + idx) == 1;
+    });
+    if (Boolean.TRUE.equals(ok)) emailAutomation.walletCredit(pro.getId(), amount, "Etapa " + idx + " de " + serviceName(order));
+    return Boolean.TRUE.equals(ok);
   }
 
   /** Pedido pago com PIX simulado (ou pagamento ainda em modo de teste)? */
@@ -143,11 +170,26 @@ public class WalletService {
    * Saque do próprio profissional: na chave PIX (CPF ou CNPJ conferido) ou na conta bancária no CPF/CNPJ dele.
    * Retorna o status final (DONE ou FAILED).
    */
-  private final java.util.concurrent.ConcurrentHashMap<Long, Object> locks = new java.util.concurrent.ConcurrentHashMap<>();
+  private final java.util.concurrent.ConcurrentHashMap<Long, java.util.concurrent.locks.ReentrantLock> locks = new java.util.concurrent.ConcurrentHashMap<>();
+  /** No máximo 2 saques conversando com o banco ao mesmo tempo no servidor todo (cada um segura uma conexão do banco de dados). */
+  private final java.util.concurrent.Semaphore banking = new java.util.concurrent.Semaphore(2, true);
 
   public String withdraw(User pro, BigDecimal amount, String to) {
-    // Um saque por profissional de cada vez (antes, um saque travado segurava os saques de todo mundo)
-    synchronized (locks.computeIfAbsent(pro.getId(), k -> new Object())) { return doWithdraw(pro, amount, to); }
+    // Conta bloqueada, desativada ou apagada não saca
+    Integer okAcc = jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE id = ? AND COALESCE(blocked, FALSE) = FALSE AND COALESCE(active, FALSE) = TRUE AND deleted_at IS NULL", Integer.class, pro.getId());
+    if (okAcc == null || okAcc == 0) throw new IllegalArgumentException("Esta conta não pode fazer saques agora. Fale com o suporte.");
+    // Um saque por profissional de cada vez; o segundo clique responde na hora em vez de ficar esperando
+    // (antes, vários cliques seguidos ocupavam todas as conexões e o app ficava fora do ar para todo mundo)
+    java.util.concurrent.locks.ReentrantLock l = locks.computeIfAbsent(pro.getId(), k -> new java.util.concurrent.locks.ReentrantLock());
+    if (!l.tryLock()) throw new IllegalArgumentException("Já tem um saque seu em andamento. Aguarde a confirmação.");
+    try {
+      boolean got;
+      try { got = banking.tryAcquire(8, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); got = false; }
+      if (!got) throw new IllegalArgumentException("Muitos saques sendo feitos agora. Tente de novo em 1 minuto; o seu dinheiro continua na carteira.");
+      try { return doWithdraw(pro, amount, to); } finally { banking.release(); }
+    } finally {
+      l.unlock();
+    }
   }
 
   private String doWithdraw(User pro, BigDecimal amount, String to) {
@@ -180,11 +222,17 @@ public class WalletService {
       throw new IllegalArgumentException("Por segurança, como os dados de recebimento ou o celular foram trocados há pouco, o saque fica liberado em " +
           hold.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")) + ". O seu dinheiro continua guardado.");
     }
-    if (amount.compareTo(available(pro.getId())) > 0) throw new IllegalArgumentException("Saldo insuficiente.");
     UUID id = UUID.randomUUID();
     String dest = docKey != null ? mask(docKey) : toBank ? bank.get("bank_name") + " " + mask(java.util.Objects.toString(bank.get("account"), "")) : mask(pro.getPixKey());
-    jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at, test) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', ?, ?, ?, ?)",
-        id, pro.getId(), amount, toBank ? "Saque na conta" : "Saque PIX", dest, Timestamp.valueOf(now()), asaasService.isTestMode());
+    // Confere o saldo e reserva o valor de uma vez, com trava no banco (vale mesmo com duas cópias do servidor no ar)
+    boolean reserved = Boolean.TRUE.equals(tx.execute(st -> {
+      jdbc.queryForList("SELECT pg_advisory_xact_lock(?, ?)", 7301, pro.getId().intValue());
+      if (amount.compareTo(available(pro.getId())) > 0) return false;
+      jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, status, description, pix_key, created_at, test) VALUES (?, ?, 'WITHDRAW', ?, 'PENDING', ?, ?, ?, ?)",
+          id, pro.getId(), amount, toBank ? "Saque na conta" : "Saque PIX", dest, Timestamp.valueOf(now()), asaasService.isTestMode());
+      return true;
+    }));
+    if (!reserved) throw new IllegalArgumentException("Saldo insuficiente.");
     boolean ok;
     String ref = "saque-" + id; // o Asaas não repete uma transferência com o mesmo identificador
     try {

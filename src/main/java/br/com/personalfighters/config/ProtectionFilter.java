@@ -217,7 +217,7 @@ public class ProtectionFilter extends OncePerRequestFilter {
 
   private static boolean isMedia(String p) {
     return p.startsWith("/orders/photos/") || p.startsWith("/posts/photos/") || p.startsWith("/posts/videos/")
-        || (p.startsWith("/users/") && p.endsWith("/avatar")) || p.contains("/audio") || p.contains("/certificates/") || p.contains("/photo")
+        || p.startsWith("/chat/image/") || (p.startsWith("/users/") && p.endsWith("/avatar")) || p.contains("/audio") || p.contains("/certificates/") || p.contains("/photo")
         || (p.contains("/showcase/") && (p.endsWith("/cover") || p.endsWith("/image") || p.endsWith("/cover-image")));
   }
 

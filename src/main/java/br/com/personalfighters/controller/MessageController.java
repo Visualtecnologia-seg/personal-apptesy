@@ -52,7 +52,38 @@ public class MessageController {
   @ApiOperation(value = "Lista mensagens de um pedido.")
   public List<Message> findByOrderId(@RequestParam UUID orderId) {
     roleIn(orderId);
-    return messageService.findByOrderId(orderId);
+    // A lista é pedida a cada 4 segundos: as fotos (que ficam guardadas em texto) não vão nela.
+    // No lugar vai um link fixo e assinado, que o celular baixa uma vez e guarda.
+    List<Message> out = jdbc.query("SELECT * FROM (SELECT id, order_id, sender_id, sender_name, sender_role, text, " +
+        "CASE WHEN image_url LIKE 'data:%' THEN NULL ELSE image_url END AS image_url, (image_url LIKE 'data:%') AS has_data, " +
+        "message_type, quote_status, quote_amount, quote_description, quote_hours, quote_items_json, quote_service_cost, quote_materials_cost, " +
+        "quote_total_cost, quote_pricing, quote_rate, counter_offer_amount, counter_offer_note, counter_offer_status, client_checked_items, created_at " +
+        "FROM message_ WHERE order_id = ? ORDER BY created_at DESC LIMIT 1000) x ORDER BY created_at ASC", (rs, i) -> {
+      Message m = ROW.mapRow(rs, i);
+      UUID id = (UUID) rs.getObject("id");
+      try { ID_FIELD.set(m, id); } catch (IllegalAccessException e) { throw new IllegalStateException(e); }
+      if (rs.getBoolean("has_data")) m.setImageUrl(br.com.personalfighters.util.MailTemplate.base() + "/chat/image/" + id + "?k=" + imageKey(id));
+      return m;
+    }, orderId);
+    return out;
+  }
+
+  private static final org.springframework.jdbc.core.BeanPropertyRowMapper<Message> ROW = new org.springframework.jdbc.core.BeanPropertyRowMapper<>(Message.class);
+  private static final java.lang.reflect.Field ID_FIELD;
+  static {
+    try { ID_FIELD = Message.class.getDeclaredField("id"); ID_FIELD.setAccessible(true); } catch (NoSuchFieldException e) { throw new ExceptionInInitializerError(e); }
+  }
+
+  @org.springframework.beans.factory.annotation.Value("${jwt.secret}")
+  private String jwtSecret;
+
+  /** Assinatura fixa de cada foto do chat (só quem recebeu a lista do pedido tem o link). */
+  String imageKey(UUID id) {
+    try {
+      javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+      mac.init(new javax.crypto.spec.SecretKeySpec(("chat-foto:" + br.com.personalfighters.util.AppSecret.effective(jwtSecret, jdbc)).getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+      return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(id.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0, 32);
+    } catch (java.security.GeneralSecurityException e) { throw new IllegalStateException(e); }
   }
 
   @PostMapping
@@ -135,10 +166,10 @@ public class MessageController {
       if ("SERVICE".equals(mode)) m.setQuoteRate(null);
       service = m.getQuoteServiceCost() != null ? m.getQuoteServiceCost() : m.getQuoteAmount();
     }
-    if (service == null || service.signum() <= 0 || service.compareTo(max) > 0) {
-      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um valor válido para o serviço.");
+    if (service == null || service.compareTo(new BigDecimal("5")) < 0 || service.compareTo(max) > 0) {
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um valor válido para o serviço (mínimo R$ 5,00).");
     }
-    BigDecimal materials = m.getQuoteMaterialsCost() == null ? BigDecimal.ZERO : m.getQuoteMaterialsCost().max(BigDecimal.ZERO).min(max);
+    BigDecimal materials = m.getQuoteMaterialsCost() == null ? BigDecimal.ZERO : m.getQuoteMaterialsCost().max(BigDecimal.ZERO).min(max).setScale(2, java.math.RoundingMode.HALF_UP);
     service = service.setScale(2, java.math.RoundingMode.HALF_UP);
     m.setQuoteServiceCost(service);
     m.setQuoteMaterialsCost(materials);
@@ -166,8 +197,8 @@ public class MessageController {
     try { amount = new BigDecimal(body.getOrDefault("amount", "0").toString().replace(',', '.')).setScale(2, java.math.RoundingMode.HALF_UP); }
     catch (Exception e) { throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Valor inválido."); }
     // Contraproposta precisa ser um valor de verdade (antes aceitava -500 e o pedido ficava com total negativo)
-    if (amount.compareTo(BigDecimal.ONE) < 0 || amount.compareTo(new BigDecimal("100000")) > 0)
-      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "A contraproposta precisa ser entre R$ 1 e R$ 100.000.");
+    if (amount.compareTo(new BigDecimal("5")) < 0 || amount.compareTo(new BigDecimal("100000")) > 0)
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "A contraproposta precisa ser entre R$ 5 e R$ 100.000.");
     String note = body.getOrDefault("note", "").toString();
     if (note.length() > 500) note = note.substring(0, 500);
     return messageService.counterOffer(id, amount, note);

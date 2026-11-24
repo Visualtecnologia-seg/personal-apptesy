@@ -66,6 +66,11 @@ public class User implements UserDetails, Serializable {
 
   private Boolean active;
 
+  /** Bloqueio feito pelo administrador (só leitura aqui: quem muda é o painel). */
+  @JsonIgnore
+  @Column(insertable = false, updatable = false)
+  private Boolean blocked;
+
   private Boolean verified;
   private Double latitude;
   private Double longitude;
@@ -123,7 +128,7 @@ public class User implements UserDetails, Serializable {
 
   @Override
   public boolean isEnabled() {
-    return Boolean.TRUE.equals(active);
+    return Boolean.TRUE.equals(active) && !Boolean.TRUE.equals(blocked);
   }
 
   @PostPersist

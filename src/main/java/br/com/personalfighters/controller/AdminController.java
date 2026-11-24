@@ -42,6 +42,7 @@ public class AdminController {
 
   private final JdbcTemplate jdbc;
   private final UserService userService;
+  private final br.com.personalfighters.service.impl.AuthenticationService authenticationService;
   private final UserRepository userRepository;
   private final OrderRepository orderRepository;
   private final OrderService orderService;
@@ -236,6 +237,7 @@ public class AdminController {
     String reason = Objects.toString(body.get("reason"), "").trim();
     if (reason.length() < 5) return bad("Escreva o motivo do bloqueio.");
     jdbc.update("UPDATE user_ SET blocked = TRUE, blocked_reason = ?, active = FALSE WHERE id = ?", reason, id);
+    authenticationService.revokeAll(id); // sai de todos os aparelhos na hora
     settings.audit(admin, "USER_BLOCK", String.valueOf(id), reason);
     return ResponseEntity.ok(Map.of("blocked", true));
   }

@@ -130,6 +130,11 @@ public class MoreController {
     User me = userService.findAuthUser();
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isPro(o, me)) return bad("Pedido não encontrado.");
+    // Só enquanto o serviço está em andamento: depois de concluído/liberado/cancelado as etapas não mudam (antes dava para pagar o serviço duas vezes)
+    if (Boolean.TRUE.equals(o.getPixReleased()) || o.getStatus() == null
+        || !java.util.EnumSet.of(br.com.personalfighters.model.Status.CONFIRMED, br.com.personalfighters.model.Status.AWAITING_PAYMENT, br.com.personalfighters.model.Status.IN_PROGRESS).contains(o.getStatus())
+        || n("SELECT COUNT(*) FROM wallet_entry_ WHERE order_id = ? AND kind IN ('CREDIT','STAGE')", id) > 0)
+      return bad("As etapas só podem ser definidas enquanto o serviço está em andamento.");
     Long started = jdbc.queryForObject("SELECT COUNT(*) FROM order_stage_ WHERE order_id = ? AND status <> 'PENDING'", Long.class, id);
     if (started != null && started > 0) return bad("As etapas já começaram e não podem mudar.");
     Object raw = b.get("percents");
@@ -138,7 +143,8 @@ public class MoreController {
     for (Object p : (List<?>) raw) ps.add(AreaService.bd(p, "0").intValue());
     if (ps.stream().mapToInt(Integer::intValue).sum() != 100 || ps.stream().anyMatch(p -> p <= 0)) return bad("As etapas precisam somar 100%.");
     List<?> labels = b.get("labels") instanceof List ? (List<?>) b.get("labels") : List.of();
-    jdbc.update("DELETE FROM order_stage_ WHERE order_id = ?", id);
+    if (jdbc.update("DELETE FROM order_stage_ WHERE order_id = ? AND NOT EXISTS (SELECT 1 FROM order_stage_ s WHERE s.order_id = ? AND s.status <> 'PENDING')", id, id) == 0
+        && n("SELECT COUNT(*) FROM order_stage_ WHERE order_id = ? AND status <> 'PENDING'", id) > 0) return bad("As etapas já começaram e não podem mudar.");
     for (int i = 0; i < ps.size(); i++) {
       String label = i < labels.size() ? Objects.toString(labels.get(i), "") : "";
       jdbc.update("INSERT INTO order_stage_ (order_id, idx, percent, label, status) VALUES (?,?,?,?, 'PENDING')", id, i + 1, ps.get(i), label.isBlank() ? "Etapa " + (i + 1) : label);
@@ -170,7 +176,10 @@ public class MoreController {
     if (ok == 0) return bad("Esta etapa ainda não foi marcada como feita.");
     Integer pct = jdbc.queryForObject("SELECT percent FROM order_stage_ WHERE order_id = ? AND idx = ?", Integer.class, id, idx);
     BigDecimal part = Optional.ofNullable(o.getServiceValue()).orElse(BigDecimal.ZERO).multiply(BigDecimal.valueOf(pct == null ? 0 : pct)).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
-    walletService.creditStage(o, idx, part);
+    if (!walletService.creditStage(o, idx, part)) {
+      jdbc.update("UPDATE order_stage_ SET status = 'DONE', approved_at = NULL WHERE order_id = ? AND idx = ? AND status = 'APPROVED' AND NOT EXISTS (SELECT 1 FROM wallet_entry_ WHERE ref = ?)", id, idx, "stage-" + id + "-" + idx);
+      return bad("Esta etapa não pode mais ser liberada (o serviço já foi concluído, cancelado ou está em reclamação).");
+    }
     notificationService.sendToUser(o.getProfessional(), true, firstName(me) + " aprovou a etapa " + idx + ". R$ " + part.toPlainString().replace('.', ',') + " caíram na sua carteira.");
     return ResponseEntity.ok(stageState(o));
   }

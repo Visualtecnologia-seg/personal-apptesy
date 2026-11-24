@@ -125,6 +125,7 @@ public class TransactionServiceImpl implements TransactionService {
         BigDecimal paid = tx.getTotalPaid() == null ? BigDecimal.ZERO : tx.getTotalPaid();
         BigDecimal back = paid.subtract(hold).max(BigDecimal.ZERO);
         hold = hold.subtract(paid).max(BigDecimal.ZERO);
+        jdbc.update("UPDATE transaction_ SET refund_status = 'STARTED' WHERE id = ?", tx.getId()); // o aviso de devolução que o Asaas manda depois é reconhecido como nosso
         String err = back.signum() > 0 ? asaasService.refundPix(pid, back) : null;
         if (err == null) {
           tx.setPaymentStatus(PaymentStatus.REFUNDED);
