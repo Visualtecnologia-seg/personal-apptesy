@@ -99,6 +99,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         .mvcMatchers("/favorites/**", "/favorites").hasRole("ADMIN")
         .mvcMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs/**").hasRole("ADMIN")
         .mvcMatchers("/actuator/**", "/webjars/**", "/configuration/**").hasRole("ADMIN")
+        // Trava central: toda rota /admin exige administrador (antes dependia só da marcação em cada rota)
+        .mvcMatchers("/admin/**").hasRole("ADMIN")
         .anyRequest().authenticated()
         .and()
         .logout()
