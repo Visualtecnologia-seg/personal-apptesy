@@ -10,7 +10,8 @@ public final class PasswordRules {
   /** Devolve a mensagem do problema, ou null quando a senha serve. */
   public static String check(String p) {
     if (p == null || p.length() < 6) return "A senha precisa ter pelo menos 6 caracteres.";
-    if (p.length() > 100) return "A senha está grande demais.";
+    // A criptografia de senha só considera os primeiros 72 bytes: acima disso, senhas diferentes abririam a mesma conta (CVE-2025-22228)
+    if (p.length() > 64 || p.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) return "A senha pode ter no máximo 64 caracteres.";
     if (!p.matches(".*[A-ZÀ-Ý].*")) return "Use pelo menos uma letra maiúscula na senha.";
     if (!p.matches(".*\\d.*")) return "Use pelo menos um número na senha.";
     if (!p.matches(".*[^A-Za-zÀ-ÿ0-9\\s].*")) return "Use pelo menos um caractere especial na senha (ex.: ! @ # $ %).";

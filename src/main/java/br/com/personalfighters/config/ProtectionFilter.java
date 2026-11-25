@@ -55,6 +55,8 @@ public class ProtectionFilter extends OncePerRequestFilter {
     return 10 * MB;                                                                   // uma foto e o resto
   }
 
+  private static final java.util.Set<String> ALLOWED_METHODS = java.util.Set.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
+
   @Override
   protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
     String raw = req.getRequestURI();
@@ -63,6 +65,20 @@ public class ProtectionFilter extends OncePerRequestFilter {
     String path = PATHS.getPathWithinApplication(req);
     String m = req.getMethod();
     if (raw.indexOf(';') >= 0 || raw.matches(".*%(2[eE]|25|00).*")) { res.sendError(400); return; }
+    // Só os métodos que o app usa (TRACE/TRACK/PROPFIND e outros estranhos param aqui)
+    if (!ALLOWED_METHODS.contains(m)) { res.setHeader("Allow", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD"); res.sendError(405); return; }
+    // Ordenação de listas: só nomes simples de campo. Nomes gigantes ou estranhos enchiam a memória / estouravam a pilha
+    // (falhas conhecidas da biblioteca de paginação, CVE-2026-41711 e CVE-2026-41716)
+    String[] sorts = req.getParameterValues("sort");
+    if (sorts != null) {
+      if (sorts.length > 3) { res.sendError(400); return; }
+      for (String srt : sorts) if (srt == null || !srt.matches("[A-Za-z][A-Za-z0-9_]{0,39}(,(?i:asc|desc))?")) { res.sendError(400); return; }
+    }
+    // Cabeçalhos de proteção escritos aqui também, sempre (falha conhecida em que a biblioteca de segurança deixava de escrevê-los, CVE-2026-22732)
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    if (res.getHeader("X-Frame-Options") == null) res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    if (res.getHeader("Referrer-Policy") == null) res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     String ip = clientIp(req);
 
     // Endereço da API com barra no fim ("/x/") ou caracteres de desvio: recusa (evita furar travas por variação do caminho)

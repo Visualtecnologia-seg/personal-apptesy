@@ -199,8 +199,10 @@ public class EmailServiceImpl implements EmailService {
         h.setFrom(new InternetAddress(from.trim(), "OPUS", "UTF-8"));
         h.setReplyTo(from.trim());
       }
+      // Quebra de linha em endereço ou assunto vira injeção de comandos de e-mail (CVE-2025-7962): nunca passa
+      if (to == null || to.matches("(?s).*[\\r\\n].*")) return;
       h.setTo(to);
-      h.setSubject(subject);
+      h.setSubject(subject == null ? "" : subject.replaceAll("[\\r\\n]+", " "));
       h.setText(text, html);
       // Logo e imagens vão dentro do e-mail: o servidor pode estar "dormindo" quando a pessoa abre a mensagem
       java.util.regex.Matcher m = java.util.regex.Pattern.compile("cid:email-([a-z0-9_-]+\\.(?:png|jpg))").matcher(html);

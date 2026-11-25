@@ -69,6 +69,8 @@ public class AltLoginController {
       return PhoneVerificationController.bad("Conta Apple não confirmada.");
     }
     if (!allowed.contains(String.valueOf(claims.getAudience()))) return PhoneVerificationController.bad("Conta Apple não confirmada.");
+    // E-mail só vale para achar a conta se a Apple diz que ele foi confirmado
+    if (!"true".equalsIgnoreCase(String.valueOf(claims.get("email_verified")))) claims.remove("email");
     String sub = claims.getSubject();
     String email = Objects.toString(claims.get("email"), "").toLowerCase();
     List<String> found = jdbc.queryForList("SELECT username FROM user_ WHERE (apple_sub = ? OR (? <> '' AND LOWER(email) = ? AND email_verified = TRUE)) AND username NOT LIKE 'painel:%' ORDER BY (apple_sub = ?) DESC LIMIT 1",

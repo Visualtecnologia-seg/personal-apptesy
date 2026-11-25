@@ -19,21 +19,37 @@
         <tomcat.version>9.0.124</tomcat.version>
         <spring-security.version>5.8.16</spring-security.version>
         <postgresql.version>42.7.14</postgresql.version>
-        <jackson-bom.version>2.17.2</jackson-bom.version>
+        <jackson-bom.version>2.18.11</jackson-bom.version>
+        <!-- Versões com as falhas conhecidas (CVE) corrigidas -->
+        <netty.version>4.1.141.Final</netty.version>
+        <sun-mail.version>1.6.8</sun-mail.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <json-path.version>2.10.0</json-path.version>
         <snakeyaml.version>2.2</snakeyaml.version>
         <logback.version>1.2.13</logback.version>
         <java.version>14</java.version>
         <spring-boot.run.jvmArguments>-Duser.timezone="America/Sao_Paulo"</spring-boot.run.jvmArguments>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.projectreactor.netty</groupId>
+                <artifactId>reactor-netty-http</artifactId>
+                <version>1.0.48</version>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor.netty</groupId>
+                <artifactId>reactor-netty-core</artifactId>
+                <version>1.0.48</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-rest</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -43,19 +59,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
-
-        <!-- Swagger -->
+        <!-- Só as anotações de documentação (a tela do Swagger saiu) -->
         <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-boot-starter</artifactId>
-            <version>3.0.0</version>
-        </dependency>
-
-        <!-- Springboot admin client-->
-        <dependency>
-            <groupId>de.codecentric</groupId>
-            <artifactId>spring-boot-admin-starter-client</artifactId>
-            <version>2.7.16</version>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>1.6.14</version>
         </dependency>
         <!-- Actuator-->
         <dependency>
@@ -93,7 +101,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20240303</version>
+            <version>20260814</version>
         </dependency>
 
         <dependency>
@@ -155,7 +163,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.12.0</version>
+            <version>3.18.0</version>
         </dependency>
 
         <dependency>

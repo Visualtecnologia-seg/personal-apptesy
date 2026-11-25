@@ -335,6 +335,7 @@ public class PanelAuthController implements ApplicationRunner {
     if (!passwordEncoder.matches(Objects.toString(b.get("current"), ""), me.getPassword())) return bad("A senha atual está errada.");
     String np = Objects.toString(b.get("password"), "");
     if (np.length() < 8) return bad("A nova senha precisa ter pelo menos 8 caracteres.");
+    if (np.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) return bad("A senha pode ter no máximo 64 caracteres.");
     me.setPassword(passwordEncoder.encode(np));
     userRepository.save(me);
     return ResponseEntity.ok(Map.of("ok", true));
@@ -343,6 +344,7 @@ public class PanelAuthController implements ApplicationRunner {
   private ResponseEntity<?> create(String login, String password) {
     if (!login.matches("[a-z0-9._-]{3,30}")) return bad("O login precisa ter de 3 a 30 letras, números, ponto, traço ou sublinhado, sem espaço e sem @.");
     if (password.length() < 8) return bad("A senha precisa ter pelo menos 8 caracteres.");
+    if (password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) return bad("A senha pode ter no máximo 64 caracteres.");
     if (userRepository.findByUsername(PREFIX + login) != null) return bad("Esse login já existe.");
     Integer last = jdbc.queryForObject("SELECT COALESCE(MAX(panel_matricula), 0) FROM user_ WHERE username LIKE 'painel:%'", Integer.class);
     int mat = (last == null ? 0 : last) + 1;

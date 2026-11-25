@@ -302,8 +302,17 @@ public class GrowthController {
     if (asaasService.isTestMode()) return; // com pagamento simulado, ninguém ganha pontos de indicação (evita fraude)
     try {
       int pts = settings.getInt(SettingsService.REFERRAL_POINTS);
-      for (Map<String, Object> r : jdbc.queryForList("SELECT r.referred_id, r.referrer_id FROM referral_ r WHERE r.rewarded_at IS NULL AND EXISTS " +
-          "(SELECT 1 FROM order_ o WHERE o.customer_id = r.referred_id AND o.status IN ('DONE','REVIEWED') AND COALESCE(o.service_value, o.total_cost, 0) >= 100 AND o.package_purchase_id IS NULL)")) {
+      // O serviço que vale a indicação tem que ser com um profissional de verdade: não pode ser quem indicou
+      // nem alguém que usa o mesmo celular/CPF do indicado ou de quem indicou (antes dava para "fabricar" pontos
+      // contratando o próprio perfil de profissional). E no máximo 10 prêmios por mês para quem indica.
+      for (Map<String, Object> r : jdbc.queryForList("SELECT r.referred_id, r.referrer_id FROM referral_ r WHERE r.rewarded_at IS NULL " +
+          "AND NOT EXISTS (SELECT 1 FROM user_device_ d1 JOIN user_device_ d2 ON d2.device_id = d1.device_id WHERE d1.user_id = r.referred_id AND d2.user_id = r.referrer_id) " +
+          "AND (SELECT COUNT(*) FROM referral_ x WHERE x.referrer_id = r.referrer_id AND x.rewarded_at > NOW() - interval '30 days') < 10 " +
+          "AND EXISTS (SELECT 1 FROM order_ o JOIN user_ pu ON pu.id = o.professional_id JOIN user_ cu ON cu.id = o.customer_id JOIN user_ ru ON ru.id = r.referrer_id " +
+          "  WHERE o.customer_id = r.referred_id AND o.status IN ('DONE','REVIEWED') AND COALESCE(o.service_value, o.total_cost, 0) >= 100 AND o.package_purchase_id IS NULL " +
+          "  AND COALESCE(o.pix_paid, FALSE) = TRUE AND o.professional_id <> r.referrer_id " +
+          "  AND regexp_replace(COALESCE(pu.cpf,'-'),'\\D','','g') NOT IN (regexp_replace(COALESCE(cu.cpf,'x'),'\\D','','g'), regexp_replace(COALESCE(ru.cpf,'y'),'\\D','','g')) " +
+          "  AND NOT EXISTS (SELECT 1 FROM user_device_ d1 JOIN user_device_ d2 ON d2.device_id = d1.device_id WHERE d1.user_id = o.professional_id AND d2.user_id IN (r.referred_id, r.referrer_id)))")) {
         Long referred = ((Number) r.get("referred_id")).longValue(), referrer = ((Number) r.get("referrer_id")).longValue();
         int n = jdbc.update("UPDATE referral_ SET rewarded_at = ? WHERE referred_id = ? AND rewarded_at IS NULL", Timestamp.valueOf(LocalDateTime.now()), referred);
         if (n == 0) continue;
