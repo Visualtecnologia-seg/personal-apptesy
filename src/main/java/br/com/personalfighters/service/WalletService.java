@@ -90,6 +90,10 @@ public class WalletService {
    * Antes o cliente recebia de volta e o profissional ficava com o valor: o OPUS pagava duas vezes.
    */
   public void reverseOrder(Order order, String why) {
+    // Dinheiro devolvido ao cliente: os pontos que ele ganhou com esse pedido saem também (uma vez só)
+    jdbc.update("INSERT INTO points_ (user_id, amount, reason, order_id, created_at) " +
+        "SELECT user_id, -SUM(amount), 'Pontos do pedido devolvido', order_id, NOW() FROM points_ WHERE order_id = ? AND amount > 0 AND reason <> 'Pontos do pedido devolvido' " +
+        "AND NOT EXISTS (SELECT 1 FROM points_ x WHERE x.order_id = ? AND x.reason = 'Pontos do pedido devolvido') GROUP BY user_id, order_id", order.getId(), order.getId());
     User pro = order.getProfessional();
     if (pro == null) return;
     BigDecimal got = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind IN ('CREDIT','STAGE','EXTRA') AND status = 'DONE'", BigDecimal.class, order.getId());

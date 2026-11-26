@@ -94,6 +94,14 @@ public class OrderServiceImpl implements OrderService {
     if (order.getCustomer() != null && order.getCustomer().getId() != null && order.getCustomer().getUsername() == null) {
       order.setCustomer(userService.findById(order.getCustomer().getId()));
     }
+    // Pedido só vai para conta de profissional de verdade, ativa e não bloqueada (antes dava para "contratar" um cliente qualquer
+    // como profissional e mandar dinheiro para uma conta sem cadastro de profissional)
+    if (order.getId() == null && order.getProfessional() != null) {
+      User pr = order.getProfessional();
+      boolean okPro = pr.getRole() != null && pr.getRole().contains(Role.PROFESSIONAL) && Boolean.TRUE.equals(pr.getActive()) && !Boolean.TRUE.equals(pr.getBlocked());
+      if (!okPro) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Este profissional não está disponível.");
+      if (order.getCustomer() != null && pr.getId().equals(order.getCustomer().getId())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Você não pode contratar você mesmo.");
+    }
     if (order.getProduct() != null && order.getProduct().getId() != null) {
       productRepository.findById(order.getProduct().getId()).ifPresent(order::setProduct);
     }
@@ -218,6 +226,16 @@ public class OrderServiceImpl implements OrderService {
     if (order.getCustomer() != null && order.getCustomer().getId().equals(professional.getId())) {
       throw new IllegalStateException("Você não pode atender um pedido feito por você mesmo.");
     }
+    // Só escolhe profissional num pedido ainda aberto e sem pagamento, e só entre quem respondeu ao pedido
+    // (antes dava para trocar o profissional de um pedido JÁ PAGO, até por um cliente qualquer, e desviar o serviço e o dinheiro)
+    if (order.getStatus() != Status.OPEN || Boolean.TRUE.equals(order.getPixPaid()) || order.getProfessional() != null)
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Este pedido já tem profissional.");
+    boolean responded = order.getResponse() != null && order.getResponse().stream().anyMatch(u -> u != null && professional.getId().equals(u.getId()));
+    boolean isPro = professional.getRole() != null && professional.getRole().contains(Role.PROFESSIONAL);
+    if (!responded || !isPro || Boolean.TRUE.equals(lockJdbc.queryForObject("SELECT COALESCE(blocked, FALSE) FROM user_ WHERE id = ?", Boolean.class, professional.getId())))
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Escolha um dos profissionais que responderam ao seu pedido.");
+    if (lockJdbc.update("UPDATE order_ SET status = 'CONFIRMED', professional_id = ? WHERE id = ? AND status = 'OPEN' AND professional_id IS NULL AND COALESCE(pix_paid, FALSE) = FALSE", professional.getId(), uuid) == 0)
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Este pedido já tem profissional.");
 
     order.setAvailable(new ArrayList<>());
     order.setResponse(new ArrayList<>());

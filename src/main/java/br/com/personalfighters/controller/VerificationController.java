@@ -80,6 +80,11 @@ public class VerificationController {
 
     // Reaproveita imagens da tentativa anterior que não precisam ser refeitas
     Optional<IdentityVerification> prev = repo.findFirstByUserIdOrderBySubmittedAtDesc(me.getId());
+    // CPF não muda pela verificação: tem que ser o mesmo do cadastro (antes trocava por qualquer número, sem a trava de 24h do saque por PIX no CPF)
+    String sentCpf = body.getOrDefault("cpf", "").replaceAll("[^0-9]", "");
+    String myCpf = me.getCpf() == null ? "" : me.getCpf().replaceAll("[^0-9]", "");
+    if (!sentCpf.isEmpty() && !myCpf.isEmpty() && !sentCpf.equals(myCpf))
+      return bad("O CPF precisa ser o mesmo do seu cadastro. Se ele está errado, fale com o suporte.");
     if (prev.isPresent() && "PENDING".equals(prev.get().getStatus())) {
       return bad("Você já tem uma verificação em análise.");
     }
@@ -144,14 +149,16 @@ public class VerificationController {
     // Dados pessoais conferidos pelo usuário na etapa "Seus dados"
     String fullName = body.getOrDefault("fullName", "").trim();
     if (!fullName.isEmpty()) me.setName(fullName);
-    String cpf = body.getOrDefault("cpf", "").replaceAll("[^0-9]", "");
-    if (cpf.length() == 11) me.setCpf(cpf);
+    if (myCpf.isEmpty() && br.com.personalfighters.util.CpfValidator.isValid(sentCpf)
+        && jdbc.queryForObject("SELECT COUNT(*) FROM user_ WHERE id <> ? AND regexp_replace(COALESCE(cpf, ''), '[^0-9]', '', 'g') = ?", Integer.class, me.getId(), sentCpf) == 0)
+      me.setCpf(sentCpf);
     String birthday = body.getOrDefault("birthday", "").trim();
     if (!birthday.isEmpty()) {
       try { me.setBirthday(java.time.LocalDate.parse(birthday)); } catch (Exception ignored) {}
     }
+    // Telefone só entra aqui se a conta ainda não tem; trocar é pela tela própria (que confirma o número e segura o saque por 24h)
     String phone = body.getOrDefault("phoneNumber", "").trim();
-    if (!phone.isEmpty()) me.setPhoneNumber(phone);
+    if (!phone.isEmpty() && (me.getPhoneNumber() == null || me.getPhoneNumber().isBlank())) me.setPhoneNumber(phone);
     String address = body.getOrDefault("fullAddress", "").trim();
     if (!address.isEmpty()) me.setFullAddress(address);
 

@@ -36,6 +36,7 @@ public class AsaasWebhookController {
   private final AsaasService asaasService;
   private final br.com.personalfighters.service.WalletService walletService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.repository.UserRepository userRepository;
   private static final Object LOCK = new Object();
 
   @Value("${asaas.webhook.token:}")
@@ -61,6 +62,30 @@ public class AsaasWebhookController {
     try {
       String event = (String) payload.get("event");
       Map<String, Object> payment = (Map<String, Object>) payload.get("payment");
+
+      // Avisos de transferência (saque): o banco pode recusar DEPOIS que o Asaas aceitou (chave errada, conta encerrada...).
+      // Antes isso era ignorado: o dinheiro saía da carteira e não chegava na conta do profissional.
+      if (event != null && event.startsWith("TRANSFER_") && payload.get("transfer") instanceof Map) {
+        Map<String, Object> t = (Map<String, Object>) payload.get("transfer");
+        String ref = java.util.Objects.toString(t.get("externalReference"), "");
+        if (ref.startsWith("saque-")) {
+          java.util.UUID wid;
+          try { wid = java.util.UUID.fromString(ref.substring(6)); } catch (IllegalArgumentException e) { return ResponseEntity.ok().build(); }
+          if (event.equals("TRANSFER_FAILED") || event.equals("TRANSFER_CANCELLED")) {
+            java.util.List<java.util.Map<String, Object>> w = jdbc.queryForList("SELECT professional_id, amount FROM wallet_entry_ WHERE id = ? AND kind = 'WITHDRAW'", wid);
+            if (!w.isEmpty() && jdbc.update("UPDATE wallet_entry_ SET status = 'FAILED' WHERE id = ? AND kind = 'WITHDRAW' AND status IN ('DONE','REVIEW','PENDING')", wid) == 1) {
+              Long proId = ((Number) w.get(0).get("professional_id")).longValue();
+              jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) VALUES (?, 'SAQUE_DEVOLVIDO', ?, NOW())", proId,
+                  "Saque de R$ " + w.get(0).get("amount") + " recusado pelo banco (" + java.util.Objects.toString(t.get("failReason"), event) + "). O valor voltou para a carteira.");
+              userRepository.findById(proId).ifPresent(u -> notificationService.sendToUser(u, true,
+                  "O banco não aceitou o seu saque de R$ " + w.get(0).get("amount") + ". O dinheiro voltou para a sua carteira: confira a chave PIX ou a conta e tente de novo."));
+            }
+          } else if (event.equals("TRANSFER_DONE")) {
+            jdbc.update("UPDATE wallet_entry_ SET status = 'DONE' WHERE id = ? AND kind = 'WITHDRAW' AND status IN ('REVIEW','PENDING')", wid);
+          }
+        }
+        return ResponseEntity.ok().build();
+      }
 
       if (payment == null) {
         return ResponseEntity.ok().build();
@@ -126,8 +151,9 @@ public class AsaasWebhookController {
       if ("PAYMENT_RECEIVED".equals(event) || "PAYMENT_CONFIRMED".equals(event)
           || "CONFIRMED".equals(status) || "RECEIVED".equals(status)) {
 
-        if (transaction.getPaymentStatus() == PaymentStatus.PAID || transaction.getPaymentStatus() == PaymentStatus.REFUNDED) {
-          return ResponseEntity.ok().build(); // aviso repetido
+        if (transaction.getPaymentStatus() == PaymentStatus.PAID || transaction.getPaymentStatus() == PaymentStatus.REFUNDED
+            || transaction.getPaymentStatus() == PaymentStatus.PENDING_REFUND || transaction.getPaymentStatus() == PaymentStatus.CHARGEDBACK) {
+          return ResponseEntity.ok().build(); // aviso repetido (inclusive de pagamento já devolvido ou contestado: não devolve de novo)
         }
         // Marca o pedido como pago de uma vez só no banco: se duas cobranças chegarem juntas, a segunda é devolvida
         boolean first = jdbc.update("UPDATE order_ SET pix_paid = TRUE, status = 'AWAITING_PAYMENT' WHERE id = ? AND COALESCE(pix_paid, FALSE) = FALSE AND status IN ('OPEN', 'CONFIRMED')", order.getId()) == 1;
