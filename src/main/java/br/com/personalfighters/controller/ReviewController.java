@@ -59,6 +59,12 @@ public class ReviewController {
       throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Só dá para avaliar depois que o serviço termina.");
     if ((client && Boolean.TRUE.equals(o.getClientReviewed())) || (pro && Boolean.TRUE.equals(o.getProReviewed())))
       throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você já avaliou este pedido.");
+    // Cliente e profissional que são a mesma pessoa (mesmo celular ou mesmo CPF) não contam avaliação: impede inflar a própria nota
+    if (o.getCustomer() != null && o.getProfessional() != null && jdbc.queryForObject(
+        "SELECT (EXISTS (SELECT 1 FROM user_device_ a JOIN user_device_ b ON b.device_id = a.device_id WHERE a.user_id = ? AND b.user_id = ?)) " +
+        "OR (SELECT regexp_replace(COALESCE(cpf,'x'),'\\D','','g') FROM user_ WHERE id = ?) = (SELECT regexp_replace(COALESCE(cpf,'y'),'\\D','','g') FROM user_ WHERE id = ?)",
+        Boolean.class, o.getCustomer().getId(), o.getProfessional().getId(), o.getCustomer().getId(), o.getProfessional().getId()))
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta avaliação não pode ser feita: as duas contas parecem ser da mesma pessoa.");
     // Nunca reaproveita o número de outra avaliação (antes dava para sobrescrever a avaliação de outra pessoa)
     review.setRevealed(false);
     review.setTipAmount(null);

@@ -125,7 +125,7 @@ public class NotificationServiceImpl implements NotificationService {
       String pushToken = notification.getFromRole().equals(Role.CUSTOMER) ? to.getProfessionalExpoPushNotificationToken() : to.getCustomerExpoPushNotificationToken();
       push.put("to", pushToken);
       push.put("sound", "default");
-      push.put("title", "Personal Fighters");
+      push.put("title", "OPUS");
       push.put("body", notification.getFrom().getName() + ": " + notification.getBody());
       push.put("data", notification.getData());
       JSONArray notifications = new JSONArray();
@@ -206,6 +206,7 @@ public class NotificationServiceImpl implements NotificationService {
 
   @Override
   public void sendArrivalNotifications(Order order) {
+    if (order == null || order.getId() == null || !br.com.personalfighters.util.RateLimit.allow("arrive-push:" + order.getId(), 1, 300)) return; // um aviso de chegada a cada 5 min
     try {
       JSONArray notifications = new JSONArray();
       if (order.getProfessional() != null) {
@@ -252,6 +253,12 @@ public class NotificationServiceImpl implements NotificationService {
   /** Aviso simples para uma pessoa (cliente ou profissional). */
   @Override
   public void sendToUser(User user, boolean toProfessionalApp, String text) {
+    // Freio contra encher o celular dos outros (seguir/deixar de seguir sem parar, chamadas, chegada repetida...):
+    // a mesma mensagem para a mesma pessoa só uma vez por minuto, e no máximo 40 avisos por hora para cada pessoa
+    if (user != null && user.getId() != null && text != null) {
+      if (!br.com.personalfighters.util.RateLimit.allow("push-same:" + user.getId() + ":" + toProfessionalApp + ":" + text.hashCode(), 1, 60)
+          || !br.com.personalfighters.util.RateLimit.allow("push:" + user.getId(), 40, 3600)) return;
+    }
     // Sempre guarda na caixa de avisos do app (aparece mesmo sem notificação do celular)
     try {
       if (user != null && user.getId() != null && text != null)

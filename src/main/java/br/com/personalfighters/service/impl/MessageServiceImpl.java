@@ -137,6 +137,9 @@ public class MessageServiceImpl implements MessageService {
         asaasService.cancelOpenCharges(order);
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
+        // Preço mudou: o desconto (cupom/pontos) nunca passa de 90% do novo total (antes um cupom de R$ 810 num pedido que caiu para R$ 100 fazia o cliente pagar R$ 1)
+        if (order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0)
+          order.setDiscountAmount(order.getDiscountAmount().min(order.getTotalCost().multiply(new BigDecimal("0.9")).setScale(2, java.math.RoundingMode.HALF_UP)));
         // por hora ou valor fechado: o pedido passa a seguir o que foi combinado
         order.setPricingMode("SERVICE".equals(msg.getQuotePricing()) ? "SERVICE" : "HOUR");
         if (!"SERVICE".equals(msg.getQuotePricing()) && msg.getQuoteHours() != null && msg.getQuoteHours() > 0) order.setHours(msg.getQuoteHours());
@@ -194,6 +197,9 @@ public class MessageServiceImpl implements MessageService {
         asaasService.cancelOpenCharges(order);
         order.setServiceValue(total);
         order.setTotalCost(br.com.personalfighters.util.Pricing.clientTotal(total));
+        // Preço mudou: o desconto (cupom/pontos) nunca passa de 90% do novo total (antes um cupom de R$ 810 num pedido que caiu para R$ 100 fazia o cliente pagar R$ 1)
+        if (order.getDiscountAmount() != null && order.getDiscountAmount().signum() > 0)
+          order.setDiscountAmount(order.getDiscountAmount().min(order.getTotalCost().multiply(new BigDecimal("0.9")).setScale(2, java.math.RoundingMode.HALF_UP)));
         // por hora ou valor fechado: o pedido passa a seguir o que foi combinado
         order.setPricingMode("SERVICE".equals(msg.getQuotePricing()) ? "SERVICE" : "HOUR");
         if (!"SERVICE".equals(msg.getQuotePricing()) && msg.getQuoteHours() != null && msg.getQuoteHours() > 0) order.setHours(msg.getQuoteHours());

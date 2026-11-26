@@ -154,18 +154,20 @@ public class ConferenceController {
       raw = parts[2];
     }
     String code = raw.replaceAll("[^0-9]", "");
-    Integer total = jdbc.queryForObject("SELECT code_attempts_total FROM order_ WHERE id = ?", Integer.class, id);
-    if (total != null && total >= 30) return bad("Muitos códigos errados neste pedido. Fale com o suporte da OPUS para liberar.");
-    if (o.getFinishCode() == null || !o.getFinishCode().equals(code)) {
+    // Cada tentativa é reservada no banco ANTES de comparar (com muitos chutes ao mesmo tempo, passava do limite de 30)
+    if (jdbc.update("UPDATE order_ SET code_attempts_total = COALESCE(code_attempts_total, 0) + 1 WHERE id = ? AND COALESCE(code_attempts_total, 0) < 30", id) == 0)
+      return bad("Muitos códigos errados neste pedido. Fale com o suporte da OPUS para liberar.");
+    String current = jdbc.queryForObject("SELECT finish_code FROM order_ WHERE id = ?", String.class, id);
+    if (current == null || !current.equals(code)) {
       // 5 erros seguidos: o código atual é descartado e o cliente recebe um novo na tela
-      jdbc.update("UPDATE order_ SET code_attempts = code_attempts + 1, code_attempts_total = code_attempts_total + 1 WHERE id = ?", id);
+      jdbc.update("UPDATE order_ SET code_attempts = COALESCE(code_attempts, 0) + 1 WHERE id = ?", id);
       jdbc.update("UPDATE order_ SET finish_code = NULL, code_rotated_at = NULL, code_attempts = 0 WHERE id = ? AND code_attempts >= 5", id);
       return bad("Código incorreto. Peça ao cliente para mostrar a tela de novo.");
     }
     if (o.getFinishCodeExpiresAt() != null && o.getFinishCodeExpiresAt().isBefore(completionService.now())) {
       return bad("O código mudou. Leia o código novo na tela do cliente.");
     }
-    jdbc.update("UPDATE order_ SET released_by = 'CLIENT_CODE' WHERE id = ?", id);
+    jdbc.update("UPDATE order_ SET code_attempts_total = GREATEST(COALESCE(code_attempts_total, 1) - 1, 0), released_by = 'CLIENT_CODE' WHERE id = ?", id); // o acerto não conta como erro
     completionService.finalizeAndRelease(o, "código do cliente lido pelo profissional");
     notificationService.sendToUser(o.getCustomer(), false,
         "Prontinho! " + firstName(o.getProfessional()) + " leu o seu código e o pagamento foi liberado. Que tal avaliar o serviço?");

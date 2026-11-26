@@ -31,7 +31,7 @@
         </encoder>
     </appender>
 
-    <logger name="br.com.personalfighters" level="debug" additivity="false">
+    <logger name="br.com.personalfighters" level="info" additivity="false">
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
@@ -52,8 +52,8 @@
         <appender-ref ref="CONSOLE"/>
     </root>
 
-    <!-- LOG "com.personalfighter*" at TRACE level -->
-    <logger name="br.com.personalfighters" level="trace" additivity="false">
+    <!-- Registro do app no nível normal (detalhado demais pesava e enchia o disco) -->
+    <logger name="br.com.personalfighters" level="info" additivity="false">
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="CONSOLE"/>
     </logger>

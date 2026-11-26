@@ -31,6 +31,7 @@ public class MarketController {
   private final OrderRepository orderRepository;
   private final NotificationService notificationService;
   private final JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.ExtrasService extrasService;
 
   private static Timestamp now() { return Timestamp.valueOf(LocalDateTime.now()); }
 
@@ -111,6 +112,7 @@ public class MarketController {
     String type = "image/jpeg";
     int comma = raw.indexOf(',');
     if (raw.startsWith("data:") && comma > 0) { type = raw.substring(5, raw.indexOf(';') > 0 ? raw.indexOf(';') : comma); raw = raw.substring(comma + 1); }
+    if (!type.matches("image/(jpeg|jpg|png|webp)")) return bad("Envie a foto da nota (JPG, PNG ou WebP).");
     byte[] data;
     try { data = br.com.personalfighters.util.ImageMeta.strip(Base64.getMimeDecoder().decode(raw)); } catch (Exception e) { return bad("Foto inválida."); }
     if (data.length == 0 || data.length > 4 * 1024 * 1024) return bad("Foto grande demais.");
@@ -134,6 +136,8 @@ public class MarketController {
     User me = userService.findAuthUser();
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || !isPro(o, me)) return bad("Pedido não encontrado.");
+    if (!extrasService.open(id)) return bad("Cobrança extra só com o pedido pago e em andamento.");
+    if (jdbc.queryForObject("SELECT COUNT(*) FROM order_extra_ WHERE order_id = ? AND status = 'PENDING_PAYMENT'", Long.class, id) >= 5) return bad("Já há 5 cobranças esperando o cliente. Espere ele pagar ou recusar.");
     String desc = str(b.get("description"), 140);
     BigDecimal v = num(b.get("value"), "0");
     if (desc == null || v.compareTo(BigDecimal.ONE) < 0 || v.compareTo(new BigDecimal("100000")) > 0) return bad("Diga o que é e o valor (de R$ 1 a R$ 100.000).");

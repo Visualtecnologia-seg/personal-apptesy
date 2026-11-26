@@ -158,13 +158,20 @@ public class ArrivalController {
     role = isPro(order) ? "PROFESSIONAL" : isClient(order) ? "CLIENT" : role; // o papel vem de quem está logado, não do pedido
     // Cada lado marca só a sua confirmação direto no banco (antes, os dois confirmando juntos apagavam um ao outro e o pedido travava)
     boolean pro = "PROFESSIONAL".equalsIgnoreCase(role);
-    if (pro) jdbc.update("UPDATE order_ SET pro_confirmed_arrival = TRUE, arrived_at = COALESCE(arrived_at, NOW()) WHERE id = ? AND status = 'AWAITING_PAYMENT'", orderId);
+    if (pro) {
+      // Prova de chegada: GPS do profissional (atualizado nos últimos 15 min) a até 300 m do cliente
+      Map<String, Object> trip = tripService.trip(orderId);
+      Boolean recent = jdbc.queryForObject("SELECT pro_loc_at > NOW() - interval '15 minutes' FROM order_ WHERE id = ?", Boolean.class, orderId);
+      boolean near = Boolean.TRUE.equals(trip.get("near")) && Boolean.TRUE.equals(recent) && !Boolean.TRUE.equals(trip.get("gpsSuspicious"));
+      jdbc.update("UPDATE order_ SET pro_confirmed_arrival = TRUE, arrived_at = COALESCE(arrived_at, NOW()), arrived_near = (COALESCE(arrived_near, FALSE) OR ?) WHERE id = ? AND status = 'AWAITING_PAYMENT'", near, orderId);
+    }
     else if ("CLIENT".equalsIgnoreCase(role)) jdbc.update("UPDATE order_ SET client_confirmed_arrival = TRUE WHERE id = ? AND status = 'AWAITING_PAYMENT'", orderId);
     int started = jdbc.update("UPDATE order_ SET status = 'IN_PROGRESS' WHERE id = ? AND status = 'AWAITING_PAYMENT' AND COALESCE(pro_confirmed_arrival, FALSE) = TRUE AND COALESCE(client_confirmed_arrival, FALSE) = TRUE", orderId);
     // Cliente que some sem confirmar: 15 minutos depois de o profissional chegar, ele pode começar sozinho
     boolean solo = false;
     if (started == 0 && pro) {
-      started = jdbc.update("UPDATE order_ SET status = 'IN_PROGRESS' WHERE id = ? AND status = 'AWAITING_PAYMENT' AND COALESCE(pro_confirmed_arrival, FALSE) = TRUE AND arrived_at < NOW() - make_interval(mins => ?)", orderId, SOLO_START_MINUTES);
+      // Só com a prova de que estava na porta do cliente (antes um profissional "fantasma" de outra cidade começava sozinho)
+      started = jdbc.update("UPDATE order_ SET status = 'IN_PROGRESS', solo_started = TRUE WHERE id = ? AND status = 'AWAITING_PAYMENT' AND COALESCE(pro_confirmed_arrival, FALSE) = TRUE AND COALESCE(arrived_near, FALSE) = TRUE AND arrived_at < NOW() - make_interval(mins => ?)", orderId, SOLO_START_MINUTES);
       solo = started == 1;
     }
     java.util.Map<String, Object> now = jdbc.queryForMap("SELECT status, COALESCE(pro_confirmed_arrival, FALSE) AS p, COALESCE(client_confirmed_arrival, FALSE) AS c FROM order_ WHERE id = ?", orderId);
@@ -176,7 +183,10 @@ public class ArrivalController {
       if (solo && order.getCustomer() != null) notificationService.sendToUser(order.getCustomer(), true, "O profissional chegou e começou o serviço. Se ele não está aí, use \"Relatar problema\" no pedido.");
     } else {
       result.put("status", String.valueOf(now.get("status")));
-      result.put("message", pro ? "Aguardando o cliente confirmar. Se ele não confirmar em " + SOLO_START_MINUTES + " minutos, você pode começar." : "Aguardando confirmação da outra parte.");
+      Boolean nearNow = jdbc.queryForObject("SELECT COALESCE(arrived_near, FALSE) FROM order_ WHERE id = ?", Boolean.class, orderId);
+      result.put("message", !pro ? "Aguardando confirmação da outra parte."
+          : Boolean.TRUE.equals(nearNow) ? "Aguardando o cliente confirmar. Se ele não confirmar em " + SOLO_START_MINUTES + " minutos, você pode começar."
+          : "Aguardando o cliente confirmar. O seu GPS não mostra você no endereço do cliente: ligue a localização para poder começar sem a confirmação dele.");
       if (pro && order.getCustomer() != null && !Boolean.TRUE.equals(order.getProConfirmedArrival()))
         notificationService.sendToUser(order.getCustomer(), true, "O profissional chegou! Confirme a chegada no app para o serviço começar.");
     }

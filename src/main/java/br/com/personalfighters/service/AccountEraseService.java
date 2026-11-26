@@ -36,7 +36,15 @@ public class AccountEraseService {
     try {
       BigDecimal avail = walletService.available(id);
       if (avail != null && avail.compareTo(BigDecimal.ONE) >= 0) return "A conta ainda tem R$ " + avail.setScale(2, java.math.RoundingMode.DOWN).toPlainString().replace('.', ',') + " para sacar. Faça o saque antes de apagar.";
+      // Quem deve ao OPUS (pagamento devolvido depois do saque) não apaga a conta para sumir com a dívida
+      if (avail != null && avail.compareTo(new BigDecimal("-0.01")) < 0) return "A conta tem um débito de R$ " + avail.negate().setScale(2, java.math.RoundingMode.UP).toPlainString().replace('.', ',') + " com o OPUS (pagamento devolvido). Fale com o suporte antes de apagar.";
     } catch (Exception ignored) { }
+    Long pendingWd = jdbc.queryForObject("SELECT COUNT(*) FROM wallet_entry_ WHERE professional_id = ? AND kind = 'WITHDRAW' AND status IN ('PENDING','REVIEW')", Long.class, id);
+    if (pendingWd != null && pendingWd > 0) return "Há um saque em conferência nesta conta. Espere ele terminar antes de apagar.";
+    Long disputes = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE (customer_id = ? OR professional_id = ?) AND dispute_status = 'OPEN'", Long.class, id, id);
+    if (disputes != null && disputes > 0) return "Há uma reclamação aberta num pedido desta conta. Espere a equipe OPUS resolver antes de apagar.";
+    Long paidHeld = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE professional_id = ? AND COALESCE(pix_paid, FALSE) = TRUE AND COALESCE(pix_released, FALSE) = FALSE AND status NOT IN ('CANCELLED')", Long.class, id);
+    if (paidHeld != null && paidHeld > 0) return "Há pagamento guardado no cofre num pedido desta conta. Espere ele ser liberado ou devolvido antes de apagar.";
 
     String tag = "excluido-" + id;
     Timestamp now = Timestamp.valueOf(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));

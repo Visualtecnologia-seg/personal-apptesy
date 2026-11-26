@@ -89,13 +89,28 @@ public class CompletionService {
     List<Order> pending = orderRepository.findByStatus(Status.PENDING_CLIENT_CONFIRMATION);
     for (Order o : pending) {
       try {
-        if (o.getRequestedCompletionAt() != null && o.getRequestedCompletionAt().isBefore(cutoff) && !disputeOpen(o) && !sosActive(o)) {
+        if (o.getRequestedCompletionAt() != null && o.getRequestedCompletionAt().isBefore(cutoff) && !disputeOpen(o) && !sosActive(o) && autoReleaseDue(o)) {
           finalizeAndRelease(o, "automático após " + AUTO_RELEASE_HOURS + "h");
         }
       } catch (Exception e) {
         log.error("Falha na liberação automática do pedido {}: {}", o.getId(), e.getMessage());
       }
     }
+  }
+
+  /**
+   * Liberação sozinha só depois do fim MARCADO do serviço + 2h (antes, "Terminei" logo depois de chegar liberava 2h depois),
+   * e 24h quando o cliente nem confirmou a chegada (o profissional começou sozinho).
+   */
+  boolean autoReleaseDue(Order o) {
+    LocalDateTime now = now();
+    if (o.getDate() != null) {
+      java.time.LocalTime start = o.getStartTime() == null ? java.time.LocalTime.MIDNIGHT : o.getStartTime();
+      LocalDateTime end = o.getEndTime() != null ? o.getDate().atTime(o.getEndTime()) : o.getDate().atTime(start).plusHours(o.getHours() == null ? 1 : o.getHours());
+      if (now.isBefore(end.plusHours(AUTO_RELEASE_HOURS))) return false;
+    }
+    Boolean solo = jdbc.queryForObject("SELECT COALESCE(solo_started, FALSE) FROM order_ WHERE id = ?", Boolean.class, o.getId());
+    return !Boolean.TRUE.equals(solo) || o.getRequestedCompletionAt().isBefore(now.minusHours(24));
   }
 
   /** Enquanto houver SOS ativo ligado ao pedido, a liberação automática fica pausada. */
