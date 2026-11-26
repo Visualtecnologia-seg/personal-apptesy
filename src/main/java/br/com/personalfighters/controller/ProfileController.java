@@ -77,9 +77,9 @@ public class ProfileController {
         "JOIN message_ r ON r.order_id = c.order_id AND r.sender_role = 'PROFESSIONAL' AND r.created_at > c.created_at " +
         "WHERE o.professional_id = ? AND c.sender_role = 'CUSTOMER' AND c.created_at > NOW() - INTERVAL '90 days' GROUP BY c.id, c.created_at) x WHERE mins < 1440", id);
     out.put("responseMin", resp);
-    Double km = SearchController.dist(lat, lng, r.get("latitude"), r.get("longitude"));
-    out.put("distanceKm", km == null ? null : Math.round(km * 10) / 10.0);
-    Map<String, Object> area = q("SELECT mode, radius_km AS \"radiusKm\", neighborhoods, service_modes AS \"modes\", center_lat AS lat, center_lng AS lng FROM professional_area_ WHERE professional_id = ?", id).stream().findFirst().orElse(null);
+    // distância a partir do ponto embaralhado (antes, 3 consultas achavam a casa com 43 m de erro)
+    out.put("distanceKm", br.com.personalfighters.util.GeoPrivacy.shown(br.com.personalfighters.util.GeoPrivacy.km("home", id, lat, lng, r.get("latitude"), r.get("longitude"))));
+    Map<String, Object> area = q("SELECT mode, radius_km AS \"radiusKm\", neighborhoods, service_modes AS \"modes\" FROM professional_area_ WHERE professional_id = ?", id).stream().findFirst().orElse(null);
     if (area != null) {
       List<String> nb = new ArrayList<>();
       for (String s : Objects.toString(area.get("neighborhoods"), "").split("\\n")) if (!s.isBlank()) nb.add(s.trim());

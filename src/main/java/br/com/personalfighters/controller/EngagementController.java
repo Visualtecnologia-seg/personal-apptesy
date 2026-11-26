@@ -182,7 +182,8 @@ public class EngagementController {
     return urgentRepository.findByStatusAndExpiresAtAfter("OPEN", LocalDateTime.now()).stream()
         .filter(u -> !u.getCustomerId().equals(me.getId()))
         .filter(u -> u.getLatitude() != null && u.getLongitude() != null)
-        .map(u -> new AbstractMap.SimpleEntry<>(u, distanceKm(lat, lng, u.getLatitude(), u.getLongitude())))
+        // ponto embaralhado do chamado: o profissional não acha a casa do cliente consultando de vários lugares
+        .map(u -> new AbstractMap.SimpleEntry<>(u, br.com.personalfighters.util.GeoPrivacy.km("urgent", u.getId(), lat, lng, u.getLatitude(), u.getLongitude())))
         .filter(e -> e.getValue() <= URGENT_RADIUS_KM)
         .sorted(Comparator.comparingDouble(e -> e.getValue()))
         .map(e -> urgentView(e.getKey(), e.getValue(), false))
@@ -214,7 +215,7 @@ public class EngagementController {
     m.put("address", full ? u.getAddress() : areaOnly(u.getAddress()));
     m.put("createdAt", u.getCreatedAt());
     m.put("expiresAt", u.getExpiresAt());
-    if (distance != null) m.put("distanceKm", Math.round(distance * 10.0) / 10.0);
+    if (distance != null) m.put("distanceKm", br.com.personalfighters.util.GeoPrivacy.shown(distance));
     if (full) userRepository.findById(u.getCustomerId()).ifPresent(c -> m.put("customerName", firstName(c.getName())));
     if (u.getTakenBy() != null) {
       userRepository.findById(u.getTakenBy()).ifPresent(p -> {
@@ -227,7 +228,7 @@ public class EngagementController {
           pro.put("rating", p.getProfessional().getRating());
         }
         if (p.getLatitude() != null && u.getLatitude() != null) {
-          pro.put("distanceKm", Math.round(distanceKm(p.getLatitude(), p.getLongitude(), u.getLatitude(), u.getLongitude()) * 10.0) / 10.0);
+          pro.put("distanceKm", br.com.personalfighters.util.GeoPrivacy.shown(br.com.personalfighters.util.GeoPrivacy.km("home", p.getId(), u.getLatitude(), u.getLongitude(), p.getLatitude(), p.getLongitude())));
         }
         m.put("professional", pro);
       });

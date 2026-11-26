@@ -53,10 +53,13 @@ public class Redactor {
     if (person && !me && !all) {
       for (String k : PRIVATE) o.remove(k);
       // Localização de outra pessoa só aproximada (~1 km): serve para distância, não mostra a casa.
-      for (String k : new String[]{"latitude", "longitude"}) {
-        JsonNode v = o.get(k);
-        if (v != null && v.isNumber()) o.put(k, Math.round(v.asDouble() * 100.0) / 100.0);
-      }
+      // e a partir do ponto embaralhado (antes o arredondamento mostrava o quadrado de ~1 km onde a pessoa mora)
+      JsonNode la = o.get("latitude"), lo = o.get("longitude");
+      if (la != null && la.isNumber() && lo != null && lo.isNumber()) {
+        double[] p = GeoPrivacy.blur("home", o.has("id") ? o.get("id").asText() : "?", la.asDouble(), lo.asDouble());
+        o.put("latitude", Math.round(p[0] * 100.0) / 100.0);
+        o.put("longitude", Math.round(p[1] * 100.0) / 100.0);
+      } else { o.remove("latitude"); o.remove("longitude"); }
     }
     if (person) o.remove("password"); // nem a própria senha (mesmo criptografada) sai do servidor
     Iterator<String> it = o.fieldNames();

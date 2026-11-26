@@ -37,7 +37,7 @@ public class TripService {
 
   public Map<String, Object> trip(UUID orderId) {
     List<Map<String, Object>> rows = jdbc.queryForList(
-        "SELECT o.departed_at, o.depart_lat, o.depart_lng, o.pro_lat, o.pro_lng, o.pro_loc_at, o.service_value, o.total_cost, o.status, " +
+        "SELECT o.departed_at, o.depart_lat, o.depart_lng, o.pro_lat, o.pro_lng, o.pro_loc_at, o.service_value, o.total_cost, o.status, COALESCE(o.pro_gps_mocked, FALSE) AS mocked, " +
             "a.latitude AS a_lat, a.longitude AS a_lng, u.latitude AS u_lat, u.longitude AS u_lng " +
             "FROM order_ o LEFT JOIN address_ a ON a.id = o.address_id LEFT JOIN user_ u ON u.id = o.customer_id WHERE o.id = ?", orderId);
     Map<String, Object> out = new LinkedHashMap<>();
@@ -66,7 +66,7 @@ public class TripService {
     if (dLat != null && pLat != null) traveled = km(dLat, dLng, pLat, pLng);
     // O GPS vem do celular do profissional: só conta o que é fisicamente possível
     // (antes dava para "sair de Brasília" e "estar no Rio" 2 segundos depois e ficar com o valor todo)
-    boolean suspicious = false;
+    boolean suspicious = Boolean.TRUE.equals(r.get("mocked"));
     if (traveled > 0 && r.get("departed_at") != null) {
       double hours = Math.max(0, (System.currentTimeMillis() - ((java.sql.Timestamp) r.get("departed_at")).getTime()) / 3_600_000.0);
       double possible = hours * MAX_SPEED_KMH + 0.5;
@@ -77,9 +77,11 @@ public class TripService {
       if (startToClient > MAX_START_KM) { suspicious = true; traveled = 0; }           // "saiu" longe demais do cliente
       else traveled = Math.min(traveled, startToClient * ROAD_FACTOR + 1);             // não roda mais que o caminho até o cliente
     }
+    if (Boolean.TRUE.equals(r.get("mocked"))) traveled = 0;
     if (suspicious) out.put("gpsSuspicious", true);
     out.put("traveledKm", round1(traveled));
-    out.put("cancelFee", fee(r.get("departed_at") != null, traveled, (BigDecimal) r.get("service_value")));
+    // GPS falso: o cliente não paga deslocamento nenhum
+    out.put("cancelFee", fee(r.get("departed_at") != null && !Boolean.TRUE.equals(r.get("mocked")), traveled, (BigDecimal) r.get("service_value")));
     return out;
   }
 
@@ -114,6 +116,16 @@ public class TripService {
     Timestamp now = new Timestamp(System.currentTimeMillis());
     jdbc.update("UPDATE order_ SET departed_at = COALESCE(departed_at, ?), depart_lat = COALESCE(depart_lat, ?), depart_lng = COALESCE(depart_lng, ?), " +
         "pro_lat = ?, pro_lng = ?, pro_loc_at = ? WHERE id = ?", now, lat, lng, lat, lng, now, orderId);
+  }
+
+  /**
+   * O celular avisou que a posição é de um app de "GPS falso". O pedido fica marcado: a chegada não vale como prova
+   * (sem início sozinho), a taxa de deslocamento não é cobrada e o painel recebe um alerta (uma vez por pedido).
+   */
+  public void markMocked(br.com.personalfighters.entity.Order order) {
+    if (jdbc.update("UPDATE order_ SET pro_gps_mocked = TRUE WHERE id = ? AND COALESCE(pro_gps_mocked, FALSE) = FALSE", order.getId()) == 1 && order.getProfessional() != null)
+      jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) VALUES (?, 'GPS_FALSO', ?, NOW())",
+          order.getProfessional().getId(), "Pedido #" + order.getId().toString().substring(0, 8) + ": o celular informou localização simulada (app de GPS falso)");
   }
 
   public void markArrived(UUID orderId) {

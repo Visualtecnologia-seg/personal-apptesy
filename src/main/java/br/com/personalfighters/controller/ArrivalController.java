@@ -56,12 +56,26 @@ public class ArrivalController {
   public ResponseEntity<Map<String, Object>> checkProximity(
       @PathVariable UUID orderId,
       @RequestParam double professionalLat,
-      @RequestParam double professionalLng) {
+      @RequestParam double professionalLng,
+      @RequestParam(required = false) Boolean mocked) {
 
     Map<String, Object> result = new HashMap<>();
     Order order = orderRepository.findById(orderId).orElse(null);
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
     if (!admin() && !isPro(order)) return forbidden();
+    // Só no atendimento de verdade: pedido pago, profissional a caminho e perto do horário.
+    // Antes respondia em qualquer fase com a distância em metros até a casa do cliente, a partir de qualquer ponto
+    // digitado — 3 consultas achavam onde o cliente mora, mesmo sem o pedido ter sido aceito ou pago.
+    if (!admin()) {
+      if (!Status.AWAITING_PAYMENT.equals(order.getStatus()) || !Boolean.TRUE.equals(order.getPixPaid())
+          || jdbc.queryForObject("SELECT departed_at IS NULL FROM order_ WHERE id = ?", Boolean.class, orderId)) {
+        result.put("error", "Toque em \"Saí para o atendimento\" antes de avisar que chegou."); return ResponseEntity.badRequest().body(result);
+      }
+      String early = tooEarly(order);
+      if (early != null) { result.put("error", early); return ResponseEntity.badRequest().body(result); }
+      if (!br.com.personalfighters.util.RateLimit.allow("prox:" + orderId, 6, 600)) { result.put("error", "Aguarde alguns minutos para tentar de novo."); return ResponseEntity.status(429).body(result); }
+      if (Boolean.TRUE.equals(mocked)) tripService.markMocked(order);
+    }
 
     User client = order.getCustomer();
     if (client == null || client.getLatitude() == null || client.getLongitude() == null) {

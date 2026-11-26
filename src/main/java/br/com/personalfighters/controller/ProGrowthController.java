@@ -143,7 +143,7 @@ public class ProGrowthController {
     List<Map<String, Object>> near = new ArrayList<>();
     for (Map<String, Object> r : rows) {
       boolean ok = me.getLatitude() == null || !(r.get("lat") instanceof Number)
-          || AreaService.km(me.getLatitude(), me.getLongitude(), ((Number) r.get("lat")).doubleValue(), ((Number) r.get("lng")).doubleValue()) <= 30;
+          || br.com.personalfighters.util.GeoPrivacy.km("home", r.get("id"), me.getLatitude(), me.getLongitude(), r.get("lat"), r.get("lng")) <= 30;
       if (ok) { r.remove("lat"); r.remove("lng"); r.put("name", SocialController.firstName(Objects.toString(r.get("name"), ""))); near.add(r); }
     }
     int pos = 0;

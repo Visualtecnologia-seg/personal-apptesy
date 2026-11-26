@@ -291,7 +291,7 @@ public class MoreController {
         "SELECT ROUND(CAST(a.latitude AS NUMERIC), 2) AS lat, ROUND(CAST(a.longitude AS NUMERIC), 2) AS lng, COUNT(*) AS n " +
             "FROM order_ o JOIN address_ a ON a.id = o.address_id WHERE o.created_at >= ? AND a.latitude ~ '^-?[0-9.]+$' AND a.longitude ~ '^-?[0-9.]+$' " +
             "AND (o.product_id IN (SELECT DISTINCT product_id FROM order_ WHERE professional_id = ?) OR NOT EXISTS (SELECT 1 FROM order_ WHERE professional_id = ?)) " +
-            "GROUP BY 1, 2 ORDER BY n DESC LIMIT 200", Timestamp.valueOf(LocalDateTime.now(Z).minusDays(90)), me.getId(), me.getId());
+            "GROUP BY 1, 2 HAVING COUNT(*) >= 2 ORDER BY n DESC LIMIT 200", Timestamp.valueOf(LocalDateTime.now(Z).minusDays(90)), me.getId(), me.getId()); // quadrado com 1 pedido só apontava a casa de um cliente
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("points", pts);
     out.put("center", me.getLatitude() == null ? null : Map.of("lat", me.getLatitude(), "lng", me.getLongitude()));

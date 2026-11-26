@@ -192,7 +192,7 @@ public class SearchController {
             "WHERE pp.product_id IN (" + in + ") AND COALESCE(u.active, TRUE) = TRUE AND COALESCE(u.blocked, FALSE) = FALSE");
     List<Map<String, Object>> near = new ArrayList<>();
     for (Map<String, Object> p : pros) {
-      Double d = dist(lat, lng, p.get("lat"), p.get("lng"));
+      Double d = br.com.personalfighters.util.GeoPrivacy.km("home", p.get("id"), lat, lng, p.get("lat"), p.get("lng"));
       if (d == null || d <= 25) near.add(p);
     }
     o.put("pros", near.size());
@@ -248,7 +248,7 @@ public class SearchController {
     List<Map<String, Object>> out = new ArrayList<>();
     for (Map<String, Object> r : rows) {
       Long id = ((Number) r.get("id")).longValue();
-      Double km = dist(lat, lng, r.get("lat"), r.get("lng"));
+      Double km = br.com.personalfighters.util.GeoPrivacy.km("home", id, lat, lng, r.get("lat"), r.get("lng"));
       r.remove("lat"); r.remove("lng");
       if (km != null && km > 40) continue;
       double rate = ((Number) r.get("rate")).doubleValue() * 1.05;
@@ -256,7 +256,7 @@ public class SearchController {
       if (verified && !Boolean.TRUE.equals(r.get("verified"))) continue;
       if (minRating != null && (r.get("rating") == null || ((Number) r.get("rating")).doubleValue() < minRating)) continue;
       if (maxPrice != null && rate > maxPrice) continue;
-      r.put("distanceKm", km == null ? null : Math.round(km * 10) / 10.0);
+      r.put("distanceKm", br.com.personalfighters.util.GeoPrivacy.shown(km));
       r.put("price", Math.round(rate));
       r.put("featured", boosted.contains(id));
       Map<String, Object> slot = nextSlot(id, d0);

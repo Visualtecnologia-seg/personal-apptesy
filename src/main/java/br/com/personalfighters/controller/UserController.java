@@ -383,8 +383,8 @@ public class UserController {
     java.util.Set<Long> seen = new java.util.HashSet<>();
     for (User u : base) {
       Boolean ok = areaService.covers(u, lat, lng, neighborhood);
-      boolean inRadius = u.getLatitude() != null && u.getLongitude() != null
-          && br.com.personalfighters.service.AreaService.km(lat, lng, u.getLatitude(), u.getLongitude()) <= radiusKm;
+      Double dk = br.com.personalfighters.util.GeoPrivacy.km("home", u.getId(), lat, lng, u.getLatitude(), u.getLongitude());
+      boolean inRadius = dk != null && dk <= radiusKm;
       if (Boolean.TRUE.equals(ok) || (ok == null && inRadius)) { out.add(u); seen.add(u.getId()); }
     }
     // profissionais em viagem para esta região aparecem também

@@ -58,6 +58,7 @@ public class TripController {
     if (lat == null || lng == null) return bad("Não conseguimos a sua localização. Ligue o GPS e tente de novo.");
     boolean first = jdbc.queryForObject("SELECT departed_at IS NULL FROM order_ WHERE id = ?", Boolean.class, id);
     tripService.depart(id, lat, lng);
+    if (Boolean.TRUE.equals(body.get("mocked"))) tripService.markMocked(o);
     if (first) {
       system(id, "🚗 " + firstName(me) + " saiu para o atendimento.");
       notificationService.sendToUser(o.getCustomer(), false, firstName(me) + " saiu e está a caminho. Acompanhe pelo app.");
@@ -72,7 +73,9 @@ public class TripController {
     if (o == null || !isPro(o, me)) return bad("Pedido não encontrado.");
     Double lat = dbl(body.get("lat")), lng = dbl(body.get("lng"));
     if (lat == null || lng == null) return bad("Localização inválida.");
+    if (!br.com.personalfighters.util.RateLimit.allow("loc:" + id, 30, 60)) return ResponseEntity.status(429).body(Map.of("error", "Muitas atualizações de localização."));
     tripService.location(id, lat, lng);
+    if (Boolean.TRUE.equals(body.get("mocked"))) tripService.markMocked(o);
     return ResponseEntity.ok(Map.of("ok", true));
   }
 

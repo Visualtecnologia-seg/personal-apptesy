@@ -56,7 +56,7 @@ public class AreaService {
     int wd = day.getDayOfWeek().getValue();
     for (Map<String, Object> r : jdbc.queryForList(
         "SELECT lat, lng, radius_km FROM professional_area_day_ WHERE professional_id = ? AND weekday = ?", pro.getId(), wd)) {
-      if (r.get("lat") != null && km(lat, lng, d(r.get("lat"), 0), d(r.get("lng"), 0)) <= d(r.get("radius_km"), 10)) return true;
+      if (r.get("lat") != null && br.com.personalfighters.util.GeoPrivacy.km("day" + wd, pro.getId(), lat, lng, r.get("lat"), r.get("lng")) <= d(r.get("radius_km"), 10)) return true;
     }
 
     List<Map<String, Object>> area = jdbc.queryForList("SELECT * FROM professional_area_ WHERE professional_id = ?", pro.getId());
@@ -72,9 +72,10 @@ public class AreaService {
         return false;
       }
       // sem o nome do bairro do cliente, usa uma distância aproximada da base
-      return cLat != 0 && km(lat, lng, cLat, cLng) <= 12;
+      return cLat != 0 && br.com.personalfighters.util.GeoPrivacy.km("area", pro.getId(), lat, lng, cLat, cLng) <= 12;
     }
-    return cLat != 0 && km(lat, lng, cLat, cLng) <= d(a.get("radius_km"), 10);
+    // centro embaralhado: testar pontos na borda do raio não revela mais o centro (que costuma ser a casa)
+    return cLat != 0 && br.com.personalfighters.util.GeoPrivacy.km("area", pro.getId(), lat, lng, cLat, cLng) <= d(a.get("radius_km"), 10);
   }
 
   /** IDs de profissionais em viagem hoje perto deste ponto (para aparecer na busca da cidade de destino). */
@@ -83,7 +84,7 @@ public class AreaService {
     for (Map<String, Object> t : jdbc.queryForList(
         "SELECT professional_id, lat, lng, radius_km FROM professional_trip_ WHERE ? BETWEEN start_date AND end_date AND lat IS NOT NULL",
         Date.valueOf(today()))) {
-      if (km(lat, lng, d(t.get("lat"), 0), d(t.get("lng"), 0)) <= d(t.get("radius_km"), 25)) out.add(((Number) t.get("professional_id")).longValue());
+      if (br.com.personalfighters.util.GeoPrivacy.km("trip", t.get("professional_id"), lat, lng, t.get("lat"), t.get("lng")) <= d(t.get("radius_km"), 25)) out.add(((Number) t.get("professional_id")).longValue());
     }
     return out;
   }
