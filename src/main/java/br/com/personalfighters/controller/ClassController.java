@@ -132,6 +132,48 @@ public class ClassController {
     return one(id);
   }
 
+  /** O aluno relata problema na aula: o valor da vaga fica no cofre até a equipe OPUS decidir. */
+  @PostMapping("/classes/{id}/problem")
+  public ResponseEntity<?> problem(@PathVariable UUID id, @RequestBody Map<String, Object> b) {
+    User me = userService.findAuthUser();
+    Map<String, Object> c = classRow(id);
+    if (c == null) return bad("Aula não encontrada.");
+    String reason = Objects.toString(b.get("reason"), "").trim();
+    if (reason.length() < 5) return bad("Conte o que aconteceu.");
+    if (reason.length() > 1000) reason = reason.substring(0, 1000);
+    if (!List.of("LIVE", "DONE").contains(String.valueOf(c.get("status")))) return bad("A reclamação fica disponível quando a aula começa.");
+    int n = jdbc.update("UPDATE class_enrollment_ SET dispute_status = 'OPEN', dispute_reason = ?, disputed_at = ? WHERE class_id = ? AND user_id = ? AND status = 'PAID' AND released = FALSE AND dispute_status IS NULL",
+        reason, Timestamp.valueOf(LocalDateTime.now()), id, me.getId());
+    if (n == 0) return bad("Não é possível reclamar desta aula agora (o valor já foi liberado ou já existe uma reclamação).");
+    notify(((Number) c.get("professional_id")).longValue(), true, firstName(me) + " relatou um problema na aula \"" + c.get("title") + "\". A equipe OPUS vai analisar.");
+    return one(id);
+  }
+
+  /** Decisão da equipe sobre a reclamação de uma vaga: libera ao professor ou devolve ao aluno. */
+  @PostMapping("/admin/classes/enrollments/{eid}/resolve")
+  public ResponseEntity<?> resolve(@PathVariable UUID eid, @RequestBody Map<String, Object> b) {
+    String decision = Objects.toString(b.get("decision"), "");
+    String note = Objects.toString(b.get("note"), "").trim();
+    if (!"RELEASE".equals(decision) && !"REFUND".equals(decision)) return bad("Decisão inválida.");
+    if (note.length() < 5) return bad("Escreva o motivo da decisão.");
+    if (jdbc.update("UPDATE class_enrollment_ SET dispute_status = ?, dispute_note = ? WHERE id = ? AND dispute_status = 'OPEN' AND status = 'PAID' AND released = FALSE",
+        "RELEASE".equals(decision) ? "RESOLVED_PRO" : "RESOLVED_CLIENT", note, eid) != 1) return bad("Esta reclamação não está aberta.");
+    Map<String, Object> e = jdbc.queryForMap("SELECT e.class_id, e.user_id, e.service_value, e.pix_payment_id, g.professional_id, g.title FROM class_enrollment_ e JOIN group_class_ g ON g.id = e.class_id WHERE e.id = ?", eid);
+    if ("RELEASE".equals(decision)) {
+      if (jdbc.update("UPDATE class_enrollment_ SET released = TRUE WHERE id = ? AND released = FALSE", eid) == 1) {
+        boolean test = asaasService.isTestMode() || String.valueOf(e.get("pix_payment_id")).startsWith("TESTE-");
+        jdbc.update("INSERT INTO wallet_entry_ (id, professional_id, kind, amount, order_id, status, description, created_at, test) VALUES (?, ?, 'CLASS', ?, NULL, 'DONE', ?, ?, ?)",
+            UUID.randomUUID(), e.get("professional_id"), e.get("service_value"), "Aula em grupo: " + e.get("title"), Timestamp.valueOf(LocalDateTime.now()), test);
+      }
+    } else {
+      jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE id = ?", eid);
+      refundEnrollment(eid);
+    }
+    notify(((Number) e.get("user_id")).longValue(), false, "A OPUS analisou a sua reclamação da aula \"" + e.get("title") + "\": " + ("RELEASE".equals(decision) ? "o valor foi liberado ao professor. " : "o valor foi devolvido para você. ") + note);
+    notify(((Number) e.get("professional_id")).longValue(), true, "Reclamação da aula \"" + e.get("title") + "\": " + ("RELEASE".equals(decision) ? "o valor foi liberado para a sua carteira." : "o valor foi devolvido ao aluno. ") + " " + note);
+    return ResponseEntity.ok(Map.of("ok", true));
+  }
+
   @PostMapping("/classes/{id}/cancel")
   public ResponseEntity<?> cancelByPro(@PathVariable UUID id) {
     User me = userService.findAuthUser();
@@ -444,7 +486,14 @@ public class ClassController {
   private void release(UUID classId, User pro) {
     Map<String, Object> c = classRow(classId);
     Long proId = pro != null ? pro.getId() : ((Number) c.get("professional_id")).longValue();
-    for (Map<String, Object> e : jdbc.queryForList("SELECT id, service_value, pix_payment_id FROM class_enrollment_ WHERE class_id = ? AND status = 'PAID' AND released = FALSE", classId)) {
+    // Aula encerrada antes da metade do tempo: nada é liberado sozinho, a equipe confere (antes era só "começar" e "encerrar")
+    if (pro == null && c.get("started_at") != null && c.get("ended_at") != null) {
+      long mins = java.time.Duration.between(((Timestamp) c.get("started_at")).toLocalDateTime(), ((Timestamp) c.get("ended_at")).toLocalDateTime()).toMinutes();
+      if (mins * 2 < ((Number) c.get("duration_min")).longValue())
+        jdbc.update("UPDATE class_enrollment_ SET dispute_status = 'OPEN', disputed_at = ?, dispute_reason = ? WHERE class_id = ? AND status = 'PAID' AND released = FALSE AND dispute_status IS NULL",
+            Timestamp.valueOf(LocalDateTime.now()), "Aula encerrada com " + mins + " de " + c.get("duration_min") + " minutos (conferência automática)", classId);
+    }
+    for (Map<String, Object> e : jdbc.queryForList("SELECT id, service_value, pix_payment_id FROM class_enrollment_ WHERE class_id = ? AND status = 'PAID' AND released = FALSE AND (dispute_status IS NULL OR dispute_status = 'RESOLVED_PRO')", classId)) {
       // trava atômica: só quem virar "released" de FALSE para TRUE credita
       if (jdbc.update("UPDATE class_enrollment_ SET released = TRUE WHERE id = ? AND released = FALSE", e.get("id")) != 1) continue;
       boolean test = asaasService.isTestMode() || String.valueOf(e.get("pix_payment_id")).startsWith("TESTE-");
@@ -466,7 +515,7 @@ public class ClassController {
   private Map<String, Object> decorate(Map<String, Object> r, User me) {
     r.put("clientPrice", Pricing.clientTotal((BigDecimal) r.get("price")));
     r.put("isHost", me.getId().equals(((Number) r.get("professionalId")).longValue()));
-    List<Map<String, Object>> e = jdbc.queryForList("SELECT id, status, pix_copy_paste AS \"pixCopyPaste\", pix_qr AS \"pixQrCode\", client_total AS \"clientTotal\" FROM class_enrollment_ WHERE class_id = ? AND user_id = ?",
+    List<Map<String, Object>> e = jdbc.queryForList("SELECT id, status, pix_copy_paste AS \"pixCopyPaste\", pix_qr AS \"pixQrCode\", client_total AS \"clientTotal\", dispute_status AS \"disputeStatus\", released FROM class_enrollment_ WHERE class_id = ? AND user_id = ?",
         r.get("id"), me.getId());
     r.put("myEnrollment", e.isEmpty() ? null : e.get(0));
     return r;

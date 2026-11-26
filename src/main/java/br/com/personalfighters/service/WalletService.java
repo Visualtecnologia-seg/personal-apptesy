@@ -67,9 +67,13 @@ public class WalletService {
     if (tx.isPresent() && tx.get().getProfessionalValue() != null && tx.get().getProfessionalValue().signum() > 0) {
       amount = tx.get().getProfessionalValue();
     }
-    // Nunca libera mais do que entrou na cobrança paga
-    if (tx.isPresent() && tx.get().getTotalPaid() != null && tx.get().getTotalPaid().signum() > 0 && amount != null && amount.compareTo(tx.get().getTotalPaid()) > 0)
-      amount = tx.get().getTotalPaid();
+    // Nunca libera mais do que entrou na cobrança paga, somado ao desconto que a própria OPUS deu (cupom ou pontos,
+    // gravados pelo servidor). Antes o desconto saía do profissional: cupom de 20% num serviço de R$ 200 pagava só R$ 168 a ele.
+    if (tx.isPresent() && tx.get().getTotalPaid() != null && tx.get().getTotalPaid().signum() > 0 && amount != null) {
+      BigDecimal disc = jdbc.queryForObject("SELECT COALESCE(discount_amount, 0) FROM order_ WHERE id = ?", BigDecimal.class, order.getId());
+      BigDecimal cap = tx.get().getTotalPaid().add(disc == null ? BigDecimal.ZERO : disc.max(BigDecimal.ZERO));
+      if (amount.compareTo(cap) > 0) amount = cap;
+    }
     if (amount == null || amount.signum() <= 0) return;
     // Etapas já liberadas saem do valor final
     BigDecimal staged = jdbc.queryForObject("SELECT COALESCE(SUM(amount),0) FROM wallet_entry_ WHERE order_id = ? AND kind = 'STAGE'", BigDecimal.class, order.getId());

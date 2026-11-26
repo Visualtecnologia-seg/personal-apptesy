@@ -186,6 +186,19 @@ public class TripController {
             " ORDER BY o.disputed_at DESC NULLS LAST LIMIT 200");
   }
 
+  /** Reclamações de aulas em grupo (uma por vaga), para a mesma tela de disputas do painel. */
+  @GetMapping("/admin/class-disputes")
+  @PreAuthorize("hasRole('ROLE_ADMIN')")
+  public List<Map<String, Object>> classDisputes(@RequestParam(defaultValue = "OPEN") String status) {
+    String where = "ALL".equalsIgnoreCase(status) ? "e.dispute_status IS NOT NULL" : "e.dispute_status = 'OPEN'";
+    return jdbc.queryForList(
+        "SELECT e.id, 'CLASS' AS kind, g.title, g.starts_at AS \"startsAt\", g.started_at AS \"startedAt\", g.ended_at AS \"endedAt\", g.duration_min AS \"durationMin\", " +
+            "e.client_total AS \"totalCost\", e.service_value AS \"serviceValue\", e.dispute_status AS \"disputeStatus\", e.dispute_reason AS \"disputeReason\", " +
+            "e.disputed_at AS \"disputedAt\", e.dispute_note AS \"resolution\", c.name AS \"customerName\", p.name AS \"professionalName\" " +
+            "FROM class_enrollment_ e JOIN group_class_ g ON g.id = e.class_id LEFT JOIN user_ c ON c.id = e.user_id LEFT JOIN user_ p ON p.id = g.professional_id WHERE " + where +
+            " ORDER BY e.disputed_at DESC NULLS LAST LIMIT 200");
+  }
+
   @GetMapping("/admin/orders/{id}/evidence")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public ResponseEntity<?> evidence(@PathVariable UUID id) {

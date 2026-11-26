@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-let token = null, tab = 'sup', currentUser = null, refresh = null;
+let token = null, tab = 'sup', currentUser = null, refresh = null, classRows = {};
 try { token = sessionStorage.getItem('opus_admin_token'); } catch(e) {}
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = d => { if(!d) return '—'; try { return new Date(d).toLocaleString('pt-BR'); } catch(e){ return d; } };
@@ -27,10 +27,13 @@ async function load(){
       list.innerHTML = rows.length ? rows.map(r => '<div class="item'+(r.userId===currentUser?' on':'')+(r.priority?' prio':'')+'" data-u="'+r.userId+'">'+(r.unread>0?'<span class="badge">'+r.unread+'</span>':'')+'<b>'+esc(r.name||r.username)+'</b>'+(r.priority?'<span class="tag red">🚨 Prioridade</span>':r.needsHuman?'<span class="tag amb">Esperando a equipe</span>':'<span class="tag opi">Opi atendendo</span>')+'<small>'+esc(r.lastText)+'</small><small>'+fmt(r.lastAt)+'</small></div>').join('') : '<p class="muted">Nenhuma conversa ainda.</p>';
       list.querySelectorAll('.item').forEach(el => el.onclick = () => openThread(Number(el.dataset.u)));
     } else {
-      const rows = await api('/admin/disputes?status=' + (tab === 'all' ? 'ALL' : 'OPEN'));
+      const st = tab === 'all' ? 'ALL' : 'OPEN';
+      const [ords, cls] = await Promise.all([api('/admin/disputes?status=' + st), api('/admin/class-disputes?status=' + st).catch(() => [])]);
+      classRows = {}; cls.forEach(c => classRows[c.id] = c);
+      const rows = ords.concat(cls).sort((a, b) => String(b.disputedAt || '').localeCompare(String(a.disputedAt || '')));
       if (tab !== 'all') disputeAlarm(rows.filter(r => r.disputeStatus === 'OPEN').length);
-      list.innerHTML = rows.length ? rows.map(r => '<div class="item" data-o="'+r.id+'"><span class="pill '+esc(r.disputeStatus)+'" style="float:right">'+esc(r.disputeStatus==='OPEN'?'Aberta':'Resolvida')+'</span><b>'+esc(r.customerName)+' × '+esc(r.professionalName)+'</b><small>'+esc(r.disputeReason)+'</small><small>'+fmt(r.disputedAt)+' · '+brl(r.totalCost)+'</small>'+(r.disputeStatus==='OPEN'?deadline(r.disputedAt):'')+'</div>').join('') : '<p class="muted">Nenhuma disputa '+(tab==='all'?'registrada':'aberta')+'.</p>';
-      list.querySelectorAll('.item').forEach(el => el.onclick = () => openDispute(el.dataset.o));
+      list.innerHTML = rows.length ? rows.map(r => '<div class="item" data-o="'+r.id+'"'+(r.kind==='CLASS'?' data-c="1"':'')+'><span class="pill '+esc(r.disputeStatus)+'" style="float:right">'+esc(r.disputeStatus==='OPEN'?'Aberta':'Resolvida')+'</span><b>'+(r.kind==='CLASS'?'Aula em grupo · ':'')+esc(r.customerName)+' × '+esc(r.professionalName)+'</b><small>'+esc(r.disputeReason)+'</small><small>'+fmt(r.disputedAt)+' · '+brl(r.totalCost)+'</small>'+(r.disputeStatus==='OPEN' && r.kind!=='CLASS'?deadline(r.disputedAt):'')+'</div>').join('') : '<p class="muted">Nenhuma disputa '+(tab==='all'?'registrada':'aberta')+'.</p>';
+      list.querySelectorAll('.item').forEach(el => el.onclick = () => el.dataset.c ? openClassDispute(el.dataset.o) : openDispute(el.dataset.o));
     }
   } catch(e) { list.innerHTML = '<p class="muted">'+esc(e.message)+'</p>'; }
 }
@@ -90,6 +93,26 @@ async function openDispute(id){
     if (note.length < 5) { alert('Escreva o motivo da decisão.'); return; }
     if (!confirm(decision === 'RELEASE' ? 'Liberar o pagamento para o profissional?' : 'Devolver o valor ao cliente e cancelar o pedido?')) return;
     try { await api('/admin/orders/'+id+'/dispute/resolve', {method:'POST', body: JSON.stringify({decision, note})}); await openDispute(id); load(); }
+    catch(err){ alert(err.message); }
+  };
+  if ($('rel')) { $('rel').onclick = () => decide('RELEASE'); $('ref').onclick = () => decide('REFUND'); }
+}
+
+function openClassDispute(id){
+  const r = classRows[id], d = $('detail'); if (!r) return;
+  const mins = r.startedAt && r.endedAt ? Math.round((new Date(r.endedAt) - new Date(r.startedAt)) / 60000) + ' de ' + r.durationMin + ' min' : '—';
+  d.innerHTML = '<div class="row" style="justify-content:space-between"><h2>Aula em grupo: '+esc(r.title)+'</h2><span class="pill '+esc(r.disputeStatus)+'">'+esc(r.disputeStatus)+'</span></div>'
+    + '<div class="info"><div><b>Aluno</b>'+esc(r.customerName)+'</div><div><b>Professor</b>'+esc(r.professionalName)+'</div>'
+    + '<div><b>Horário</b>'+fmt(r.startsAt)+'</div><div><b>Duração real</b>'+esc(mins)+'</div>'
+    + '<div><b>Aluno pagou</b>'+brl(r.totalCost)+'</div><div><b>Valor do professor</b>'+brl(r.serviceValue)+'</div>'
+    + '<div style="grid-column:1/-1"><b>Motivo</b>'+esc(r.disputeReason)+' ('+fmt(r.disputedAt)+')</div>'
+    + (r.resolution ? '<div style="grid-column:1/-1"><b>Decisão</b>'+esc(r.resolution)+'</div>' : '') + '</div>'
+    + (r.disputeStatus === 'OPEN' ? '<h3>Decidir</h3><textarea id="note" rows="2" placeholder="Motivo da decisão (os dois lados recebem)"></textarea><div class="row" style="margin-top:8px"><button class="ok" id="rel">Liberar para o professor</button><button class="danger" id="ref">Devolver ao aluno</button></div>' : '');
+  const decide = async decision => {
+    const note = $('note').value.trim();
+    if (note.length < 5) { alert('Escreva o motivo da decisão.'); return; }
+    if (!confirm(decision === 'RELEASE' ? 'Liberar o valor da vaga para o professor?' : 'Devolver o valor da vaga ao aluno?')) return;
+    try { await api('/admin/classes/enrollments/'+id+'/resolve', {method:'POST', body: JSON.stringify({decision, note})}); d.innerHTML = '<p class="muted">Decisão registrada.</p>'; load(); }
     catch(err){ alert(err.message); }
   };
   if ($('rel')) { $('rel').onclick = () => decide('RELEASE'); $('ref').onclick = () => decide('REFUND'); }

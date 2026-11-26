@@ -324,6 +324,14 @@ public class OrderServiceImpl implements OrderService {
         log.warn("E-mail de cancelamento não enviado: {}", e.getMessage());
       }
     }
+    // Pedido cancelado antes do serviço: os pontos trocados e o cupom voltam para o cliente
+    // (antes ele perdia os 100 pontos ou o cupom mesmo quando o profissional cancelava)
+    lockJdbc.update("INSERT INTO points_ (user_id, amount, reason, order_id, created_at) " +
+        "SELECT user_id, -SUM(amount), 'Pontos devolvidos (pedido cancelado)', order_id, NOW() FROM points_ WHERE order_id = ? AND amount < 0 AND reason LIKE 'Resgate%' " +
+        "AND NOT EXISTS (SELECT 1 FROM points_ x WHERE x.order_id = ? AND x.reason = 'Pontos devolvidos (pedido cancelado)') GROUP BY user_id, order_id", order.getId(), order.getId());
+    String coupon = lockJdbc.queryForList("SELECT coupon_code FROM order_ WHERE id = ? AND coupon_code IS NOT NULL", String.class, order.getId()).stream().findFirst().orElse(null);
+    if (coupon != null && lockJdbc.update("DELETE FROM coupon_use_ WHERE order_id = ?", order.getId()) > 0)
+      lockJdbc.update("UPDATE coupon_ SET used = GREATEST(used - 1, 0) WHERE code = ?", coupon);
     order.setStatus(Status.CANCELLED);
     // Quem cancelou (o painel usa isso para achar quem cancela demais)
     if (order.getCancelledBy() == null) order.setCancelledBy(role.equals(Role.CUSTOMER) ? "CLIENT" : role.equals(Role.PROFESSIONAL) ? "PROFESSIONAL" : role.equals(Role.ADMIN) ? "ADMIN" : role.name());

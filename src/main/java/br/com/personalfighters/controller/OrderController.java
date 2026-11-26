@@ -257,6 +257,11 @@ public class OrderController {
   @ApiOperation(value = "Cria cobrança PIX para o pedido via Asaas")
   public Transaction createPixCharge(@PathVariable UUID orderId) {
     Order order = customerOf(orderId);
+    // Só paga depois que o profissional aceitou (ou depois de aceitar um orçamento dele). Antes dava para pagar um pedido
+    // ainda sem resposta: o dinheiro ficava preso e o "Recusar" do profissional não devolvia nada.
+    if (order.getStatus() == br.com.personalfighters.model.Status.OPEN && !Boolean.TRUE.equals(order.getPixPaid())
+        && jdbc.queryForObject("SELECT COUNT(*) FROM message_ WHERE order_id = ? AND message_type = 'QUOTE' AND quote_status = 'ACCEPTED'", Long.class, orderId) == 0)
+      throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Espere o profissional aceitar o pedido para pagar.");
     return asaasService.createPixCharge(order);
   }
 
