@@ -148,6 +148,7 @@ public class CallController {
   public ResponseEntity<?> signal(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
     User me = userService.findAuthUser();
     if (!participant(id, me)) return bad("Chamada não encontrada.");
+    if (!br.com.personalfighters.util.RateLimit.allow("callsig:" + id + ":" + me.getId(), 240, 60)) return ResponseEntity.status(429).body(Map.of("error", "Muitos sinais."));
     String kind = Objects.toString(body.get("kind"), "");
     if (!List.of("offer", "answer", "ice", "bye").contains(kind)) return bad("Sinal inválido.");
     String payload = Objects.toString(body.get("payload"), "");

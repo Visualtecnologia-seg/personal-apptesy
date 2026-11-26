@@ -198,6 +198,7 @@ public class ClassController {
     List<UUID> paidIds = jdbc.queryForList("SELECT id FROM class_enrollment_ WHERE class_id = ? AND user_id = ? AND status = 'PAID'", UUID.class, id, me.getId());
     int n = jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE class_id = ? AND user_id = ? AND status IN ('PENDING','PAID')", id, me.getId());
     for (UUID e : paidIds) refundEnrollment(e);
+    kickFromRoom(id, me.getId());
     return n > 0 ? one(id) : bad("Você não está inscrito nesta aula.");
   }
 
@@ -259,6 +260,11 @@ public class ClassController {
   public ResponseEntity<?> signal(@PathVariable UUID id, @RequestBody Map<String, Object> b) {
     User me = userService.findAuthUser();
     if (count("SELECT COUNT(*) FROM room_member_ WHERE class_id = ? AND user_id = ?", id, me.getId()) == 0) return bad("Você não está na sala.");
+    // Vaga desistida/devolvida não manda mais sinal; e no máximo 240 sinais por minuto (antes dava para encher o banco)
+    Map<String, Object> cr = classRow(id);
+    boolean hostSig = cr != null && me.getId().equals(((Number) cr.get("professional_id")).longValue());
+    if (!hostSig && count("SELECT COUNT(*) FROM class_enrollment_ WHERE class_id = ? AND user_id = ? AND status = 'PAID'", id, me.getId()) == 0) return bad("Garanta a sua vaga para entrar na sala.");
+    if (!br.com.personalfighters.util.RateLimit.allow("roomsig:" + id + ":" + me.getId(), 240, 60)) return ResponseEntity.status(429).body(Map.of("error", "Muitos sinais."));
     String kind = Objects.toString(b.get("kind"), "");
     if (!List.of("offer", "answer", "ice", "bye", "mute").contains(kind)) return bad("Sinal inválido.");
     long to;
@@ -342,6 +348,7 @@ public class ClassController {
         release(id, null);
       }
       jdbc.update("DELETE FROM room_signal_ WHERE created_at < ?", Timestamp.valueOf(LocalDateTime.now().minusHours(6)));
+      jdbc.update("DELETE FROM call_signal_ WHERE created_at < ?", Timestamp.valueOf(LocalDateTime.now().minusHours(6))); // sinais de chamada também (antes ficavam para sempre)
     } catch (Exception e) {
       log.warn("Rotina das aulas em grupo falhou: {}", e.getMessage());
     }
@@ -357,6 +364,15 @@ public class ClassController {
     jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE class_id = ? AND status = 'PENDING'", id);
     for (Long uid : paid) notify(uid, false, why + ": \"" + c.get("title") + "\" foi cancelada e o seu dinheiro será devolvido.");
     notify(((Number) c.get("professional_id")).longValue(), true, why + ": \"" + c.get("title") + "\" foi cancelada.");
+  }
+
+  /** Tira o aluno da sala ao vivo e avisa o professor para cortar o vídeo dele (o vídeo vai direto entre os celulares). */
+  private void kickFromRoom(UUID classId, Long userId) {
+    Map<String, Object> c = classRow(classId);
+    jdbc.update("DELETE FROM room_member_ WHERE class_id = ? AND user_id = ?", classId, userId);
+    if (c != null && c.get("professional_id") != null)
+      jdbc.update("INSERT INTO room_signal_ (class_id, from_user, to_user, kind, payload, created_at) VALUES (?, ?, ?, 'bye', '', ?)",
+          classId, userId, ((Number) c.get("professional_id")).longValue(), Timestamp.valueOf(LocalDateTime.now()));
   }
 
   /** Devolve de verdade o PIX da vaga (antes só marcava "devolvido" e o dinheiro não voltava). Uma vez só por vaga. */
