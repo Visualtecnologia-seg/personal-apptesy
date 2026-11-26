@@ -157,23 +157,35 @@ public class GrowthController {
     Order o = orderRepository.findById(id).orElse(null);
     if (o == null || o.getCustomer() == null || !o.getCustomer().getId().equals(me.getId())) return bad("Pedido não encontrado.");
     if (o.getProfessional() == null || Boolean.TRUE.equals(o.getPixPaid())) return bad("Este pedido não pode usar pacote agora.");
+    if (o.getStatus() != Status.OPEN && o.getStatus() != Status.CONFIRMED) return bad("Este pedido não pode usar pacote agora.");
+    if (o.getPixChargeId() != null) asaasService.cancelOpenCharges(o);
     // Com o pagamento de verdade ligado, pacote "pago" no modo de teste não vale (senão viraria dinheiro real para o profissional)
-    String realOnly = asaasService.isTestMode() ? "" : " AND pix_payment_id IS NOT NULL AND pix_payment_id NOT LIKE 'TESTE-%'";
-    List<Map<String, Object>> r = jdbc.queryForList("SELECT id, sessions_total, sessions_used, service_value FROM package_purchase_ " +
-        "WHERE user_id = ? AND professional_id = ? AND status = 'PAID' AND sessions_used < sessions_total" + realOnly + " ORDER BY created_at LIMIT 1", me.getId(), o.getProfessional().getId());
+    String realOnly = asaasService.isTestMode() ? "" : " AND pp.pix_payment_id IS NOT NULL AND pp.pix_payment_id NOT LIKE 'TESTE-%'";
+    // Cada aula do pacote vale as horas do pacote: um pedido de 12 horas gasta as aulas que cobrem 12 horas (antes gastava só 1)
+    List<Map<String, Object>> r = jdbc.queryForList("SELECT pp.id, pp.sessions_total, pp.sessions_used, pp.service_value, GREATEST(COALESCE(lp.hours_each, 1), 1) AS hours_each FROM package_purchase_ pp " +
+        "LEFT JOIN lesson_package_ lp ON lp.id = pp.package_id " +
+        "WHERE pp.user_id = ? AND pp.professional_id = ? AND pp.status = 'PAID' AND pp.sessions_used < pp.sessions_total" + realOnly + " ORDER BY pp.created_at LIMIT 1", me.getId(), o.getProfessional().getId());
     if (r.isEmpty()) return bad("Você não tem aulas sobrando em pacote com este profissional.");
     Map<String, Object> p = r.get(0);
     UUID pid = (UUID) p.get("id");
-    BigDecimal unit = ((BigDecimal) p.get("service_value")).divide(BigDecimal.valueOf(((Number) p.get("sessions_total")).longValue()), 2, RoundingMode.HALF_UP);
-    int n = jdbc.update("UPDATE package_purchase_ SET sessions_used = sessions_used + 1 WHERE id = ? AND sessions_used < sessions_total", pid);
-    if (n == 0) return bad("O pacote acabou.");
+    int each = ((Number) p.get("hours_each")).intValue();
+    int need = Math.max(1, (int) Math.ceil((o.getHours() == null ? 1 : o.getHours()) / (double) each));
+    BigDecimal unit = ((BigDecimal) p.get("service_value")).divide(BigDecimal.valueOf(((Number) p.get("sessions_total")).longValue()), 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(need));
+    // O pedido é marcado primeiro, de uma vez só (dois toques juntos gastavam o pacote duas vezes)
+    if (jdbc.update("UPDATE order_ SET package_purchase_id = ? WHERE id = ? AND package_purchase_id IS NULL AND COALESCE(pix_paid, FALSE) = FALSE AND status IN ('OPEN','CONFIRMED')", pid, id) == 0)
+      return bad("Este pedido não pode usar pacote agora.");
+    int n = jdbc.update("UPDATE package_purchase_ SET sessions_used = sessions_used + ? WHERE id = ? AND sessions_used + ? <= sessions_total", need, pid, need);
+    if (n == 0) {
+      jdbc.update("UPDATE order_ SET package_purchase_id = NULL WHERE id = ?", id);
+      return bad(need > 1 ? "Este pedido de " + o.getHours() + " horas precisa de " + need + " aulas do pacote, e não há tantas sobrando." : "O pacote acabou.");
+    }
     o.setServiceValue(unit);
     o.setTotalCost(Pricing.clientTotal(unit));
     o.setDiscountAmount(BigDecimal.ZERO);
     o.setPixPaid(true);
     o.setStatus(Status.AWAITING_PAYMENT);
     orderRepository.save(o);
-    jdbc.update("UPDATE order_ SET package_purchase_id = ? WHERE id = ?", pid, id);
+    jdbc.update("UPDATE order_ SET package_purchase_id = ?, package_sessions = ? WHERE id = ?", pid, need, id);
     transactionRepository.save(Transaction.builder()
         .paymentStatus(PaymentStatus.PAID).paymentType(PaymentType.PIX).asaasPaymentId("PKG-" + pid + "-" + id)
         .totalPaid(o.getTotalCost()).creditCardValue(BigDecimal.ZERO).customerBalanceValue(BigDecimal.ZERO)
@@ -182,7 +194,7 @@ public class GrowthController {
         .paymentTotalCost(BigDecimal.ZERO).appProfit(BigDecimal.ZERO).order(o).customer(me).billingOrderDate(LocalDate.now())
         .orderIsDone(false).professionalIsPaid(false).build());
     notificationService.sendToUser(o.getProfessional(), true, firstName(me) + " usou uma aula do pacote. O pedido está pago — pode ir!");
-    return ResponseEntity.ok(Map.of("status", "AWAITING_PAYMENT", "remaining", ((Number) p.get("sessions_total")).intValue() - ((Number) p.get("sessions_used")).intValue() - 1));
+    return ResponseEntity.ok(Map.of("status", "AWAITING_PAYMENT", "remaining", ((Number) p.get("sessions_total")).intValue() - ((Number) p.get("sessions_used")).intValue() - need));
   }
 
   public boolean markPackagePaidByPixId(String pixId) {

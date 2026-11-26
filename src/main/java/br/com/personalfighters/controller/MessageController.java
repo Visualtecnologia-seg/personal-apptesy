@@ -93,9 +93,12 @@ public class MessageController {
     if (!"ADMIN".equals(role)) {
       message.setSenderId(userService.findAuthUser().getId()); // ninguém escreve em nome de outro
       message.setSenderRole(role);
-      if ("QUOTE".equals(message.getMessageType()) && !"PROFESSIONAL".equals(role)) throw denied(); // orçamento só o profissional manda
       // Só o sistema escreve avisos "do OPUS"; usuário manda texto, foto e (pela outra rota) áudio
-      String type = message.getMessageType() == null ? "TEXT" : message.getMessageType().toUpperCase();
+      String type = message.getMessageType() == null ? "TEXT" : message.getMessageType().trim().toUpperCase(java.util.Locale.ROOT);
+      // orçamento só o profissional manda (a regra vem depois de padronizar o tipo: antes "quote" em minúsculas passava)
+      if ("QUOTE".equals(type) && !"PROFESSIONAL".equals(role)) throw denied();
+      if (!br.com.personalfighters.util.RateLimit.allow("chat:" + message.getOrderId() + ":" + role, 20, 60) || !br.com.personalfighters.util.RateLimit.allow("chatday:" + role + ":" + message.getOrderId(), 500, 86400))
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Muitas mensagens seguidas. Espere um pouco para mandar mais.");
       br.com.personalfighters.entity.User me = userService.findAuthUser();
       if ("SYSTEM".equals(type) && jdbc.queryForObject("SELECT COUNT(*) FROM protection_session_ WHERE order_id = ? AND user_id = ? AND active = TRUE", Long.class, message.getOrderId(), me.getId()) > 0) {
         // Único aviso "do sistema" que o app manda: o de gravação de segurança, com o texto oficial (não dá para escrever outro)
@@ -183,7 +186,8 @@ public class MessageController {
   public Message respondToQuote(@PathVariable UUID id,
                                 @RequestBody Map<String, String> body) {
     need(roleInMessage(id), "CUSTOMER");
-    String status = body.getOrDefault("status", "REJECTED");
+    String status = String.valueOf(body.getOrDefault("status", "REJECTED")).trim().toUpperCase(java.util.Locale.ROOT);
+    if (!"ACCEPTED".equals(status) && !"REJECTED".equals(status)) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Responda aceitando ou recusando o orçamento.");
     return messageService.respondToQuote(id, status);
   }
 
@@ -210,7 +214,8 @@ public class MessageController {
   public Message respondToCounter(@PathVariable UUID id,
                                   @RequestBody Map<String, String> body) {
     need(roleInMessage(id), "PROFESSIONAL");
-    String status = body.getOrDefault("status", "REJECTED");
+    String status = String.valueOf(body.getOrDefault("status", "REJECTED")).trim().toUpperCase(java.util.Locale.ROOT);
+    if (!"ACCEPTED".equals(status) && !"REJECTED".equals(status)) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Responda aceitando ou recusando a contraproposta.");
     return messageService.respondToCounter(id, status);
   }
 

@@ -99,6 +99,13 @@ public class OrderServiceImpl implements OrderService {
     }
     // Agendamento direto (sem orçamento) é de 1 hora quando o app não informa: assim o pedido já tem preço para pagar.
     boolean quote = order.getProduct() != null && Boolean.TRUE.equals(order.getProduct().getRequiresQuote());
+    // Com início e fim marcados, as horas cobradas são as do horário (antes dava para marcar 8h às 20h e pagar 1 hora)
+    if (order.getStartTime() != null && order.getEndTime() != null) {
+      long mins = java.time.Duration.between(order.getStartTime(), order.getEndTime()).toMinutes();
+      if (mins <= 0) throw new RuntimeException("O horário de fim precisa ser depois do início.");
+      int h = (int) Math.min(12, Math.max(1, (mins + 59) / 60));
+      if (order.getHours() == null || order.getHours() < h) order.setHours(h);
+    }
     if (order.getHours() == null && !quote) order.setHours(1);
     if (order.getDate() != null && order.getDate().isBefore(LocalDate.now(zoneId))) {
       throw new RuntimeException("Não é possível criar pedidos para datas passadas");
@@ -244,6 +251,12 @@ public class OrderServiceImpl implements OrderService {
         || st0 == Status.CONFIRMED || st0 == Status.AWAITING_PAYMENT)) {
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
           "O atendimento já começou e não pode mais ser cancelado. Se houve algum problema, use \"Tive um problema\" no pedido.");
+    }
+    // Profissional já chegou e confirmou: o cliente não cancela sozinho (antes dava para deixar o serviço ser feito,
+    // não confirmar a chegada e cancelar com o dinheiro de volta). Se ele não está lá, a equipe OPUS resolve pelo "Relatar problema".
+    if (role.equals(Role.CUSTOMER) && Boolean.TRUE.equals(lockJdbc.queryForObject("SELECT COALESCE(pro_confirmed_arrival, FALSE) FROM order_ WHERE id = ?", Boolean.class, order.getId()))) {
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+          "O profissional já chegou e confirmou no app. Se ele não está aí ou houve problema, use \"Relatar problema\" no pedido que a equipe OPUS resolve.");
     }
     order.setAvailable(new ArrayList<>());
     order.setResponse(new ArrayList<>());

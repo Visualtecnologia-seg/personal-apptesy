@@ -82,6 +82,19 @@ public class AsaasWebhookController {
         return ResponseEntity.ok().build();
       }
       if (txOpt.isEmpty()) {
+        if ("PAYMENT_RECEIVED".equals(event) || "PAYMENT_CONFIRMED".equals(event)) {
+          // Vaga, pacote, adicional ou destaque pago depois de expirar/cancelar: o dinheiro volta (antes ficava parado sem nada em troca)
+          Long n = jdbc.queryForObject("SELECT (SELECT COUNT(*) FROM class_enrollment_ WHERE pix_payment_id = ? AND status <> 'PAID') + " +
+              "(SELECT COUNT(*) FROM package_purchase_ WHERE pix_payment_id = ? AND status <> 'PAID') + " +
+              "(SELECT COUNT(*) FROM order_extra_ WHERE pix_payment_id = ? AND status NOT IN ('PAID','REFUNDED','REFUNDING','REFUND_PENDING')) + " +
+              "(SELECT COUNT(*) FROM pro_boost_ WHERE pix_payment_id = ? AND status NOT IN ('ACTIVE','DONE','EXPIRED','PAID'))", Long.class,
+              asaasPaymentId, asaasPaymentId, asaasPaymentId, asaasPaymentId);
+          if (n != null && n > 0 && jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) SELECT NULL, 'PAGO_FORA_DO_PRAZO', ?, NOW() " +
+              "WHERE NOT EXISTS (SELECT 1 FROM security_event_ WHERE kind = 'PAGO_FORA_DO_PRAZO' AND detail = ?)", "PIX " + asaasPaymentId, "PIX " + asaasPaymentId) == 1) {
+            String err = asaasService.refundPix(asaasPaymentId, null);
+            log.warn("PIX {} pago depois de expirar/cancelar: devolução {}", asaasPaymentId, err == null ? "feita" : "PENDENTE: " + err);
+          }
+        }
         log.warn("Transaction not found for asaasPaymentId={}", asaasPaymentId);
         return ResponseEntity.ok().build();
       }
@@ -131,12 +144,16 @@ public class AsaasWebhookController {
         // Confere o valor pago com o valor da cobrança (pagamento a menor não libera o pedido)
         java.math.BigDecimal paidValue = null;
         try { paidValue = new java.math.BigDecimal(String.valueOf(payment.get("value"))); } catch (Exception ignored) { }
-        if (paidValue != null && transaction.getTotalPaid() != null && paidValue.compareTo(transaction.getTotalPaid().subtract(new java.math.BigDecimal("0.01"))) < 0) {
+        // A cobrança paga tem que valer o preço ATUAL do pedido (uma cobrança velha e barata paga depois de o preço subir não vale)
+        java.math.BigDecimal due = jdbc.queryForObject("SELECT GREATEST(COALESCE(total_cost, 0) - COALESCE(discount_amount, 0), 1) FROM order_ WHERE id = ?", java.math.BigDecimal.class, order.getId());
+        boolean stale = transaction.getTotalPaid() != null && due != null && transaction.getTotalPaid().compareTo(due.subtract(new java.math.BigDecimal("0.01"))) < 0;
+        if (stale || paidValue != null && transaction.getTotalPaid() != null && paidValue.compareTo(transaction.getTotalPaid().subtract(new java.math.BigDecimal("0.01"))) < 0) {
           jdbc.update("UPDATE order_ SET pix_paid = FALSE, status = ? WHERE id = ?", order.getStatus().name(), order.getId()); // desfaz: não valeu
           jdbc.update("UPDATE transaction_ SET refund_status = 'STARTED' WHERE id = ?", transaction.getId());
           String err = asaasService.refundPix(asaasPaymentId, null);
           transaction.setPaymentStatus(err == null ? PaymentStatus.REFUNDED : PaymentStatus.PENDING_REFUND);
           transactionRepository.save(transaction);
+          if (order.getCustomer() != null) notificationService.sendToUser(order.getCustomer(), true, "O valor do pedido mudou depois que o PIX foi gerado. Devolvemos o pagamento: gere o PIX de novo com o valor certo.");
           log.warn("Pagamento {} do pedido {} veio menor (R$ {} de R$ {}): estornado {}", asaasPaymentId, order.getId(), paidValue, transaction.getTotalPaid(), err == null ? "" : "PENDENTE: " + err);
           return ResponseEntity.ok().build();
         }

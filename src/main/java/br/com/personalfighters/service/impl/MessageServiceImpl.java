@@ -59,28 +59,19 @@ public class MessageServiceImpl implements MessageService {
   );
 
   private String detectViolation(String text) {
-    if (text == null) return null;
-    String lower = text.toLowerCase().trim();
-
-    for (String kw : BLOCKED_KEYWORDS) {
-      if (lower.contains(kw)) return "keyword:" + kw;
-    }
-    if (PHONE_PATTERN.matcher(text).find()) return "phone_number";
-    return null;
+    return br.com.personalfighters.util.ContactFilter.violation(text);
   }
 
   private String buildBlockedMessage(int attempt) {
     if (attempt == 1) {
-      return "Mensagem não enviada — A sua mensagem contém um contacto externo. " +
-          "Na Profissional Opus, todas as comunicações e pagamentos acontecem dentro da plataforma, " +
-          "garantindo segurança e suporte para ambas as partes.";
+      return "Mensagem não enviada: ela tem um contato de fora ou combina pagamento por fora. " +
+          "No OPUS, conversa e pagamento ficam dentro do app: é isso que garante a sua segurança e o suporte.";
     } else if (attempt == 2) {
-      return "Mensagem não enviada — Esta é a sua segunda tentativa. " +
-          "Continuamos a protegê-lo, mas pedimos que respeite as regras da plataforma. " +
-          "Transações fora do app não têm cobertura nem suporte.";
+      return "Mensagem não enviada: esta é a sua segunda tentativa. " +
+          "Pagamentos fora do app não têm garantia nem suporte do OPUS.";
     } else {
-      return "Mensagem não enviada — Foram detetadas várias tentativas de partilha de contactos externos. " +
-          "A sua conta está a ser monitorada. Reincidências podem resultar em suspensão.";
+      return "Mensagem não enviada: foram várias tentativas de passar contato de fora. " +
+          "A sua conta está sendo acompanhada e pode ser suspensa se continuar.";
     }
   }
 
@@ -93,8 +84,12 @@ public class MessageServiceImpl implements MessageService {
 
   @Override
   public Message send(Message message) {
-    if ("TEXT".equals(message.getMessageType()) && message.getText() != null) {
-      String matched = detectViolation(message.getText());
+    // Texto, e também a descrição e os itens do orçamento (antes o telefone ia escondido no orçamento)
+    String toCheck = "QUOTE".equals(message.getMessageType())
+        ? (java.util.Objects.toString(message.getText(), "") + "\n" + java.util.Objects.toString(message.getQuoteDescription(), "") + "\n" + java.util.Objects.toString(message.getQuoteItemsJson(), ""))
+        : "TEXT".equals(message.getMessageType()) ? message.getText() : null;
+    if (toCheck != null) {
+      String matched = detectViolation(toCheck);
       if (matched != null) {
         long prevAttempts = blockedAttemptRepository.countByOrderIdAndSenderId(
             message.getOrderId(), message.getSenderId());
@@ -166,6 +161,7 @@ public class MessageServiceImpl implements MessageService {
     if (!"PENDING".equals(msg.getQuoteStatus())) {
       throw new RuntimeException("Orçamento não está em estado PENDING para contraproposta.");
     }
+    if (detectViolation(note) != null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY, "A observação tem um contato de fora. No OPUS, conversa e pagamento ficam dentro do app.");
     msg.setQuoteStatus("NEGOTIATING");
     msg.setCounterOfferAmount(amount);
     msg.setCounterOfferNote(note);

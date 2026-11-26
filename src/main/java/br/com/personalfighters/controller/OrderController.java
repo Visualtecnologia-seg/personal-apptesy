@@ -28,6 +28,7 @@ public class OrderController {
   private final OrderService orderService;
   private final AsaasService asaasService;
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  private final br.com.personalfighters.service.SettingsService settings;
   private final br.com.personalfighters.service.UserService userService;
   private final br.com.personalfighters.util.Redactor redactor;
 
@@ -108,6 +109,17 @@ public class OrderController {
   @ApiOperation(value = "Salva uma nova order")
   public Map<String, Object> save(@RequestBody Order order, @RequestParam(value = "mode", required = false) String mode) {
     if (!admin()) order = cleanNewOrder(order); // só os campos que o cliente pode escolher
+    if (!admin()) {
+      // Pedidos sem pagar seguram a agenda e enchem o profissional de avisos: há um limite
+      Long mine = me().getId();
+      long open = jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE customer_id = ? AND status IN ('OPEN','CONFIRMED','BLOCKED') AND COALESCE(pix_paid, FALSE) = FALSE", Long.class, mine);
+      if (open >= settings.getInt(br.com.personalfighters.service.SettingsService.MAX_UNPAID_ORDERS)) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você já tem " + open + " pedidos esperando pagamento. Pague ou cancele algum antes de pedir outro.");
+      if (order.getProfessional() != null && order.getProfessional().getId() != null
+          && jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE customer_id = ? AND professional_id = ? AND status IN ('OPEN','CONFIRMED','BLOCKED') AND COALESCE(pix_paid, FALSE) = FALSE", Long.class, mine, order.getProfessional().getId()) >= settings.getInt(br.com.personalfighters.service.SettingsService.MAX_UNPAID_SAME_PRO))
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você já tem pedidos esperando pagamento com este profissional. Pague ou cancele antes de pedir outro.");
+      if (!br.com.personalfighters.util.RateLimit.allow("neworder:" + mine, settings.getInt(br.com.personalfighters.service.SettingsService.MAX_ORDERS_PER_HOUR), 3600))
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Muitos pedidos em pouco tempo. Tente de novo mais tarde.");
+    }
     if (order.getProfessional() != null && order.getCustomer() != null && java.util.Objects.equals(order.getProfessional().getId(), order.getCustomer().getId())) {
       throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Você não pode contratar a si mesmo.");
     }

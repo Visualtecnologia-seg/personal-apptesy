@@ -33,6 +33,9 @@ public class ArrivalController {
   private final br.com.personalfighters.service.TripService tripService;
   private final br.com.personalfighters.service.UserService userService;
   private final br.com.personalfighters.service.CompletionService completionService;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+  /** Cliente que não confirma a chegada: depois disso o profissional que já chegou pode começar sozinho. */
+  private static final int SOLO_START_MINUTES = 15;
 
   // Quem pode fazer cada passo: antes qualquer conta logada podia (até confirmar a chegada pelos dois lados).
   private boolean admin() {
@@ -153,24 +156,32 @@ public class ArrivalController {
       return ResponseEntity.badRequest().body(result);
     }
     role = isPro(order) ? "PROFESSIONAL" : isClient(order) ? "CLIENT" : role; // o papel vem de quem está logado, não do pedido
-    if ("PROFESSIONAL".equalsIgnoreCase(role)) order.setProConfirmedArrival(true);
-    else if ("CLIENT".equalsIgnoreCase(role)) order.setClientConfirmedArrival(true);
-
-    Boolean proConfirmed = Boolean.TRUE.equals(order.getProConfirmedArrival());
-    Boolean clientConfirmed = Boolean.TRUE.equals(order.getClientConfirmedArrival());
-
-    if (proConfirmed && clientConfirmed) {
-      order.setStatus(Status.IN_PROGRESS);
-      result.put("status", "IN_PROGRESS");
-      result.put("message", "Serviço iniciado! Boa sorte!");
-    } else {
-      result.put("status", order.getStatus().name());
-      result.put("message", "Aguardando confirmação da outra parte.");
+    // Cada lado marca só a sua confirmação direto no banco (antes, os dois confirmando juntos apagavam um ao outro e o pedido travava)
+    boolean pro = "PROFESSIONAL".equalsIgnoreCase(role);
+    if (pro) jdbc.update("UPDATE order_ SET pro_confirmed_arrival = TRUE, arrived_at = COALESCE(arrived_at, NOW()) WHERE id = ? AND status = 'AWAITING_PAYMENT'", orderId);
+    else if ("CLIENT".equalsIgnoreCase(role)) jdbc.update("UPDATE order_ SET client_confirmed_arrival = TRUE WHERE id = ? AND status = 'AWAITING_PAYMENT'", orderId);
+    int started = jdbc.update("UPDATE order_ SET status = 'IN_PROGRESS' WHERE id = ? AND status = 'AWAITING_PAYMENT' AND COALESCE(pro_confirmed_arrival, FALSE) = TRUE AND COALESCE(client_confirmed_arrival, FALSE) = TRUE", orderId);
+    // Cliente que some sem confirmar: 15 minutos depois de o profissional chegar, ele pode começar sozinho
+    boolean solo = false;
+    if (started == 0 && pro) {
+      started = jdbc.update("UPDATE order_ SET status = 'IN_PROGRESS' WHERE id = ? AND status = 'AWAITING_PAYMENT' AND COALESCE(pro_confirmed_arrival, FALSE) = TRUE AND arrived_at < NOW() - make_interval(mins => ?)", orderId, SOLO_START_MINUTES);
+      solo = started == 1;
     }
-    orderRepository.save(order);
-    tripService.markArrived(order.getId());
-    result.put("proConfirmed", proConfirmed || "PROFESSIONAL".equalsIgnoreCase(role));
-    result.put("clientConfirmed", clientConfirmed || "CLIENT".equalsIgnoreCase(role));
+    java.util.Map<String, Object> now = jdbc.queryForMap("SELECT status, COALESCE(pro_confirmed_arrival, FALSE) AS p, COALESCE(client_confirmed_arrival, FALSE) AS c FROM order_ WHERE id = ?", orderId);
+    Boolean proConfirmed = (Boolean) now.get("p");
+    Boolean clientConfirmed = (Boolean) now.get("c");
+    if ("IN_PROGRESS".equals(now.get("status"))) {
+      result.put("status", "IN_PROGRESS");
+      result.put("message", solo ? "O cliente não confirmou em " + SOLO_START_MINUTES + " minutos: serviço iniciado. Ele foi avisado." : "Serviço iniciado! Boa sorte!");
+      if (solo && order.getCustomer() != null) notificationService.sendToUser(order.getCustomer(), true, "O profissional chegou e começou o serviço. Se ele não está aí, use \"Relatar problema\" no pedido.");
+    } else {
+      result.put("status", String.valueOf(now.get("status")));
+      result.put("message", pro ? "Aguardando o cliente confirmar. Se ele não confirmar em " + SOLO_START_MINUTES + " minutos, você pode começar." : "Aguardando confirmação da outra parte.");
+      if (pro && order.getCustomer() != null && !Boolean.TRUE.equals(order.getProConfirmedArrival()))
+        notificationService.sendToUser(order.getCustomer(), true, "O profissional chegou! Confirme a chegada no app para o serviço começar.");
+    }
+    result.put("proConfirmed", proConfirmed);
+    result.put("clientConfirmed", clientConfirmed);
     return ResponseEntity.ok(result);
   }
 
@@ -226,6 +237,11 @@ public class ArrivalController {
     if (order == null) { result.put("error", "Pedido não encontrado"); return ResponseEntity.badRequest().body(result); }
     if (!admin() && !isPro(order)) return forbidden();
 
+    // Só vale com o pedido aguardando a conferência e sem reclamação (antes um código velho concluía depois de o cliente pedir correção)
+    if (!Status.PENDING_CLIENT_CONFIRMATION.equals(order.getStatus()) || completionService.disputeOpen(order)) {
+      result.put("error", "Este pedido não está aguardando a conferência do cliente.");
+      return ResponseEntity.badRequest().body(result);
+    }
     boolean valid = qrTokenService.validateAndUse(code, orderId, "COMPLETION");
     if (!valid) {
       result.put("error", "Código inválido, expirado ou já utilizado. Peça um novo código ao cliente.");
@@ -254,7 +270,14 @@ public class ArrivalController {
       return ResponseEntity.badRequest().body(result);
     }
 
+    // Pedido de correção ou reclamação: o código de conclusão que o cliente já tinha gerado deixa de valer
+    jdbc.update("UPDATE qr_token_ SET used = TRUE WHERE order_id = ? AND type = 'COMPLETION'", orderId);
     if ("CORRECTION".equalsIgnoreCase(action)) {
+      // No máximo 2 correções: depois disso é reclamação com a equipe OPUS (antes dava para adiar o pagamento para sempre)
+      if (jdbc.update("UPDATE order_ SET correction_count = COALESCE(correction_count, 0) + 1 WHERE id = ? AND COALESCE(correction_count, 0) < 2", orderId) == 0) {
+        result.put("error", "Você já pediu 2 correções. Se ainda há problema, use \"Relatar problema\" e a equipe OPUS analisa.");
+        return ResponseEntity.badRequest().body(result);
+      }
       order.setStatus(Status.IN_PROGRESS);
       order.setRequestedCompletionAt(null);
       orderRepository.save(order);

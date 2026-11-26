@@ -41,6 +41,11 @@ public class SettingsService implements ApplicationRunner {
   /** 2 = o sistema nunca decide sozinho (padrão); 1 = sem decisão no prazo, devolve ao cliente; 0 = libera ao profissional. */
   public static final String DISPUTE_TIMEOUT_REFUND = "dispute_timeout_refund";
 
+  /** Pedidos sem pagar ao mesmo tempo (cliente), com o mesmo profissional, e pedidos novos por hora. */
+  public static final String MAX_UNPAID_ORDERS = "max_unpaid_orders";
+  public static final String MAX_UNPAID_SAME_PRO = "max_unpaid_same_pro";
+  public static final String MAX_ORDERS_PER_HOUR = "max_orders_per_hour";
+
   private final JdbcTemplate jdbc;
 
   @Override
@@ -113,6 +118,9 @@ public class SettingsService implements ApplicationRunner {
     m.put(PACKAGE_MAX_DISCOUNT, "30");
     m.put(DISPUTE_TIMEOUT_HOURS, "2");
     m.put(DISPUTE_TIMEOUT_REFUND, "2");
+    m.put(MAX_UNPAID_ORDERS, "8");
+    m.put(MAX_UNPAID_SAME_PRO, "3");
+    m.put(MAX_ORDERS_PER_HOUR, "10");
     return m;
   }
 }

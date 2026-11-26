@@ -111,13 +111,21 @@ public class TransactionServiceImpl implements TransactionService {
 
   @Override
   public void refundPayment(Order order, BigDecimal keep) {
+    // Adicionais já pagos e ainda não liberados voltam para o cliente junto com o pedido (antes ficavam parados)
+    for (java.util.Map<String, Object> ex : jdbc.queryForList("SELECT id, pix_payment_id FROM order_extra_ WHERE order_id = ? AND status = 'PAID' AND released = FALSE", order.getId())) {
+      if (jdbc.update("UPDATE order_extra_ SET status = 'REFUNDING' WHERE id = ? AND status = 'PAID' AND released = FALSE", ex.get("id")) != 1) continue;
+      String epid = java.util.Objects.toString(ex.get("pix_payment_id"), "");
+      String err = epid.isEmpty() ? null : asaasService.refundPix(epid, null);
+      jdbc.update("UPDATE order_extra_ SET status = ? WHERE id = ?", err == null ? "REFUNDED" : "REFUND_PENDING", ex.get("id"));
+      if (err != null) log.warn("Devolução do adicional {} pendente: {}", ex.get("id"), err);
+    }
     BigDecimal hold = keep == null ? BigDecimal.ZERO : keep.max(BigDecimal.ZERO);
     for (Transaction tx : transactionRepository.findAllByOrderId(order.getId())) {
       String pid = tx.getAsaasPaymentId();
       if (tx.getPaymentStatus() == PaymentStatus.PAID) {
         if (pid != null && pid.startsWith("PKG-")) {
           // Pago com aula de pacote: devolve a aula ao pacote
-          jdbc.update("UPDATE package_purchase_ SET sessions_used = GREATEST(sessions_used - 1, 0) WHERE id = (SELECT package_purchase_id FROM order_ WHERE id = ?)", order.getId());
+          jdbc.update("UPDATE package_purchase_ SET sessions_used = GREATEST(sessions_used - (SELECT COALESCE(package_sessions, 1) FROM order_ WHERE id = ?), 0) WHERE id = (SELECT package_purchase_id FROM order_ WHERE id = ?)", order.getId(), order.getId());
           tx.setPaymentStatus(PaymentStatus.REFUNDED);
           transactionRepository.save(tx);
           continue;

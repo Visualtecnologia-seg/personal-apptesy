@@ -195,7 +195,9 @@ public class ClassController {
     if (c == null) return bad("Aula não encontrada.");
     LocalDateTime starts = ((Timestamp) c.get("starts_at")).toLocalDateTime();
     if (LocalDateTime.now().isAfter(starts.minusHours(MIN_DECISION_HOURS))) return bad("Faltam menos de 2 horas: a vaga não pode mais ser cancelada.");
-    int n = jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED', refunded = (status = 'PAID') WHERE class_id = ? AND user_id = ? AND status IN ('PENDING','PAID')", id, me.getId());
+    List<UUID> paidIds = jdbc.queryForList("SELECT id FROM class_enrollment_ WHERE class_id = ? AND user_id = ? AND status = 'PAID'", UUID.class, id, me.getId());
+    int n = jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE class_id = ? AND user_id = ? AND status IN ('PENDING','PAID')", id, me.getId());
+    for (UUID e : paidIds) refundEnrollment(e);
     return n > 0 ? one(id) : bad("Você não está inscrito nesta aula.");
   }
 
@@ -349,10 +351,26 @@ public class ClassController {
     Map<String, Object> c = classRow(id);
     jdbc.update("UPDATE group_class_ SET status = 'CANCELLED' WHERE id = ?", id);
     List<Long> paid = paidStudents(id);
-    jdbc.update("UPDATE class_enrollment_ SET refunded = TRUE, status = 'CANCELLED' WHERE class_id = ? AND status = 'PAID'", id);
+    List<UUID> paidIds = jdbc.queryForList("SELECT id FROM class_enrollment_ WHERE class_id = ? AND status = 'PAID'", UUID.class, id);
+    jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE class_id = ? AND status = 'PAID'", id);
+    for (UUID e : paidIds) refundEnrollment(e);
     jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE class_id = ? AND status = 'PENDING'", id);
     for (Long uid : paid) notify(uid, false, why + ": \"" + c.get("title") + "\" foi cancelada e o seu dinheiro será devolvido.");
     notify(((Number) c.get("professional_id")).longValue(), true, why + ": \"" + c.get("title") + "\" foi cancelada.");
+  }
+
+  /** Devolve de verdade o PIX da vaga (antes só marcava "devolvido" e o dinheiro não voltava). Uma vez só por vaga. */
+  private void refundEnrollment(UUID enrollmentId) {
+    List<Map<String, Object>> r = jdbc.queryForList("SELECT pix_payment_id, user_id FROM class_enrollment_ WHERE id = ? AND COALESCE(refunded, FALSE) = FALSE AND COALESCE(released, FALSE) = FALSE", enrollmentId);
+    if (r.isEmpty()) return;
+    if (jdbc.update("UPDATE class_enrollment_ SET refunded = TRUE WHERE id = ? AND COALESCE(refunded, FALSE) = FALSE", enrollmentId) != 1) return;
+    String pid = Objects.toString(r.get(0).get("pix_payment_id"), "");
+    String err = pid.isEmpty() ? null : asaasService.refundPix(pid, null);
+    if (err != null) {
+      jdbc.update("UPDATE class_enrollment_ SET refunded = FALSE WHERE id = ?", enrollmentId);
+      jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) VALUES (?, 'DEVOLUCAO_PENDENTE', ?, NOW())", r.get(0).get("user_id"),
+          "Vaga de aula " + enrollmentId.toString().substring(0, 8) + ": devolução do PIX não foi feita (" + err + "). Devolver pelo painel do Asaas.");
+    }
   }
 
   /** Horas depois do fim da aula até o dinheiro ir para a carteira do professor. */

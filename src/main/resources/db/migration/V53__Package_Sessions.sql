@@ -1,0 +1,1 @@
+ALTER TABLE order_ ADD COLUMN IF NOT EXISTS package_sessions INTEGER;
