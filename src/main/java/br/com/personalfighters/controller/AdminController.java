@@ -350,8 +350,8 @@ public class AdminController {
   public ResponseEntity<byte[]> exportCsv() {
     StringBuilder sb = new StringBuilder("﻿quando;pedido;movimento;pessoa;valor\n");
     for (Map<String, Object> m : movements(5000)) {
-      sb.append(m.get("at")).append(';').append(m.get("orderId")).append(';').append(m.get("kind")).append(';')
-          .append(Objects.toString(m.get("person"), "").replace(';', ',')).append(';')
+      sb.append(m.get("at")).append(';').append(m.get("orderId")).append(';').append(br.com.personalfighters.util.CsvCell.of(m.get("kind"))).append(';')
+          .append(br.com.personalfighters.util.CsvCell.of(m.get("person"))).append(';')
           .append(Objects.toString(m.get("value"), "").replace('.', ',')).append('\n');
     }
     return ResponseEntity.ok()

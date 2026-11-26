@@ -257,6 +257,10 @@ public class TripController {
     String note = Objects.toString(body.get("note"), "").trim();
     if (note.length() < 5) return bad("Escreva o motivo da decisão.");
     String resolution = firstName(admin) + " · " + note;
+    if (!"RELEASE".equals(decision) && !"REFUND".equals(decision)) return bad("Decisão inválida.");
+    // A decisão vale uma vez só (dois cliques ou dois administradores ao mesmo tempo podiam liberar E devolver)
+    if (jdbc.update("UPDATE order_ SET dispute_status = ? WHERE id = ? AND dispute_status = 'OPEN'", "RELEASE".equals(decision) ? "RESOLVED_PRO" : "RESOLVED_CLIENT", id) != 1)
+      return bad("Esta disputa já foi decidida.");
     if ("RELEASE".equals(decision)) {
       o.setDisputeStatus("RESOLVED_PRO");
       orderRepository.save(o);

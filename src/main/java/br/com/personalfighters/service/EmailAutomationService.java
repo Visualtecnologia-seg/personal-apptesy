@@ -867,7 +867,7 @@ public class EmailAutomationService {
       total = total.add(v);
       String d = ((Timestamp) l.get("created_at")).toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
       String desc = Objects.toString(l.get("description"), "Serviço").replace(";", ",");
-      csv.append(d).append(';').append(desc).append(';').append(v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ',')).append("\r\n");
+      csv.append(d).append(';').append(br.com.personalfighters.util.CsvCell.of(desc)).append(';').append(v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ',')).append("\r\n");
       if (rows.size() < 25) rows.add(new String[]{d.substring(0, 5) + " · " + desc, money(v)});
     }
     csv.append(";Total do mês;").append(total.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString().replace('.', ',')).append("\r\n");

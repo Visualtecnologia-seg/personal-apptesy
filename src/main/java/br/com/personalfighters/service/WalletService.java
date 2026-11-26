@@ -98,6 +98,11 @@ public class WalletService {
    * Antes o cliente recebia de volta e o profissional ficava com o valor: o OPUS pagava duas vezes.
    */
   public void reverseOrder(Order order, String why) {
+    // Com o pedido travado no banco: duas devoluções ao mesmo tempo (aviso do banco + reclamação, ou duas cópias do servidor) descontavam duas vezes
+    lockedOrder(order.getId(), () -> { doReverse(order, why); return null; });
+  }
+
+  private void doReverse(Order order, String why) {
     // Dinheiro devolvido ao cliente: os pontos que ele ganhou com esse pedido saem também (uma vez só)
     jdbc.update("INSERT INTO points_ (user_id, amount, reason, order_id, created_at) " +
         "SELECT user_id, -SUM(amount), 'Pontos do pedido devolvido', order_id, NOW() FROM points_ WHERE order_id = ? AND amount > 0 AND reason <> 'Pontos do pedido devolvido' " +

@@ -59,6 +59,8 @@ public class DisputeTimeoutSchedule {
       // Pagamento já liberado ao profissional: nunca devolve sozinho (o OPUS pagaria duas vezes)
       if (Boolean.TRUE.equals(o.getPixReleased())) continue;
       String note = "Sem decisão da equipe em " + hours + "h (regra automática)";
+      // Só decide se ninguém decidiu antes (o administrador no painel ou outra cópia do servidor rodando a mesma rotina)
+      if (jdbc.update("UPDATE order_ SET dispute_status = ? WHERE id = ? AND dispute_status = 'OPEN'", refund ? "RESOLVED_CLIENT" : "RESOLVED_PRO", id) != 1) continue;
       if (refund) {
         o.setDisputeStatus("RESOLVED_CLIENT");
         o.setStatus(Status.CANCELLED);

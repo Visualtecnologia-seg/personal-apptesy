@@ -123,8 +123,12 @@ public class TransactionServiceImpl implements TransactionService {
     for (Transaction tx : transactionRepository.findAllByOrderId(order.getId())) {
       String pid = tx.getAsaasPaymentId();
       if (tx.getPaymentStatus() == PaymentStatus.PAID) {
+        // Reserva a devolução desta cobrança de uma vez só (dois caminhos ao mesmo tempo — cancelamento, reclamação,
+        // rotina automática — devolviam duas vezes; duas devoluções parciais podiam somar o valor todo)
+        if (jdbc.update("UPDATE transaction_ SET refund_status = 'STARTED' WHERE id = ? AND payment_status = 'PAID' AND COALESCE(refund_status, '') NOT IN ('STARTED','DONE')", tx.getId()) != 1) continue;
         if (pid != null && pid.startsWith("PKG-")) {
           // Pago com aula de pacote: devolve a aula ao pacote
+          jdbc.update("UPDATE transaction_ SET refund_status = 'DONE' WHERE id = ?", tx.getId());
           jdbc.update("UPDATE package_purchase_ SET sessions_used = GREATEST(sessions_used - (SELECT COALESCE(package_sessions, 1) FROM order_ WHERE id = ?), 0) WHERE id = (SELECT package_purchase_id FROM order_ WHERE id = ?)", order.getId(), order.getId());
           tx.setPaymentStatus(PaymentStatus.REFUNDED);
           transactionRepository.save(tx);
@@ -133,7 +137,6 @@ public class TransactionServiceImpl implements TransactionService {
         BigDecimal paid = tx.getTotalPaid() == null ? BigDecimal.ZERO : tx.getTotalPaid();
         BigDecimal back = paid.subtract(hold).max(BigDecimal.ZERO);
         hold = hold.subtract(paid).max(BigDecimal.ZERO);
-        jdbc.update("UPDATE transaction_ SET refund_status = 'STARTED' WHERE id = ?", tx.getId()); // o aviso de devolução que o Asaas manda depois é reconhecido como nosso
         String err = back.signum() > 0 ? asaasService.refundPix(pid, back) : null;
         if (err == null) {
           tx.setPaymentStatus(PaymentStatus.REFUNDED);
