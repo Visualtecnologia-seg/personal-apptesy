@@ -51,6 +51,11 @@ public class MoreController {
     Object ids = b.get("orderIds");
     if (!(ids instanceof List) || ((List<?>) ids).isEmpty()) return bad("Nenhum pedido para juntar.");
     String note = Objects.toString(b.get("note"), "").trim();
+    if (note.length() > 500) note = note.substring(0, 500);
+    // O recado vai para o chat de cada profissional: passa pelo mesmo filtro de contato do chat (antes o telefone ia direto para todos)
+    if (br.com.personalfighters.util.ContactFilter.violation(note) != null)
+      return ResponseEntity.unprocessableEntity().body(Map.of("error", "O recado tem um contato de fora. No OPUS, conversa e pagamento ficam dentro do app."));
+    if (((List<?>) ids).size() > 5) return bad("Peça orçamento para no máximo 5 profissionais de uma vez.");
     UUID group = UUID.randomUUID();
     List<UUID> linked = new ArrayList<>();
     for (Object id : (List<?>) ids) {
@@ -58,7 +63,8 @@ public class MoreController {
         UUID oid = UUID.fromString(id.toString());
         Order o = orderRepository.findById(oid).orElse(null);
         if (o == null || !isCustomer(o, me)) continue;
-        jdbc.update("UPDATE order_ SET quote_group = ?, request_note = ? WHERE id = ?", group, note.isEmpty() ? null : note, oid);
+        // Cada pedido entra em um grupo só (antes dava para reenviar o mesmo pedido e repetir recado e aviso sem fim)
+        if (jdbc.update("UPDATE order_ SET quote_group = ?, request_note = ? WHERE id = ? AND quote_group IS NULL AND status = 'OPEN'", group, note.isEmpty() ? null : note, oid) == 0) continue;
         linked.add(oid);
         if (!note.isEmpty()) {
           messageRepository.save(Message.builder().orderId(oid).senderId(me.getId()).senderName(me.getName()).senderRole("CUSTOMER")

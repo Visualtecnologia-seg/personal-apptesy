@@ -43,10 +43,17 @@ public class SystemController {
   private final OrderService orderService;
   private final AddressService addressService;
   private final CreditCardService creditCardService;
+  private final br.com.personalfighters.service.AsaasService asaasService;
+
+  /** Ferramentas de dados de teste: só existem com o pagamento em modo de teste (em produção mexeriam em pedidos de verdade). */
+  private void testOnly() {
+    if (!asaasService.isTestMode()) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND);
+  }
 
   @GetMapping("/create")
   @ResponseStatus(HttpStatus.OK)
   public void create() {
+    testOnly();
     List<User> users = userRepository.findAll();
     List<Product> products = productRepository.findAll();
     users.forEach(customer -> createOpenOrder(customer, products));
@@ -105,6 +112,7 @@ public class SystemController {
   @GetMapping("/confirm")
   @ResponseStatus(HttpStatus.OK)
   public void confirm(User customer) {
+    testOnly();
     List<Order> orders = orderRepository.findAllByCustomer(customer);
     orders.forEach(order -> {
       List<User> available = orderService.findAvailable(order);
@@ -118,6 +126,7 @@ public class SystemController {
   @GetMapping("/done")
   @ResponseStatus(HttpStatus.OK)
   public void done(User customer) {
+    testOnly();
     List<Order> orders = orderRepository.findAllByCustomer(customer);
     orders.forEach(order -> {
       List<User> response = order.getResponse();

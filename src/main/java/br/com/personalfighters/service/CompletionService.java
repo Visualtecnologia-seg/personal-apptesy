@@ -54,6 +54,11 @@ public class CompletionService {
 
   /** Marca como concluído, dá os pontos e libera o pagamento ao profissional (se não houver disputa). */
   public void finalizeAndRelease(Order order, String why) {
+    // Pedido cancelado (dinheiro devolvido ao cliente) nunca é concluído nem liberado
+    if (order.getStatus() == Status.CANCELLED || "CANCELLED".equals(jdbc.queryForObject("SELECT status FROM order_ WHERE id = ?", String.class, order.getId()))) {
+      log.warn("Liberação do pedido {} ignorada: pedido cancelado ({})", order.getId(), why);
+      return;
+    }
     if (order.getStatus() != Status.DONE && order.getStatus() != Status.REVIEWED) {
       order.setStatus(Status.DONE);
     }

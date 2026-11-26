@@ -55,7 +55,15 @@ public class WalletService {
     Optional<Transaction> tx = transactionRepository.findAllByOrderId(order.getId()).stream()
         .filter(t -> t.getPaymentStatus() == br.com.personalfighters.model.PaymentStatus.PAID)
         .reduce((a, b) -> b);
-    if (tx.isEmpty()) tx = transactionRepository.findTransactionByOrderId(order.getId());
+    // Sem cobrança paga (ou pedido cancelado/devolvido) não entra nada na carteira. Antes caía para qualquer cobrança,
+    // até uma já devolvida, ou para o valor do serviço sem cobrança nenhuma.
+    String ost = jdbc.queryForObject("SELECT status FROM order_ WHERE id = ?", String.class, order.getId());
+    if (tx.isEmpty() || "CANCELLED".equals(ost) || "BLOCKED".equals(ost)) {
+      log.warn("Crédito do pedido {} recusado: sem cobrança paga (status {})", order.getId(), ost);
+      jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) VALUES (?, 'CREDITO_RECUSADO', ?, NOW())", pro.getId(),
+          "Pedido #" + order.getId().toString().substring(0, 8) + ": liberação sem cobrança paga (status " + ost + "). Nada foi para a carteira.");
+      return;
+    }
     if (tx.isPresent() && tx.get().getProfessionalValue() != null && tx.get().getProfessionalValue().signum() > 0) {
       amount = tx.get().getProfessionalValue();
     }

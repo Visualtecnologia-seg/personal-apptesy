@@ -171,6 +171,13 @@ public class OrderServiceImpl implements OrderService {
       throw new RuntimeException("Profissional está inativo");
     } else if (order.getStatus().equals(Status.BLOCKED)) {
       throw new RuntimeException("Número máximo de profissionais já confirmado");
+    } else if (order.getStatus() != Status.OPEN || Boolean.TRUE.equals(order.getPixPaid())) {
+      // Só confirma pedido ainda aberto (antes "reconfirmava" pedido cancelado e já devolvido, e o profissional podia receber de novo)
+      if (order.getStatus() == Status.CONFIRMED && order.getProfessional() != null && order.getProfessional().getId().equals(professional.getId())) return;
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Este pedido não está mais aberto.");
+    } else if (order.getProfessional() != null && !order.getProfessional().getId().equals(professional.getId())) {
+      // Pedido feito direto para outro profissional: ninguém mais entra nele (antes 5 intrusos bloqueavam o pedido)
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Este pedido é de outro profissional.");
     } else if (order.getResponse().contains(professional)) {
       throw new RuntimeException("Profissional já está confirmado");
     }

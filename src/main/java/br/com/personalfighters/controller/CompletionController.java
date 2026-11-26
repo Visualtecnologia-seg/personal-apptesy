@@ -50,7 +50,8 @@ public class CompletionController {
     if (o.getStatus() != Status.IN_PROGRESS && o.getStatus() != Status.CONFIRMED && o.getStatus() != Status.PENDING_CLIENT_CONFIRMATION) {
       return bad("Este pedido não está em andamento.");
     }
-    if (o.getStatus() == Status.CONFIRMED && !Boolean.TRUE.equals(o.getPixPaid())) {
+    if (!Boolean.TRUE.equals(o.getPixPaid()) || !Boolean.TRUE.equals(jdbc.queryForObject(
+        "SELECT EXISTS (SELECT 1 FROM transaction_ WHERE order_id = ? AND payment_status = 'PAID')", Boolean.class, id))) {
       return bad("O cliente ainda não pagou. Espere o pagamento cair no cofre antes de fazer o serviço.");
     }
     int saved = 0;

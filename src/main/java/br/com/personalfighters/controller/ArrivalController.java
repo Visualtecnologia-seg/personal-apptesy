@@ -336,11 +336,13 @@ public class ArrivalController {
     }
 
     if (!Boolean.TRUE.equals(order.getPixReleased())) {
-      asaasService.releasePaymentToProfessional(order);
-      order.setPixReleased(true);
-      order.setStatus(Status.REVIEWED);
-      orderRepository.save(order);
-      notificationService.sendPaymentReleasedToProfessional(order);
+      // Pelo caminho da carteira (confere pagamento, uma vez só, fica registrado). Antes mandava um PIX direto
+      // para o profissional sem conferir se o cliente pagou e sem trava contra clique duplo.
+      if (!Boolean.TRUE.equals(order.getPixPaid())) {
+        result.put("error", "O cliente ainda não pagou este pedido.");
+        return ResponseEntity.badRequest().body(result);
+      }
+      completionService.finalizeAndRelease(order, "liberado pelo administrador");
       result.put("released", true);
     } else {
       result.put("released", false);
