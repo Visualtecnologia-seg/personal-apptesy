@@ -308,17 +308,8 @@ public class OrderServiceImpl implements OrderService {
     boolean paidNotReleased = Boolean.TRUE.equals(order.getPixPaid()) && !Boolean.TRUE.equals(order.getPixReleased());
     if (order.getStatus().equals(Status.CONFIRMED) || order.getStatus().equals(Status.AWAITING_PAYMENT) || order.getStatus().equals(Status.OPEN) || paidNotReleased) {
       try {
+        // (antes descontava R$ 3,80 de um saldo antigo de quem cancelava, mesmo com a tela dizendo "sem taxa")
         transactionService.refundPayment(order, keep);
-        if (role.equals(Role.PROFESSIONAL)) {
-          Finance finance = financeRepository.findByUser(order.getProfessional());
-          finance.setProfessionalBalance(finance.getProfessionalBalance().add(new BigDecimal("-3.8")));
-          financeRepository.save(finance);
-        }
-        if (role.equals(Role.CUSTOMER)) {
-          Finance finance = financeRepository.findByUser(order.getCustomer());
-          finance.setCustomerBalance(finance.getCustomerBalance().add(new BigDecimal("-3.8")));
-          financeRepository.save(finance);
-        }
       } catch (Exception e) {
         log.info("Erro ao processar estorno do pagamento.");
       }
@@ -334,6 +325,8 @@ public class OrderServiceImpl implements OrderService {
       }
     }
     order.setStatus(Status.CANCELLED);
+    // Quem cancelou (o painel usa isso para achar quem cancela demais)
+    if (order.getCancelledBy() == null) order.setCancelledBy(role.equals(Role.CUSTOMER) ? "CLIENT" : role.equals(Role.PROFESSIONAL) ? "PROFESSIONAL" : role.equals(Role.ADMIN) ? "ADMIN" : role.name());
     orderRepository.save(order);
   }
 

@@ -91,7 +91,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         .mvcMatchers("/system/**").hasRole("ADMIN") // geração de dados de teste: só administrador
         // Endpoints antigos que os apps não usam e que não conferiam o dono dos dados: só administrador
         .mvcMatchers("/bank/**", "/credit-cards/**", "/finances/**", "/professionalfinance/**", "/addresses/**", "/infos/**",
-            "/customers/**", "/payments/**", "/auth/history/**", "/favorites/users/**", "/points/users/**", "/agendas/**").hasRole("ADMIN")
+            "/customers/**", "/payments/**", "/favorites/users/**", "/points/users/**", "/agendas/**").hasRole("ADMIN")
         .mvcMatchers(HttpMethod.DELETE, "/professionals/*", "/reviews/*", "/photos/*").hasRole("ADMIN")
         .mvcMatchers(HttpMethod.POST, "/specialty-history/**", "/products/users/**", "/photos/avatar/users/*", "/photos/photo/users/*").hasRole("ADMIN")
         .mvcMatchers(HttpMethod.PUT, "/products/*", "/products", "/categories").hasRole("ADMIN")

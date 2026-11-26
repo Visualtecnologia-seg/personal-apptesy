@@ -19,6 +19,7 @@ import java.util.List;
 public class LoginHistoryController {
 
   private final LoginHistoryRepository loginHistoryRepository;
+  private final br.com.personalfighters.service.UserService userService;
 
   @GetMapping("/{userId}")
   @ResponseStatus(HttpStatus.OK)
@@ -26,6 +27,10 @@ public class LoginHistoryController {
   public List<LoginHistory> getHistory(
       @PathVariable Long userId,
       @RequestParam(defaultValue = "10") int limit) {
+    // Cada pessoa vê só o próprio histórico de acessos (o administrador vê o de qualquer um)
+    br.com.personalfighters.entity.User me = userService.findAuthUser();
+    boolean admin = me.getRole() != null && me.getRole().contains(br.com.personalfighters.model.Role.ADMIN);
+    if (!admin && !me.getId().equals(userId)) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN);
     return loginHistoryRepository.findByUserIdOrderByCreatedAtDesc(
         userId, PageRequest.of(0, Math.min(limit, 50)));
   }

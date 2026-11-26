@@ -166,6 +166,19 @@ public class ClassController {
     } else {
       eid = (UUID) ex.get(0).get("id");
       if ("PAID".equals(ex.get(0).get("status"))) return ResponseEntity.ok(enrollment(eid));
+      // Voltou depois de desistir: o PIX antigo foi cancelado ou devolvido e não pode ser pago de novo, então gera outro
+      if (!"PENDING".equals(ex.get(0).get("status"))) {
+        forgetPix(eid);
+        jdbc.update("UPDATE class_enrollment_ SET pix_payment_id = NULL, pix_copy_paste = NULL, pix_qr = NULL, paid_at = NULL WHERE id = ? AND COALESCE(released, FALSE) = FALSE", eid);
+      } else {
+        // Reserva de ontem: o PIX venceu. Cancela o antigo e gera outro.
+        List<Map<String, Object>> old = jdbc.queryForList("SELECT pix_payment_id FROM class_enrollment_ WHERE id = ? AND pix_payment_id IS NOT NULL AND created_at < ?", eid, Timestamp.valueOf(LocalDateTime.now().minusHours(20)));
+        if (!old.isEmpty()) {
+          try { asaasService.cancelCharge((String) old.get(0).get("pix_payment_id")); } catch (Exception ignored) { /* se foi paga, o aviso do banco devolve */ }
+          forgetPix(eid);
+          jdbc.update("UPDATE class_enrollment_ SET pix_payment_id = NULL, pix_copy_paste = NULL, pix_qr = NULL WHERE id = ? AND status = 'PENDING'", eid);
+        }
+      }
       jdbc.update("UPDATE class_enrollment_ SET status = 'PENDING', service_value = ?, client_total = ?, refunded = FALSE, created_at = ? WHERE id = ?", service, total, Timestamp.valueOf(LocalDateTime.now()), eid);
     }
     Map<String, Object> e = jdbc.queryForMap("SELECT pix_payment_id FROM class_enrollment_ WHERE id = ?", eid);
@@ -196,6 +209,10 @@ public class ClassController {
     LocalDateTime starts = ((Timestamp) c.get("starts_at")).toLocalDateTime();
     if (LocalDateTime.now().isAfter(starts.minusHours(MIN_DECISION_HOURS))) return bad("Faltam menos de 2 horas: a vaga não pode mais ser cancelada.");
     List<UUID> paidIds = jdbc.queryForList("SELECT id FROM class_enrollment_ WHERE class_id = ? AND user_id = ? AND status = 'PAID'", UUID.class, id, me.getId());
+    // Reserva sem pagar: cancela também a cobrança PIX, para a pessoa não pagar uma vaga que já desistiu
+    for (String pix : jdbc.queryForList("SELECT pix_payment_id FROM class_enrollment_ WHERE class_id = ? AND user_id = ? AND status = 'PENDING' AND pix_payment_id IS NOT NULL", String.class, id, me.getId())) {
+      try { asaasService.cancelCharge(pix); } catch (Exception ignored) { /* se já foi paga, o aviso do banco devolve sozinho */ }
+    }
     int n = jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE class_id = ? AND user_id = ? AND status IN ('PENDING','PAID')", id, me.getId());
     for (UUID e : paidIds) refundEnrollment(e);
     kickFromRoom(id, me.getId());
@@ -210,8 +227,36 @@ public class ClassController {
     return true;
   }
 
+  /** Guarda o PIX trocado: se ele ainda for pago, o aviso do banco acha o registro e devolve o dinheiro. */
+  private void forgetPix(UUID enrollmentId) {
+    jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) SELECT user_id, 'PIX_SUBSTITUIDO', 'PIX ' || pix_payment_id, NOW() " +
+        "FROM class_enrollment_ WHERE id = ? AND pix_payment_id IS NOT NULL", enrollmentId);
+  }
+
+  private static final Object PAY_LOCK = new Object();
+
   private void markPaid(UUID enrollmentId) {
-    int n = jdbc.update("UPDATE class_enrollment_ SET status = 'PAID', paid_at = ? WHERE id = ? AND status = 'PENDING'", Timestamp.valueOf(LocalDateTime.now()), enrollmentId);
+    int n;
+    synchronized (PAY_LOCK) {
+      // Turma lotada ou encerrada enquanto o PIX não caía (a reserva sem pagar só segura a vaga por 15 min):
+      // antes a vaga era confirmada mesmo assim e a turma passava do limite da sala. Agora o dinheiro volta.
+      List<Map<String, Object>> cl = jdbc.queryForList("SELECT g.status, g.max_students, g.title, " +
+          "(SELECT COUNT(*) FROM class_enrollment_ x WHERE x.class_id = g.id AND x.status = 'PAID') AS paid " +
+          "FROM group_class_ g JOIN class_enrollment_ e ON e.class_id = g.id WHERE e.id = ?", enrollmentId);
+      if (cl.isEmpty()) return;
+      Map<String, Object> g = cl.get(0);
+      boolean open = List.of("OPEN", "CONFIRMED").contains(String.valueOf(g.get("status")));
+      if (!open || ((Number) g.get("paid")).intValue() >= ((Number) g.get("max_students")).intValue()) {
+        if (jdbc.update("UPDATE class_enrollment_ SET status = 'CANCELLED' WHERE id = ? AND status = 'PENDING'", enrollmentId) == 1) {
+          refundEnrollment(enrollmentId);
+          Long uid = jdbc.queryForObject("SELECT user_id FROM class_enrollment_ WHERE id = ?", Long.class, enrollmentId);
+          notify(uid, false, (open ? "A turma de \"" + g.get("title") + "\" lotou" : "As inscrições de \"" + g.get("title") + "\" fecharam")
+              + " antes do seu PIX cair. O valor foi devolvido para a sua conta.");
+        }
+        return;
+      }
+      n = jdbc.update("UPDATE class_enrollment_ SET status = 'PAID', paid_at = ? WHERE id = ? AND status = 'PENDING'", Timestamp.valueOf(LocalDateTime.now()), enrollmentId);
+    }
     if (n == 0) return;
     Map<String, Object> e = jdbc.queryForMap("SELECT e.class_id, u.name FROM class_enrollment_ e JOIN user_ u ON u.id = e.user_id WHERE e.id = ?", enrollmentId);
     UUID classId = (UUID) e.get("class_id");
@@ -414,7 +459,7 @@ public class ClassController {
     return "SELECT c.id, c.professional_id AS \"professionalId\", u.name AS \"professionalName\", u.avatar_url AS \"professionalAvatar\", c.title, c.modality, c.description, c.level, " +
         "c.starts_at AS \"startsAt\", c.duration_min AS \"durationMin\", c.price, c.min_students AS \"minStudents\", c.max_students AS \"maxStudents\", c.status, " +
         "(SELECT COUNT(*) FROM class_enrollment_ e WHERE e.class_id = c.id AND e.status = 'PAID') AS paid, " +
-        "(SELECT COUNT(*) FROM class_enrollment_ e WHERE e.class_id = c.id AND e.status IN ('PENDING','PAID')) AS reserved " +
+        "(SELECT COUNT(*) FROM class_enrollment_ e WHERE e.class_id = c.id AND (e.status = 'PAID' OR (e.status = 'PENDING' AND e.created_at > NOW() - interval '15 minutes'))) AS reserved " +
         "FROM group_class_ c JOIN user_ u ON u.id = c.professional_id ";
   }
 

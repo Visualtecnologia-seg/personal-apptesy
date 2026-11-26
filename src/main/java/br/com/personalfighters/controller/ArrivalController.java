@@ -36,6 +36,7 @@ public class ArrivalController {
   private final org.springframework.jdbc.core.JdbcTemplate jdbc;
   /** Cliente que não confirma a chegada: depois disso o profissional que já chegou pode começar sozinho. */
   private static final int SOLO_START_MINUTES = 15;
+  static final int ARRIVAL_EARLY_MINUTES = 60;
 
   // Quem pode fazer cada passo: antes qualquer conta logada podia (até confirmar a chegada pelos dois lados).
   private boolean admin() {
@@ -88,6 +89,18 @@ public class ArrivalController {
   // ── Arrival QR ────────────────────────────────────────────────────────────
 
   /** Professional calls this to get a 6-char arrival code to show the client. */
+  /**
+   * Chegada só perto do horário marcado. Antes, o aluno confirmava "chegou" um dia antes (ou recebia o código pelo chat)
+   * e o profissional, de qualquer lugar, completava a confirmação: o serviço começava e o aluno perdia o cancelamento.
+   */
+  private String tooEarly(Order order) {
+    if (admin() || order.getDate() == null || order.getStartTime() == null) return null;
+    LocalDateTime start = LocalDateTime.of(order.getDate(), order.getStartTime());
+    if (!LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")).isBefore(start.minusMinutes(ARRIVAL_EARLY_MINUTES))) return null;
+    return "Ainda está cedo: a chegada pode ser confirmada a partir de " + ARRIVAL_EARLY_MINUTES + " minutos antes do horário ("
+        + start.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")) + ").";
+  }
+
   @PostMapping("/{orderId}/arrival-qr")
   public ResponseEntity<Map<String, Object>> generateArrivalQR(@PathVariable UUID orderId) {
     Map<String, Object> result = new HashMap<>();
@@ -98,6 +111,8 @@ public class ArrivalController {
       result.put("error", "Pedido não está no estado correto para gerar QR de chegada.");
       return ResponseEntity.badRequest().body(result);
     }
+    String early = tooEarly(order);
+    if (early != null) { result.put("error", early); return ResponseEntity.badRequest().body(result); }
     String code = qrTokenService.generateArrivalCode(orderId);
     String qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=" + code
         + "&bgcolor=0B1426&color=FFFFFF&margin=10&qzone=2";
@@ -121,6 +136,8 @@ public class ArrivalController {
       result.put("error", "A chegada só é confirmada depois que o pagamento está no cofre.");
       return ResponseEntity.badRequest().body(result);
     }
+    String early = tooEarly(order);
+    if (early != null) { result.put("error", early); return ResponseEntity.badRequest().body(result); }
 
     boolean valid = qrTokenService.validateAndUse(code, orderId, "ARRIVAL");
     if (!valid) {
@@ -155,6 +172,8 @@ public class ArrivalController {
       result.put("error", "A chegada só é confirmada depois que o pagamento está no cofre.");
       return ResponseEntity.badRequest().body(result);
     }
+    String early = tooEarly(order);
+    if (early != null) { result.put("error", early); result.put("message", early); return ResponseEntity.badRequest().body(result); }
     role = isPro(order) ? "PROFESSIONAL" : isClient(order) ? "CLIENT" : role; // o papel vem de quem está logado, não do pedido
     // Cada lado marca só a sua confirmação direto no banco (antes, os dois confirmando juntos apagavam um ao outro e o pedido travava)
     boolean pro = "PROFESSIONAL".equalsIgnoreCase(role);

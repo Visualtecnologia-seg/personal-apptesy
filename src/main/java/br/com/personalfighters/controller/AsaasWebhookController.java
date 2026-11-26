@@ -112,8 +112,9 @@ public class AsaasWebhookController {
           Long n = jdbc.queryForObject("SELECT (SELECT COUNT(*) FROM class_enrollment_ WHERE pix_payment_id = ? AND status <> 'PAID') + " +
               "(SELECT COUNT(*) FROM package_purchase_ WHERE pix_payment_id = ? AND status <> 'PAID') + " +
               "(SELECT COUNT(*) FROM order_extra_ WHERE pix_payment_id = ? AND status NOT IN ('PAID','REFUNDED','REFUNDING','REFUND_PENDING')) + " +
-              "(SELECT COUNT(*) FROM pro_boost_ WHERE pix_payment_id = ? AND status NOT IN ('ACTIVE','DONE','EXPIRED','PAID'))", Long.class,
-              asaasPaymentId, asaasPaymentId, asaasPaymentId, asaasPaymentId);
+              "(SELECT COUNT(*) FROM pro_boost_ WHERE pix_payment_id = ? AND status NOT IN ('ACTIVE','DONE','EXPIRED','PAID')) + " +
+              "(SELECT COUNT(*) FROM security_event_ WHERE kind = 'PIX_SUBSTITUIDO' AND detail = ?)", Long.class,
+              asaasPaymentId, asaasPaymentId, asaasPaymentId, asaasPaymentId, "PIX " + asaasPaymentId);
           if (n != null && n > 0 && jdbc.update("INSERT INTO security_event_ (user_id, kind, detail, created_at) SELECT NULL, 'PAGO_FORA_DO_PRAZO', ?, NOW() " +
               "WHERE NOT EXISTS (SELECT 1 FROM security_event_ WHERE kind = 'PAGO_FORA_DO_PRAZO' AND detail = ?)", "PIX " + asaasPaymentId, "PIX " + asaasPaymentId) == 1) {
             String err = asaasService.refundPix(asaasPaymentId, null);

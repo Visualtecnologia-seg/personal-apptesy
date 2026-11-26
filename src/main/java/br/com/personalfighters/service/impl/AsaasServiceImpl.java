@@ -390,10 +390,19 @@ public class AsaasServiceImpl implements AsaasService {
 
   /** PIX simulado: a cobrança existe só no OPUS e é paga pelo botão "Simular pagamento". */
   private Transaction createTestCharge(Order order) {
-    Optional<Transaction> existing = transactionRepository.findTransactionByOrderId(order.getId());
-    if (existing.isPresent()) return existing.get();
     BigDecimal discount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
     BigDecimal charged = order.getTotalCost().subtract(discount).max(BigDecimal.ONE);
+    Optional<Transaction> existing = transactionRepository.findTransactionByOrderId(order.getId());
+    if (existing.isPresent()) {
+      Transaction t = existing.get();
+      // Cupom ou pontos aplicados depois de gerar a cobrança: acerta o valor (como faz a cobrança de verdade)
+      if (t.getPaymentStatus() == PaymentStatus.AUTHORIZED && (t.getTotalPaid() == null || t.getTotalPaid().compareTo(charged) != 0)) {
+        t.setTotalPaid(charged);
+        if (t.getProfessionalValue() != null) t.setAppTaxValue(charged.subtract(t.getProfessionalValue()));
+        return transactionRepository.save(t);
+      }
+      return t;
+    }
     BigDecimal professionalValue = order.getServiceValue() != null
         ? order.getServiceValue()
         : br.com.personalfighters.util.Pricing.serviceFromTotal(order.getTotalCost());

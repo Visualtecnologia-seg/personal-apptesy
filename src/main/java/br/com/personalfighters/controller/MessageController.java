@@ -6,6 +6,7 @@ import br.com.personalfighters.service.impl.exceptions.MessageBlockedException;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @CrossOrigin
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @Api(tags = {"Messages"})
 @RequestMapping("/messages")
 public class MessageController {
@@ -139,10 +141,11 @@ public class MessageController {
     try {
       return ResponseEntity.ok(messageService.send(message));
     } catch (MessageBlockedException e) {
+      // O motivo exato fica só no registro do servidor (mostrar a regra ajudava a burlar o filtro)
+      log.info("Mensagem bloqueada no pedido {}: {}", message.getOrderId(), e.getMatched());
       return ResponseEntity.status(422).body(Map.of(
           "blocked", true,
           "attemptNumber", e.getAttemptNumber(),
-          "matched", e.getMatched(),
           "errorMessage", e.getMessage()
       ));
     }

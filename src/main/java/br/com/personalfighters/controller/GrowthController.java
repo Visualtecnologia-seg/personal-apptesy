@@ -114,6 +114,13 @@ public class GrowthController {
     Map<String, Object> p = r.get(0);
     Long proId = ((Number) p.get("professional_id")).longValue();
     if (proId.equals(me.getId())) return bad("Este pacote é seu.");
+    // PIX de compra antiga (vence no dia seguinte): cancela e gera outro, para a pessoa não ficar com um código vencido
+    for (Map<String, Object> old : jdbc.queryForList("SELECT id, pix_payment_id FROM package_purchase_ WHERE package_id = ? AND user_id = ? AND status = 'PENDING' AND created_at < ?",
+        id, me.getId(), Timestamp.valueOf(LocalDateTime.now().minusHours(20)))) {
+      if (jdbc.update("UPDATE package_purchase_ SET status = 'CANCELLED' WHERE id = ? AND status = 'PENDING'", old.get("id")) == 1 && old.get("pix_payment_id") != null) {
+        try { asaasService.cancelCharge((String) old.get("pix_payment_id")); } catch (Exception ignored) { /* se foi paga, o aviso do banco devolve */ }
+      }
+    }
     List<UUID> pending = jdbc.queryForList("SELECT id FROM package_purchase_ WHERE package_id = ? AND user_id = ? AND status = 'PENDING'", UUID.class, id, me.getId());
     UUID pid;
     if (!pending.isEmpty()) {
