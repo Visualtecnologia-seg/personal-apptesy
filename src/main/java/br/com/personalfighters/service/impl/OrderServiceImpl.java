@@ -510,7 +510,9 @@ public class OrderServiceImpl implements OrderService {
 
   @Override
   public java.util.List<Order> nearbyOrders(double lat, double lng, double radiusKm, String specialties) {
-    Iterable<Order> all = orderRepository.findAll();
+    // Só pedidos abertos (antes lia o banco inteiro a cada consulta)
+    java.util.List<java.util.UUID> ids = lockJdbc.queryForList("SELECT id FROM order_ WHERE status = 'OPEN' AND customer_id IS NOT NULL", java.util.UUID.class);
+    Iterable<Order> all = ids.isEmpty() ? java.util.List.of() : orderRepository.findAllById(ids);
     java.util.List<Order> result = new java.util.ArrayList<>();
     String[] keywords = (specialties != null && !specialties.isBlank())
         ? specialties.toLowerCase().split("[,;\\s]+") : new String[0];
@@ -520,8 +522,9 @@ public class OrderServiceImpl implements OrderService {
       Double oLat = o.getCustomer().getLatitude();
       Double oLng = o.getCustomer().getLongitude();
       if (oLat == null || oLng == null) continue;
-      double dist = haversine(lat, lng, oLat, oLng);
-      if (dist > radiusKm) continue;
+      // ponto embaralhado do cliente: testar pontos na borda do raio não acha mais a casa dele (antes: 0 m de erro)
+      Double dist = br.com.personalfighters.util.GeoPrivacy.km("home", o.getCustomer().getId(), lat, lng, oLat, oLng);
+      if (dist == null || dist > radiusKm) continue;
       if (keywords.length > 0) {
         String productName = o.getProduct() != null ? (o.getProduct().getName() != null ? o.getProduct().getName().toLowerCase() : "") : "";
         String categoryName = (o.getProduct() != null && o.getProduct().getCategory() != null && o.getProduct().getCategory().getName() != null)

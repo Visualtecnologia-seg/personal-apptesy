@@ -32,12 +32,19 @@ public class TripService {
   public static final double MAX_SPEED_KMH = 90.0;
   /** Ponto de saída a mais que isso do cliente não vale para a taxa. */
   public static final double MAX_START_KM = 80.0;
+  /** "Saí para o atendimento" só a partir de 3 horas antes do horário marcado. */
+  public static final int DEPART_EARLY_MINUTES = 180;
+  /** A taxa de deslocamento nunca passa de 30% do valor do serviço. */
+  public static final BigDecimal MAX_FEE_SHARE = new BigDecimal("0.30");
+  /** O ponto de saída precisa estar até a área de atendimento do profissional + esta folga. */
+  public static final double START_MARGIN_KM = 10.0;
 
   private final JdbcTemplate jdbc;
 
   public Map<String, Object> trip(UUID orderId) {
     List<Map<String, Object>> rows = jdbc.queryForList(
         "SELECT o.departed_at, o.depart_lat, o.depart_lng, o.pro_lat, o.pro_lng, o.pro_loc_at, o.service_value, o.total_cost, o.status, COALESCE(o.pro_gps_mocked, FALSE) AS mocked, " +
+            "o.date AS o_date, o.start_time AS o_start, (SELECT radius_km FROM professional_area_ pa WHERE pa.professional_id = o.professional_id) AS area_km, " +
             "a.latitude AS a_lat, a.longitude AS a_lng, u.latitude AS u_lat, u.longitude AS u_lng " +
             "FROM order_ o LEFT JOIN address_ a ON a.id = o.address_id LEFT JOIN user_ u ON u.id = o.customer_id WHERE o.id = ?", orderId);
     Map<String, Object> out = new LinkedHashMap<>();
@@ -74,14 +81,22 @@ public class TripService {
     }
     if (traveled > 0 && dLat != null && cLat != null) {
       double startToClient = km(dLat, dLng, cLat, cLng);
-      if (startToClient > MAX_START_KM) { suspicious = true; traveled = 0; }           // "saiu" longe demais do cliente
+      // saída fora da área de atendimento (+ folga): não vale para a taxa (antes "saía de 30 km" e ficava com quase tudo)
+      double maxStart = Math.min(MAX_START_KM, (r.get("area_km") == null ? 15.0 : ((Number) r.get("area_km")).doubleValue()) + START_MARGIN_KM);
+      if (startToClient > maxStart) { suspicious = true; traveled = 0; }           // "saiu" longe demais do cliente
       else traveled = Math.min(traveled, startToClient * ROAD_FACTOR + 1);             // não roda mais que o caminho até o cliente
     }
     if (Boolean.TRUE.equals(r.get("mocked"))) traveled = 0;
     if (suspicious) out.put("gpsSuspicious", true);
     out.put("traveledKm", round1(traveled));
     // GPS falso: o cliente não paga deslocamento nenhum
-    out.put("cancelFee", fee(r.get("departed_at") != null && !Boolean.TRUE.equals(r.get("mocked")), traveled, (BigDecimal) r.get("service_value")));
+    // saída marcada antes da janela de 3 horas (de antes desta regra) também não cobra
+    boolean inWindow = true;
+    if (r.get("departed_at") != null && r.get("o_date") != null && r.get("o_start") != null) {
+      java.time.LocalDateTime start = java.time.LocalDateTime.of(((java.sql.Date) r.get("o_date")).toLocalDate(), ((java.sql.Time) r.get("o_start")).toLocalTime());
+      inWindow = !((java.sql.Timestamp) r.get("departed_at")).toLocalDateTime().isBefore(start.minusMinutes(DEPART_EARLY_MINUTES));
+    }
+    out.put("cancelFee", fee(r.get("departed_at") != null && inWindow && !Boolean.TRUE.equals(r.get("mocked")), traveled, (BigDecimal) r.get("service_value")));
     return out;
   }
 
@@ -90,7 +105,10 @@ public class TripService {
     if (!departed) return BigDecimal.ZERO;
     BigDecimal f = PRICE_PER_KM.multiply(BigDecimal.valueOf(traveledKm * 2)).setScale(2, RoundingMode.HALF_UP);
     if (f.compareTo(MIN_FEE) < 0) f = MIN_FEE;
-    if (serviceValue != null && serviceValue.signum() > 0 && f.compareTo(serviceValue) > 0) f = serviceValue;
+    if (serviceValue != null && serviceValue.signum() > 0) {
+      BigDecimal cap = serviceValue.multiply(MAX_FEE_SHARE).setScale(2, RoundingMode.HALF_UP);
+      if (f.compareTo(cap) > 0) f = cap.max(MIN_FEE.min(serviceValue));
+    }
     return f;
   }
 

@@ -56,6 +56,13 @@ public class TripController {
     if (!Boolean.TRUE.equals(o.getPixPaid())) return bad("O cliente ainda não pagou. Saia só depois que o pagamento estiver no cofre.");
     Double lat = dbl(body.get("lat")), lng = dbl(body.get("lng"));
     if (lat == null || lng == null) return bad("Não conseguimos a sua localização. Ligue o GPS e tente de novo.");
+    // "Saí" só perto do horário: antes dava para marcar dias antes e cobrar deslocamento de quem cancelava com antecedência
+    if (o.getDate() != null && o.getStartTime() != null) {
+      java.time.LocalDateTime start = java.time.LocalDateTime.of(o.getDate(), o.getStartTime());
+      if (java.time.LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo")).isBefore(start.minusMinutes(br.com.personalfighters.service.TripService.DEPART_EARLY_MINUTES)))
+        return bad("Ainda está cedo: avise que saiu a partir de " + (br.com.personalfighters.service.TripService.DEPART_EARLY_MINUTES / 60) + " horas antes do horário ("
+            + start.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM 'às' HH:mm")) + ").");
+    }
     boolean first = jdbc.queryForObject("SELECT departed_at IS NULL FROM order_ WHERE id = ?", Boolean.class, id);
     tripService.depart(id, lat, lng);
     if (Boolean.TRUE.equals(body.get("mocked"))) tripService.markMocked(o);
@@ -89,6 +96,8 @@ public class TripController {
     // o cliente não vê mais onde ele está nem de onde saiu (antes ficava visível para sempre — muitas vezes, a casa dele)
     boolean onTheWay = (o.getStatus() == Status.AWAITING_PAYMENT || o.getStatus() == Status.CONFIRMED)
         && jdbc.queryForObject("SELECT COUNT(*) FROM order_ WHERE id = ? AND arrived_at IS NULL", Integer.class, id) > 0;
+    // Para o profissional, a casa do cliente só aparece com o pedido pago (antes saía exata num pedido ainda não aceito)
+    if (isPro(o, me) && !isCustomer(o, me) && !Boolean.TRUE.equals(o.getPixPaid())) { t.remove("clientLat"); t.remove("clientLng"); t.remove("distanceKm"); t.remove("etaMin"); t.remove("near"); }
     if (!onTheWay && !isPro(o, me)) { t.remove("proLat"); t.remove("proLng"); t.remove("proUpdatedAt"); t.remove("etaMin"); t.remove("distanceKm"); t.remove("near"); }
     t.put("professionalName", o.getProfessional() != null ? o.getProfessional().getName() : null);
     t.put("professionalId", o.getProfessional() != null ? o.getProfessional().getId() : null);

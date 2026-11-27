@@ -101,7 +101,8 @@ public class OrderController {
     Long uid = me().getId();
     boolean openForPros = o.getStatus() == Status.OPEN && o.getProfessional() == null;
     if (!is(o.getCustomer(), uid) && !is(o.getProfessional(), uid) && !openForPros) throw denied();
-    return redactor.strip(o, uid);
+    if (openForPros && (me().getProfessional() == null || !Boolean.TRUE.equals(me().getVerified()))) throw denied(); // pedido aberto: só profissional aprovado
+    return maskAddress(redactor.strip(o, uid), uid);
   }
 
   @PostMapping
@@ -175,7 +176,7 @@ public class OrderController {
   @ApiOperation(value = "Retorna a lista paginada das orders pelo ID do Professional")
   public Object findByProfessional(@PathVariable Long id, Pageable pageable) {
     self(id);
-    return redactor.strip(orderService.findByProfessional(id, pageable), id);
+    return maskAddress(redactor.strip(orderService.findByProfessional(id, pageable), id), id);
   }
 
   @GetMapping("/professionals/{id}/{status}")
@@ -183,7 +184,7 @@ public class OrderController {
   @ApiOperation(value = "Retorna a lista paginada das orders pelo ID do Professional e uma lista de Status.")
   public Object findByProfessionalAndStatus(@PathVariable Long id, @PathVariable List<Status> status, Pageable pageable) {
     self(id);
-    return redactor.strip(orderService.findByProfessionalAndStatus(id, status, pageable), id);
+    return maskAddress(redactor.strip(orderService.findByProfessionalAndStatus(id, status, pageable), id), id);
   }
 
   @PutMapping("/professionals/{id}/confirmation")
@@ -223,6 +224,35 @@ public class OrderController {
     throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE, "Use \"Terminei\" no pedido: o cliente confere e libera o pagamento.");
   }
 
+  /**
+   * Endereço completo só para o cliente e para o profissional depois de aceitar. Antes, um pedido direto ainda não
+   * aceito já mostrava rua, número e apartamento a qualquer profissional escolhido pelo cliente.
+   */
+  static Object maskAddress(Object tree, Long viewer) {
+    if (tree instanceof com.fasterxml.jackson.databind.JsonNode) maskNode((com.fasterxml.jackson.databind.JsonNode) tree, viewer);
+    return tree;
+  }
+
+  private static void maskNode(com.fasterxml.jackson.databind.JsonNode n, Long viewer) {
+    if (n == null) return;
+    if (n.isArray()) { for (com.fasterxml.jackson.databind.JsonNode c : n) maskNode(c, viewer); return; }
+    if (!n.isObject()) return;
+    com.fasterxml.jackson.databind.node.ObjectNode o = (com.fasterxml.jackson.databind.node.ObjectNode) n;
+    if (o.has("serviceAddress") && o.has("status") && "OPEN".equals(o.get("status").asText())) {
+      com.fasterxml.jackson.databind.JsonNode c = o.get("customer");
+      boolean isCustomer = c != null && c.has("id") && viewer != null && c.get("id").asLong() == viewer;
+      if (!isCustomer && o.hasNonNull("serviceAddress")) o.put("serviceAddress", areaOnly(o.get("serviceAddress").asText()));
+    }
+    o.fields().forEachRemaining(e -> maskNode(e.getValue(), viewer));
+  }
+
+  static String areaOnly(String full) {
+    String[] parts = full.split(",");
+    String area = parts.length >= 2 ? (parts[parts.length - 2].trim() + ", " + parts[parts.length - 1].trim()) : "Endereço liberado após aceitar";
+    area = area.replaceAll("\\d", "").replaceAll("(?i)\\b(apto|apartamento|ap|bloco|casa|fundos|sala|lote|quadra)\\b\\.?", "").replaceAll("\\s{2,}", " ").trim();
+    return area.isEmpty() ? "Endereço liberado após aceitar" : area;
+  }
+
   @GetMapping("/nearby")
   @ResponseStatus(HttpStatus.OK)
   public Object nearbyOrders(@RequestParam double lat,
@@ -243,9 +273,7 @@ public class OrderController {
     if (!admin() && tree instanceof com.fasterxml.jackson.databind.node.ArrayNode) {
       for (com.fasterxml.jackson.databind.JsonNode n : (com.fasterxml.jackson.databind.node.ArrayNode) tree) {
         if (n instanceof com.fasterxml.jackson.databind.node.ObjectNode && n.hasNonNull("serviceAddress")) {
-          String[] parts = n.get("serviceAddress").asText().split(",");
-          String area = parts.length >= 2 ? (parts[parts.length - 2].trim() + ", " + parts[parts.length - 1].trim()) : "Endereço liberado após aceitar";
-          ((com.fasterxml.jackson.databind.node.ObjectNode) n).put("serviceAddress", area.replaceAll("\\d", "").trim());
+          ((com.fasterxml.jackson.databind.node.ObjectNode) n).put("serviceAddress", areaOnly(n.get("serviceAddress").asText()));
         }
       }
     }
